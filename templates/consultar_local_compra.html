@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Local da Compra{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar local da Compra</h3>
+    <!--<a href="/cadastro/local_compra" class="btn btn-primary mb-3">Novo Local da Compra</a>-->
+<a href="{{ url_for('novo_local_compra') }}" class="btn btn-primary mb-3">Novo Local da Compra</a>
+    <table class="table table-bordered" id="tabelaLocal_Compras">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for local in local_compras %}
+            <tr>
+                <td>{{ local.id }}</td>
+                <td>{{ local.nome }}</td>
+                <td>
+                    <a href="{{ url_for('editar_local_compra', id=local.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('excluir_local_compra', id=local.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables -->
+<script>
+    $(document).ready(function() {
+        $('#tabelaLocal_Compras').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            }
+        });
+    });
+</script>
+{% endblock %}

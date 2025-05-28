@@ -1,0 +1,65 @@
+<!-- templates/consultar_despesas.html -->
+
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container">
+    <h2>Consultar Despesas</h2>
+    
+    <!-- Exibir um formulário de filtro, se necessário -->
+    <form method="GET" action="{{ url_for('consultar_despesas') }}">
+      <div class="form-row">
+        <div class="col-md-4">
+          <input type="text" name="bandeira" class="form-control" placeholder="Filtrar por bandeira">
+        </div>
+        <div class="col-md-4">
+          <input type="date" name="data_inicio" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <input type="date" name="data_fim" class="form-control">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-3">Filtrar</button>
+    </form>
+    
+    <hr>
+    
+    <!-- Exibição das despesas -->
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Produto</th>
+          <th>Valor Compra</th>
+          <th>Data Compra</th>
+          <th>Forma de Pagamento</th>
+          <th>Bandeira</th>
+          <th>Parcelamento</th>
+          <th>Valor Parcela</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for despesa in despesas %}
+        <tr>
+          <td>{{ despesa.id }}</td>
+          <td>{{ despesa.produto_nome }}</td>
+          <td>{{ despesa.valor_compra }}</td>
+          <td>{{ despesa.data_compra }}</td>
+          <td>{{ despesa.forma_pagamento }}</td>
+          <td>{{ despesa.bandeira_nome }}</td>
+          <td>{{ despesa.parcelamento_tipo }}</td>
+          <td>{{ despesa.valor_parcela }}</td>
+          <td>
+            <a href="{{ url_for('editar_despesa', id=despesa.id) }}" class="btn btn-warning">Editar</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center">Nenhuma despesa cadastrada.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

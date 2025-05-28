@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Categorias{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h3>Categorias</h3>
+    <a href="/cadastro/categoria" class="btn btn-primary mb-3">Nova Categoria</a>
+    <table class="table table-bordered" id="tabelaCategorias">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cat in categorias %}
+            <tr>
+                <td>{{ cat.id }}</td>
+                <td>{{ cat.nome }}</td>
+                <td>
+                    <a href="{{ url_for('editar_categoria', id=cat.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('excluir_categoria', id=cat.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#tabelaCategorias').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+        }
+    });
+});
+</script>
+{% endblock %}

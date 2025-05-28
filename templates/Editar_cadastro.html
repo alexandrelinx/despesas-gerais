@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Editar {{ tipo | capitalize }}{% endblock %}
+{% block content %}
+<h2>Editar {{ tipo | capitalize }}</h2>
+<form method="post">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control" value="{{ registro.nome }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('consultar_cadastro', tipo=tipo) }}" class="btn btn-secondary">Voltar</a>
+</form>
+{% endblock %}

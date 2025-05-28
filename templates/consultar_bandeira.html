@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Bandeiras{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Bandeiras</h3>
+    <!--<a href="/cadastro/bandeira" class="btn btn-primary mb-3">Nova Bandeira</a> -->
+<a href="{{ url_for('nova_bandeira') }}" class="btn btn-primary mb-3">Nova Bandeira</a>
+    <table class="table table-bordered" id="tabelaBandeiras">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for band in bandeiras %}
+            <tr>
+                <td>{{ band.id }}</td>
+                <td>{{ band.nome }}</td>
+                <td>
+                    <a href="{{ url_for('editar_bandeira', id=band.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('excluir_bandeira', id=band.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables -->
+<script>
+    $(document).ready(function() {
+        $('#tabelaBandeiras').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            }
+        });
+    });
+</script>
+{% endblock %}

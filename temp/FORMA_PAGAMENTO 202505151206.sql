@@ -1,0 +1,6 @@
+INSERT INTO FORMA_PAGAMENTO (nome) VALUES
+	 ('AVISTA'),
+	 ('CARTÃO CREDITO'),
+	 ('CARTÃO DEBITO'),
+	 ('PIX'),
+	 ('BOLETO');

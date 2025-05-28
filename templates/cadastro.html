@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de {{ tipo|capitalize }}{% endblock %}
+{% block content %}
+<h2>Cadastro de {{ tipo|capitalize }}</h2>
+<form method="post">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+</form>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2>Resumo de Despesas</h2>
+<a href="/despesas" class="btn btn-primary mb-3">+ Nova Despesa</a>
+
+<style>
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    height: 85vh;
+    gap: 10px;
+}
+
+.secao {
+    flex: 1;
+    overflow: auto;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background-color: #fdfdfd;
+}
+</style>
+
+<div class="dashboard-container">
+
+    <!-- Seção 1: Parcelas Detalhadas -->
+    <div class="secao">
+        <h5>Parcelas Detalhadas</h5>
+        <table class="table table-bordered table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Compra</th>
+                    <th>Estabelecimento</th>
+                    <th>Produto</th>
+                    <th>Bandeira</th>
+                    <th>Parcela</th>
+                    <th>Vencimento</th>
+                    <th>Valor da Parcela</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in parcelas %}
+                <tr>
+                    <td>{{ p['data_compra'] }}</td>
+                    <td>{{ p['estabelecimento'] }}</td>
+                    <td>{{ p['produto_nome'] }}</td>
+                    <td>{{ p['bandeira_nome'] }}</td>
+                    <td>{{ p['numero_parcela'] }}/{{ p['quantidade_parcelas'] }}</td>
+                    <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
+                    <td>R$ {{ '%.2f'|format(p['valor_parcela']) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Seção 2: Totais por Mês e Bandeira -->
+    <div class="secao">
+        <h5>Totais por Mês e Bandeira</h5>
+        <table class="table table-striped table-bordered table-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Bandeira</th>
+                    {% for mes_ano in colunas_meses %}
+                        <th>{{ mes_ano }}</th>
+                    {% endfor %}
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bandeira, valores in parcelas_por_mes.items() %}
+                <tr>
+                    <td>{{ bandeira }}</td>
+                    {% set total_bandeira = 0 %}
+                    {% for mes_ano in colunas_meses %}
+                        <td>
+                            {% if mes_ano in valores %}
+                                R$ {{ '%.2f'|format(valores[mes_ano]) }}
+                            {% else %}
+                                R$ 0.00
+                            {% endif %}
+                        </td>
+                        {% set total_bandeira = total_bandeira + (valores[mes_ano] if mes_ano in valores else 0) %}
+                    {% endfor %}
+                    <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}
