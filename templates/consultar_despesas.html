@@ -1,26 +1,31 @@
-<!-- templates/consultar_despesas.html -->
-
 {% extends "base.html" %}
 
 {% block content %}
   <div class="container">
     <h2>Consultar Despesas</h2>
-    
-    <!-- Exibir um formulário de filtro, se necessário -->
-    <form method="GET" action="{{ url_for('consultar_despesas') }}">
-      <div class="form-row">
-        <div class="col-md-4">
-          <input type="text" name="bandeira" class="form-control" placeholder="Filtrar por bandeira">
-        </div>
-        <div class="col-md-4">
-          <input type="date" name="data_inicio" class="form-control">
-        </div>
-        <div class="col-md-4">
-          <input type="date" name="data_fim" class="form-control">
-        </div>
-      </div>
-      <button type="submit" class="btn btn-primary mt-3">Filtrar</button>
-    </form>
+      <!-- Formulário de filtro -->
+  <form method="GET" action="{{ url_for('consultar_despesas') }}">
+  <div class="form-row">
+    <div class="col-md-4">
+      <select name="bandeira" class="form-control">
+        <option value="">Todas as bandeiras</option>
+        {% for b in bandeiras %}
+          <option value="{{ b.id }}" {% if bandeira_selecionada == b.id|string %}selected{% endif %}>{{ b.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}">
+    </div>
+    <div class="col-md-4">
+      <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}">
+    </div>
+  </div>
+  <div class="mt-2">
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <a href="{{ url_for('consultar_despesas') }}" class="btn btn-secondary mt-0 ml-1">Limpar Filtros</a>
+</form>
+
     
     <hr>
     

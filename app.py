@@ -739,14 +739,17 @@ def excluir_comprador(id):
 def consultar_despesas():
     conn = get_db_connection()
 
-    # Variáveis de filtro (se houver)
-    produto = request.args.get('produto','').strip()
-    data_inicio = request.args.get('data_inicio','').strip()
-    data_fim = request.args.get('data_fim','').strip()
+    # Filtros da URL
+    bandeira_filtro = request.args.get('bandeira', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
 
-    # Construir a consulta dinâmica com base nos filtros
+    # Buscar todas as bandeiras para popular o filtro
+    bandeiras = conn.execute("SELECT id, nome FROM BANDEIRA").fetchall()
+
+    # Monta a query base
     query = """
-        SELECT 
+        SELECT
             D.id,
             P.nome AS produto_nome,
             D.valor_compra,
@@ -763,35 +766,52 @@ def consultar_despesas():
         WHERE 1=1
     """
 
-    # Adiciona filtros se existirem
-    #if produto:
-     # query += f" AND P.nome LIKE '%{produto}%'"
     params = []
 
-    if produto:
-        query += " AND P.nome LIKE ?"
-        params.append(f"%{produto}%")
+    # Filtro por bandeira
+    if bandeira_filtro:
+        query += " AND B.id = ?"
+        params.append(bandeira_filtro)
 
+    # Filtro por data (formato dd/mm/yyyy como string)
     if data_inicio:
-       # query += f" AND D.data_compra >= '{data_inicio}'"
-       query += " AND D.data_compra >= ?"
-       params.append(data_inicio)
+        query += """
+            AND (
+                substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
+            ) >= ?
+        """
+        params.append(data_inicio.replace("-", ""))  # yyyy-mm-dd → yyyymmdd
 
     if data_fim:
-       # query += f" AND D.data_compra <= '{data_fim}'"
-       query += " AND D.data_compra <= ?"
-       params.append(data_fim)
+        query += """
+            AND (
+                substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
+            ) <= ?
+        """
+        params.append(data_fim.replace("-", ""))
 
+    # Ordenação decrescente por data
+    query += """
+        ORDER BY substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2) DESC
+    """
 
+    # Debug
     print("Query SQL:", query)
     print("Parâmetros:", params)
 
-    # Executar a consulta
-    despesas = conn.execute(query,params).fetchall()
-
+    # Executa a consulta
+    despesas = conn.execute(query, params).fetchall()
     conn.close()
 
-    return render_template('consultar_despesas.html', despesas=despesas)
+    # Renderiza o template
+    return render_template(
+        'consultar_despesas.html',
+        despesas=despesas,
+        bandeiras=bandeiras,
+        bandeira_selecionada=bandeira_filtro
+    )
+
+
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
