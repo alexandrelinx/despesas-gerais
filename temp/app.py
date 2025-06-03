@@ -263,17 +263,7 @@ def lancar_despesas():
     compradores = conn.execute("SELECT * FROM COMPRADOR ORDER BY nome ASC").fetchall()
     produtos = conn.execute("SELECT * FROM PRODUTO ORDER BY nome ASC").fetchall()
     formas = conn.execute("SELECT * FROM FORMA_PAGAMENTO ORDER BY nome ASC").fetchall()
-    bandeiras = conn.execute("""
-        SELECT 
-            b.id, b.nome, 
-            vb.dia AS vencimento, 
-            md.dia AS melhor_dia_compra
-        FROM BANDEIRA b
-        LEFT JOIN VENCIMENTO_BANDEIRA vb ON b.vencimento = vb.id
-        LEFT JOIN MELHOR_DIA_COMPRA md ON b.melhor_dia_compra = md.id
-        ORDER BY b.nome ASC
-    """).fetchall()
-     # bandeiras = conn.execute("SELECT * FROM BANDEIRA ORDER BY nome ASC").fetchall()
+    bandeiras = conn.execute("SELECT * FROM BANDEIRA ORDER BY nome ASC").fetchall()
     parcelamentos = conn.execute("SELECT * FROM PARCELAMENTO").fetchall()
     quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
     vencimento_bandeira = conn.execute("SELECT * FROM VENCIMENTO_BANDEIRA").fetchall()
@@ -577,23 +567,14 @@ def excluir_produto(id):
 @app.route('/cadastro/bandeira/novo', methods=['GET', 'POST'])
 def nova_bandeira():
     if request.method == 'POST':
-     nome = request.form['nome']
-     vencimento = request.form['vencimento']
-     melhor_dia_compra = request.form['melhor_dia_compra']  # corrigido sem espaço
-
-     conn = get_db_connection()
-     conn.execute(
-        "INSERT INTO BANDEIRA (nome, vencimento, melhor_dia_compra) VALUES (?, ?, ?)",
-        (nome, vencimento, melhor_dia_compra)
-    )
-     conn.commit()
-     conn.close()
-
-     flash("Bandeira cadastrada com sucesso!", "success")
-     return redirect(url_for('listar_bandeiras'))
-
+        nome = request.form['nome']
+        conn = get_db_connection()
+        conn.execute("INSERT INTO BANDEIRA (nome) VALUES (?)", (nome,))
+        conn.commit()
+        conn.close()
+        flash("Bandeira cadastrada com sucesso!", "success")
+        return redirect(url_for('listar_bandeiras'))
     return render_template('editar_bandeira.html', registro=None, tipo='bandeira')
-
 
 @app.route('/cadastro/bandeira')
 def consultar_bandeira():
@@ -608,32 +589,19 @@ def editar_bandeira(id):
     bandeira = conn.execute("SELECT * FROM bandeira WHERE id = ?", (id,)).fetchone()
 
     if not bandeira:
-        flash("bandeira não encontrada.", "danger")
-        conn.close()
+        flash("bandeira não encontrado.", "danger")
         return redirect(url_for('listar_bandeiras'))
 
     if request.method == 'POST':
         novo_nome = request.form['nome']
-        novo_vencimento = request.form['vencimento']
-        novo_melhor_dia = request.form['melhor_dia_compra']
-
-        conn.execute("""
-            UPDATE bandeira 
-            SET nome = ?, vencimento = ?, melhor_dia_compra = ?
-            WHERE id = ?
-        """, (novo_nome, novo_vencimento, novo_melhor_dia, id))
-
+        conn.execute("UPDATE bandeira SET nome = ? WHERE id = ?", (novo_nome, id))
         conn.commit()
         conn.close()
-        flash("Bandeira atualizada com sucesso!", "success")
+        flash("bandeira atualizado com sucesso!", "success")
         return redirect(url_for('listar_bandeiras'))
 
-    # Só fecha a conexão no GET, depois de carregar o registro
     conn.close()
-
-    # Renderiza o formulário no GET com os dados para edição
     return render_template('editar_bandeira.html', registro=bandeira, tipo='bandeira')
-
 
 @app.route('/bandeiras')
 def listar_bandeiras():

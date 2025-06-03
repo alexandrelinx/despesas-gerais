@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+
 {% block title %}
   {% if registro %}
     Editar {{ tipo | capitalize }}
@@ -15,13 +16,44 @@
       Nova {{ tipo | capitalize }}
     {% endif %}
   </h2>
-<form method="post">
+  <form method="post">
     <div class="mb-3">
-        <label for="nome" class="form-label">Nome</label>
-        <input type="text" name="nome" class="form-control"
-        value="{{ registro.nome if registro else '' }}" required>
+      <label for="nome" class="form-label">Nome</label>
+      <input
+        type="text"
+        id="nome"
+        name="nome"
+        class="form-control"
+        value="{{ registro.nome if registro else '' }}"
+        required
+      >
     </div>
+
+    <div class="mb-4">
+      <label for="vencimento" class="form-label">Vencimento</label>
+      <input
+        type="text"
+        id="vencimento"
+        name="vencimento"
+        class="form-control"
+        value="{{ registro.vencimento if registro else '' }}"
+        required
+      >
+    </div>
+
+    <div class="mb-5">
+      <label for="melhor_dia_compra" class="form-label">Melhor Dia</label>
+      <input
+        type="text"
+        id="melhor_dia_compra"
+        name="melhor_dia_compra"
+        class="form-control"
+        value="{{ registro.melhor_dia_compra if registro else '' }}"
+        required
+      >
+    </div>
+
     <button type="submit" class="btn btn-primary">Salvar</button>
     <a href="{{ url_for('listar_bandeiras') }}" class="btn btn-secondary">Voltar</a>
-</form>
+  </form>
 {% endblock %}
