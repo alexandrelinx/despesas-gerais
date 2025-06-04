@@ -66,6 +66,16 @@ from collections import defaultdict
 
 from datetime import datetime
 
+app = Flask(__name__)
+
+# Função que formata valores para Real brasileiro
+def formatar_real(valor):
+    if valor is None:
+        return ""
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# Registrar filtro no Jinja
+app.jinja_env.filters['real'] = formatar_real
 
 @app.route('/')
 def dashboard():
@@ -383,7 +393,7 @@ def editar_estabelecimento(id):
 @app.route('/estabelecimentos')
 def listar_estabelecimentos():
     conn = get_db_connection()
-    estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO").fetchall()
+    estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_estabelecimento.html', estabelecimentos=estabelecimentos)
 
@@ -444,7 +454,7 @@ def editar_categoria(id):
 @app.route('/categorias')
 def listar_categorias():
     conn = get_db_connection()
-    categorias = conn.execute("SELECT * FROM CATEGORIA").fetchall()
+    categorias = conn.execute("SELECT * FROM CATEGORIA ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_categoria.html', categorias=categorias)
 
@@ -502,7 +512,7 @@ def editar_local_compra(id):
 @app.route('/local_compras')
 def listar_local_compra():
     conn = get_db_connection()
-    local_compras = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
+    local_compras = conn.execute("SELECT * FROM LOCAL_COMPRA ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_local_compra.html', local_compras=local_compras)
 
@@ -695,7 +705,7 @@ def editar_forma_pagamento(id):
 @app.route('/formas_pagamento')
 def listar_formas_pagamento():
     conn = get_db_connection()
-    forma_pagamento= conn.execute("SELECT * FROM FORMA_PAGAMENTO").fetchall()
+    forma_pagamento= conn.execute("SELECT * FROM FORMA_PAGAMENTO ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_forma_pagamento.html', forma_pagamento=forma_pagamento)
 
@@ -752,7 +762,7 @@ def editar_comprador(id):
 @app.route('/comprador')
 def listar_comprador():
     conn = get_db_connection()
-    comprador = conn.execute("SELECT * FROM COMPRADOR").fetchall()
+    comprador = conn.execute("SELECT * FROM COMPRADOR ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_comprador.html', comprador=comprador)
 
@@ -842,7 +852,6 @@ def consultar_despesas():
         bandeiras=bandeiras,
         bandeira_selecionada=bandeira_filtro
     )
-
 
 
 from datetime import datetime
@@ -969,6 +978,33 @@ def editar_despesa(id):
                            quantidades=quantidade_parcelas,
                            vencimentos=vencimento_bandeira,
                            melhores_dias=melhor_dia_compra)
+
+
+@app.route('/excluir_despesa/<int:id>', methods=['POST'])
+def excluir_despesa(id):
+    conn = get_db_connection()
+
+    # Verifica se a despesa existe
+    despesa = conn.execute("SELECT * FROM DESPESAS WHERE id = ?", (id,)).fetchone()
+
+    if not despesa:
+        conn.close()
+        flash("Despesa não encontrada!", "danger")
+        return redirect(url_for('consultar_despesas'))
+
+    try:
+        # Exclui parcelas associadas
+        conn.execute("DELETE FROM PARCELAS WHERE despesa_id = ?", (id,))
+        # Exclui a despesa
+        conn.execute("DELETE FROM DESPESAS WHERE id = ?", (id,))
+        conn.commit()
+        flash("Despesa excluída com sucesso!", "success")
+    except Exception as e:
+        flash(f"Erro ao excluir despesa: {e}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('consultar_despesas'))
 
 
 @app.route('/totais-despesas-mensais')
