@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Lançar Despesas{% endblock %}
-
 {% block content %}
 <h2>Lançar Nova Despesa</h2>
-
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for category, message in messages %}
@@ -22,7 +20,7 @@
       <select name="estabelecimento_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for e in estabelecimentos %}
-          <option value="{{ e.id }}">{{ e.nome }}</option>
+        <option value="{{ e.id }}">{{ e.nome }}</option>
         {% endfor %}
       </select>
     </div>
@@ -32,7 +30,7 @@
       <select name="categoria_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for c in categorias %}
-          <option value="{{ c.id }}">{{ c.nome }}</option>
+        <option value="{{ c.id }}">{{ c.nome }}</option>
         {% endfor %}
       </select>
     </div>
@@ -42,7 +40,7 @@
       <select name="local_compra_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for l in locais %}
-          <option value="{{ l.id }}">{{ l.nome }}</option>
+        <option value="{{ l.id }}">{{ l.nome }}</option>
         {% endfor %}
       </select>
     </div>
@@ -52,7 +50,7 @@
       <select name="comprador_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for c in compradores %}
-          <option value="{{ c.id }}">{{ c.nome }}</option>
+        <option value="{{ c.id }}">{{ c.nome }}</option>
         {% endfor %}
       </select>
     </div>
@@ -62,14 +60,14 @@
       <select name="produto_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for p in produtos %}
-          <option value="{{ p.id }}">{{ p.nome }}</option>
+        <option value="{{ p.id }}">{{ p.nome }}</option>
         {% endfor %}
       </select>
     </div>
 
     <div class="col-md-6">
       <label>Data da Compra</label>
-      <input type="text" name="data_compra" class="form-control" required>
+      <input type="text" name="data_compra" class="form-control" placeholder="dd/mm/aaaa" required>
     </div>
 
     <div class="col-md-6">
@@ -82,7 +80,7 @@
       <select name="forma_pagamento_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for f in formas %}
-          <option value="{{ f.id }}">{{ f.nome }}</option>
+        <option value="{{ f.id }}">{{ f.nome }}</option>
         {% endfor %}
       </select>
     </div>
@@ -92,7 +90,7 @@
       <select name="bandeira_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for b in bandeiras %}
-          <option value="{{ b.id }}">{{ b.nome }}</option>
+        <option value="{{ b.id }}">{{ b.nome }}</option>
         {% endfor %}
       </select>
     </div>
@@ -102,7 +100,7 @@
       <select name="parcelamento_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for p in parcelamentos %}
-          <option value="{{ p.id }}">{{ p.tipo }}</option>
+        <option value="{{ p.id }}">{{ p.tipo }}</option>
         {% endfor %}
       </select>
     </div>
@@ -111,20 +109,9 @@
       <label>Qtd Parcelas</label>
       <select name="quantidade_parcelas_id" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
-      </select>
-    </div>
-
-    <div class="col-md-6">
-      <label>Vencimento da Bandeira</label>
-      <select name="vencimento_bandeira_id" class="form-control" required>
-        <option value="" disabled selected>Selecione</option>
-      </select>
-    </div>
-
-    <div class="col-md-6">
-      <label>Melhor dia de compra</label>
-      <select name="melhor_dia_compra_id" class="form-control" required>
-        <option value="" disabled selected>Selecione</option>
+        {% for q in quantidades %}
+        <option value="{{ q.id }}">{{ q.quantidade }}</option>
+        {% endfor %}
       </select>
     </div>
 
@@ -137,61 +124,4 @@
   <br>
   <button type="submit" class="btn btn-success">Salvar Lançamento</button>
 </form>
-
-<script>
-// Dados das bandeiras: id -> vencimento, melhor dia compra e quantidade de parcelas
-const bandeirasData = {
-  {% for b in bandeiras %}
-    "{{ b.id }}": {
-      "vencimento": {{ b.vencimento | default(0, true) }},
-      "melhorDia": {{ b.melhor_dia_compra | default(0, true) }},
-      "quantidadeParcelas": {{ b.quantidade_parcelas | default(1, true) }}
-    }{% if not loop.last %},{% endif %}
-  {% endfor %}
-};
-
-const bandeiraSelect = document.querySelector('select[name="bandeira_id"]');
-const vencimentoSelect = document.querySelector('select[name="vencimento_bandeira_id"]');
-const melhorDiaSelect = document.querySelector('select[name="melhor_dia_compra_id"]');
-const qtdParcelasSelect = document.querySelector('select[name="quantidade_parcelas_id"]');
-
-// Preenche um select com opções numéricas de 1 até max (padrão 31)
-function preencherSelectNumerico(select, max = 31) {
-  select.innerHTML = '<option value="" disabled selected>Selecione</option>';
-  for (let i = 1; i <= max; i++) {
-    const option = document.createElement('option');
-    option.value = i;
-    option.textContent = i;
-    select.appendChild(option);
-  }
-}
-
-// Inicializa selects com opções padrão
-preencherSelectNumerico(vencimentoSelect);
-preencherSelectNumerico(melhorDiaSelect);
-preencherSelectNumerico(qtdParcelasSelect, 12);  // limite 12 parcelas, ajuste se quiser
-
-function atualizarCampos() {
-  const id = bandeiraSelect.value;
-  if (id && bandeirasData[id]) {
-    const dados = bandeirasData[id];
-
-    vencimentoSelect.value = dados.vencimento || "";
-    melhorDiaSelect.value = dados.melhorDia || "";
-
-    preencherSelectNumerico(qtdParcelasSelect, 12);
-    qtdParcelasSelect.value = dados.quantidadeParcelas || "";
-  } else {
-    vencimentoSelect.value = "";
-    melhorDiaSelect.value = "";
-    qtdParcelasSelect.value = "";
-  }
-}
-
-bandeiraSelect.addEventListener('change', atualizarCampos);
-
-// Se precisar preencher ao carregar a página (ex: edição), descomente a linha abaixo:
-// atualizarCampos();
-
-</script>
 {% endblock %}

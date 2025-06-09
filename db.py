@@ -13,43 +13,52 @@ def inicializar_banco(db_name="despesas.db"):
     -- Tabelas principais de referência
     CREATE TABLE IF NOT EXISTS ESTABELECIMENTO (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL UNIQUE  ); 
+        nome TEXT NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS CATEGORIA (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL UNIQUE );
+        nome TEXT NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS LOCAL_COMPRA (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL UNIQUE );
+        nome TEXT NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS PRODUTO (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL UNIQUE  );
+        nome TEXT NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS COMPRADOR (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL UNIQUE  );
+        nome TEXT NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS FORMA_PAGAMENTO (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL UNIQUE );
+        nome TEXT NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS BANDEIRA (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL UNIQUE,
-        vencimento INTEGER NOT NULL,         
-        melhor_dia_compra INTEGER NOT NULL );
+        melhor_dia_compra INTEGER,
+        vencimento INTEGER
+    );
 
     -- Tipo booleano representado por texto "Sim" ou "Não"
     CREATE TABLE IF NOT EXISTS PARCELAMENTO (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tipo TEXT CHECK(tipo IN ('Sim', 'Não')) NOT NULL UNIQUE  );
+        tipo TEXT CHECK(tipo IN ('Sim', 'Não')) NOT NULL UNIQUE
+    );
 
     -- Tabelas auxiliares
     CREATE TABLE IF NOT EXISTS QUANTIDADE_PARCELAS (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        quantidade INTEGER NOT NULL UNIQUE );
+        quantidade INTEGER NOT NULL UNIQUE
+    );
 
     CREATE TABLE IF NOT EXISTS PARCELAS (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,13 +67,11 @@ def inicializar_banco(db_name="despesas.db"):
         data_vencimento DATE,
         valor_parcela REAL );
 
-     
     CREATE TABLE IF NOT EXISTS SALARIO_MES (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         DATA_DO_CREDITO DATE,
-        VALOR_SALARIO REAL  );
-
-
+        VALOR_SALARIO REAL
+    );
 
     -- Tabela principal
     CREATE TABLE IF NOT EXISTS DESPESAS (
@@ -104,11 +111,10 @@ def inicializar_banco(db_name="despesas.db"):
         FOREIGN KEY (bandeira_id) REFERENCES BANDEIRA(id),
         FOREIGN KEY (parcelamento_id) REFERENCES PARCELAMENTO(id),
         FOREIGN KEY (quantidade_parcelas_id) REFERENCES QUANTIDADE_PARCELAS(id),
-        FOREIGN KEY (vencimento_bandeira_id) REFERENCES VENCIMENTO_BANDEIRA(id),
-        FOREIGN KEY (melhor_dia_compra_id) REFERENCES MELHOR_DIA_COMPRA(id),
-        FOREIGN KEY (salario_mes_id ) REFERENCES SALARIO_MES(id)
+        FOREIGN KEY (salario_mes_id) REFERENCES SALARIO_MES(id)
     );
     """
+
     # Executa o script SQL
     cursor.executescript(script_sql)
 
@@ -118,16 +124,15 @@ def inicializar_banco(db_name="despesas.db"):
         [(i,) for i in range(1, 13)]
     )
 
-   
     cursor.executemany(
        "INSERT OR IGNORE INTO PARCELAMENTO (tipo) VALUES (?);",
         [('Sim',), ('Não',)]
-)
+    )
+
     # Fechar conexão
     conn.commit()
     conn.close()
     print(f"Banco de dados '{db_name}' criado com sucesso e tabelas auxiliares populadas.")
-
 
 # Se quiser rodar este script separadamente
 if __name__ == "__main__":

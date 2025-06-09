@@ -8,8 +8,10 @@ from dateutil.relativedelta import relativedelta
 import locale
 from datetime import datetime, timedelta
 import calendar
-
-
+from flask import session, redirect, url_for, flash
+from flask import request, redirect, url_for, flash, render_template
+from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
 app = Flask(__name__)
 DB = 'despesas.db'
 
@@ -18,6 +20,16 @@ def get_db_connection():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def real(value):
+    """Formata um número float como moeda brasileira"""
+    try:
+        return f"R$ {float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except (ValueError, TypeError):
+        return value
+
+app.jinja_env.filters['real'] = real
 
 # Configuração de localidade para exibir datas em português
 try:
@@ -56,6 +68,8 @@ def calcular_parcelas(data_compra, quantidade_parcelas, vencimento_bandeira):
 
     return parcelas
 
+
+
 from flask import render_template
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -66,16 +80,6 @@ from collections import defaultdict
 
 from datetime import datetime
 
-app = Flask(__name__)
-
-# Função que formata valores para Real brasileiro
-def formatar_real(valor):
-    if valor is None:
-        return ""
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-# Registrar filtro no Jinja
-app.jinja_env.filters['real'] = formatar_real
 
 @app.route('/')
 def dashboard():
@@ -94,8 +98,8 @@ def dashboard():
         QP.quantidade AS quantidade_parcelas,
         PRD.nome AS produto_nome,
         B.nome AS bandeira_nome,
-        VB.dia AS vencimento_bandeira,
-        MDC.dia AS melhor_dia_compra,
+        B.vencimento_dia AS vencimento_bandeira,
+        B.melhor_dia_compra AS melhor_dia_compra,
         E.nome  AS estabelecimento  -- Campo 'estabelecimento' adicionado
     FROM PARCELAS P
     LEFT JOIN DESPESAS D ON P.despesa_id = D.id
@@ -103,8 +107,7 @@ def dashboard():
     LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
     LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
     LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-    LEFT JOIN VENCIMENTO_BANDEIRA VB ON D.vencimento_bandeira_id = VB.id
-    LEFT JOIN MELHOR_DIA_COMPRA MDC ON D.melhor_dia_compra_id = MDC.id
+    
     ORDER BY  D.data_compra DESC
     """)
 
@@ -167,6 +170,7 @@ def cadastro(tipo):
     return render_template('cadastro.html', tipo=tipo)
 
 @app.route('/despesas', methods=['GET', 'POST'])
+
 def lancar_despesas():
     conn = get_db_connection()
 
@@ -185,8 +189,6 @@ def lancar_despesas():
                 request.form['bandeira_id'],
                 request.form['parcelamento_id'],
                 request.form['quantidade_parcelas_id'],
-                request.form['vencimento_bandeira_id'],
-                request.form['melhor_dia_compra_id'],
                 request.form['valor_parcela']
             )
 
@@ -197,14 +199,13 @@ def lancar_despesas():
 
             cursor = conn.cursor()
 
-            # Insere a despesa
+            # Insere a despesa (sem vencimento_bandeira_id e melhor_dia_compra_id)
             cursor.execute("""
                 INSERT INTO DESPESAS (
                     estabelecimento_id, categoria_id, local_compra_id, comprador_id,
                     produto_id, data_compra, valor_compra, forma_pagamento_id, bandeira_id,
-                    parcelamento_id, quantidade_parcelas_id, vencimento_bandeira_id,
-                    melhor_dia_compra_id, valor_parcela
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    parcelamento_id, quantidade_parcelas_id, valor_parcela
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, dados)
             conn.commit()
 
@@ -212,22 +213,22 @@ def lancar_despesas():
             despesa_id = cursor.lastrowid
 
             # Obter dados para cálculo das parcelas
-            data_compra = request.form['data_compra']
+            data_compra = request.form['data_compra']  # formato: yyyy-mm-dd
             quantidade_parcelas = int(conn.execute(
                 "SELECT quantidade FROM QUANTIDADE_PARCELAS WHERE id = ?", 
                 (request.form['quantidade_parcelas_id'],)
             ).fetchone()['quantidade'])
 
-            vencimento_bandeira = int(conn.execute(
-                "SELECT dia FROM VENCIMENTO_BANDEIRA WHERE id = ?", 
-                (request.form['vencimento_bandeira_id'],)
-            ).fetchone()['dia'])
+            bandeira_id = request.form['bandeira_id']
+            bandeira_dados = conn.execute(
+                "SELECT melhor_dia_compra, vencimento_dia FROM BANDEIRA WHERE id = ?",
+                (bandeira_id,)
+            ).fetchone()
 
-            melhor_dia_compra = int(conn.execute(
-                "SELECT dia FROM MELHOR_DIA_COMPRA WHERE id = ?", 
-                (request.form['melhor_dia_compra_id'],)
-            ).fetchone()['dia'])
+            melhor_dia_compra = bandeira_dados['melhor_dia_compra']
+            vencimento_bandeira = bandeira_dados['vencimento_dia']
 
+            # Converter a data de compra (YYYY-MM-DD)
             data_compra_dt = datetime.strptime(data_compra, "%d/%m/%Y")
 
             # Define a data da primeira parcela com base no melhor dia de compra
@@ -246,7 +247,7 @@ def lancar_despesas():
             # Gera as datas das parcelas
             parcelas = [primeira_data + relativedelta(months=i) for i in range(quantidade_parcelas)]
 
-            # Inserir parcelas na tabela PARCELAS
+            # Inserir parcelas
             for idx, vencimento in enumerate(parcelas, start=1):
                 conn.execute("""
                     INSERT INTO PARCELAS (despesa_id, numero_parcela, data_vencimento, valor_parcela)
@@ -266,28 +267,16 @@ def lancar_despesas():
 
         return redirect(url_for('lancar_despesas'))
 
-    # Carrega os dados para o formulário
+    # Carrega os dados para o formulário (sem vencimento_bandeira e melhor_dia_compra)
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO ORDER BY nome ASC").fetchall()
     categorias = conn.execute("SELECT * FROM CATEGORIA ORDER BY nome ASC").fetchall()
     locais = conn.execute("SELECT * FROM LOCAL_COMPRA ORDER BY nome ASC").fetchall()
     compradores = conn.execute("SELECT * FROM COMPRADOR ORDER BY nome ASC").fetchall()
     produtos = conn.execute("SELECT * FROM PRODUTO ORDER BY nome ASC").fetchall()
     formas = conn.execute("SELECT * FROM FORMA_PAGAMENTO ORDER BY nome ASC").fetchall()
-    bandeiras = conn.execute("""
-        SELECT 
-            b.id, b.nome, 
-            vb.dia AS vencimento, 
-            md.dia AS melhor_dia_compra
-        FROM BANDEIRA b
-        LEFT JOIN VENCIMENTO_BANDEIRA vb ON b.vencimento = vb.id
-        LEFT JOIN MELHOR_DIA_COMPRA md ON b.melhor_dia_compra = md.id
-        ORDER BY b.nome ASC
-    """).fetchall()
-     # bandeiras = conn.execute("SELECT * FROM BANDEIRA ORDER BY nome ASC").fetchall()
+    bandeiras = conn.execute("SELECT * FROM BANDEIRA ORDER BY nome ASC").fetchall()
     parcelamentos = conn.execute("SELECT * FROM PARCELAMENTO").fetchall()
     quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
-    vencimento_bandeira = conn.execute("SELECT * FROM VENCIMENTO_BANDEIRA").fetchall()
-    melhor_dia_compra = conn.execute("SELECT * FROM MELHOR_DIA_COMPRA").fetchall()
     conn.close()
 
     return render_template('despesas.html', 
@@ -299,9 +288,246 @@ def lancar_despesas():
                            formas=formas, 
                            bandeiras=bandeiras, 
                            parcelamentos=parcelamentos, 
-                           quantidades=quantidade_parcelas, 
-                           vencimentos=vencimento_bandeira, 
-                           melhores_dias=melhor_dia_compra)
+                           quantidades=quantidade_parcelas)
+
+
+@app.route('/consultar_despesas', methods=['GET', 'POST'])
+def consultar_despesas():
+    conn = get_db_connection()
+
+    # Filtros da URL
+    bandeira_filtro = request.args.get('bandeira', '').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+
+    # Buscar todas as bandeiras para popular o filtro
+    bandeiras = conn.execute("SELECT id, nome FROM BANDEIRA").fetchall()
+
+    # Monta a query base
+    query = """
+        SELECT
+            D.id,
+            P.nome AS produto_nome,
+            D.valor_compra,
+            D.data_compra,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira_nome,
+            PQP.tipo AS parcelamento_tipo,
+            D.valor_parcela
+        FROM DESPESAS D
+        LEFT JOIN PRODUTO P ON D.produto_id = P.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN PARCELAMENTO PQP ON D.parcelamento_id = PQP.id
+        WHERE 1=1
+    """
+
+    params = []
+
+    # Filtro por bandeira
+    if bandeira_filtro:
+        query += " AND B.id = ?"
+        params.append(bandeira_filtro)
+
+    # Filtro por data (formato dd/mm/yyyy como string)
+    if data_inicio:
+        query += """
+            AND (
+                substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
+            ) >= ?
+        """
+        params.append(data_inicio.replace("-", ""))  # yyyy-mm-dd → yyyymmdd
+
+    if data_fim:
+        query += """
+            AND (
+                substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
+            ) <= ?
+        """
+        params.append(data_fim.replace("-", ""))
+
+    # Ordenação decrescente por data
+    query += """
+        ORDER BY substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2) DESC
+    """
+
+    # Debug
+    print("Query SQL:", query)
+    print("Parâmetros:", params)
+
+    # Executa a consulta
+    despesas = conn.execute(query, params).fetchall()
+    conn.close()
+
+    # Renderiza o template
+    return render_template(
+        'consultar_despesas.html',
+        despesas=despesas,
+        bandeiras=bandeiras,
+        bandeira_selecionada=bandeira_filtro
+    )
+
+
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+@app.route('/editar_despesa/<int:id>', methods=['GET', 'POST'])
+def editar_despesa(id):
+    conn = get_db_connection()
+    despesa = conn.execute("SELECT * FROM DESPESAS WHERE id = ?", (id,)).fetchone()
+
+    if not despesa:
+        flash("Despesa não encontrada!", "danger")
+        return redirect(url_for('consultar_despesas'))
+
+    if request.method == 'POST':
+        try:
+            # Captura os dados do formulário
+            dados = (
+                request.form['estabelecimento_id'],
+                request.form['categoria_id'],
+                request.form['local_compra_id'],
+                request.form['comprador_id'],
+                request.form['produto_id'],
+                request.form['data_compra'],
+                request.form['valor_compra'],
+                request.form['forma_pagamento_id'],
+                request.form['bandeira_id'],
+                request.form['parcelamento_id'],
+                request.form['quantidade_parcelas_id'],
+                request.form['valor_parcela']
+            )
+
+            # Atualiza a despesa
+            conn.execute("""
+                UPDATE DESPESAS
+                SET estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
+                    produto_id = ?, data_compra = ?, valor_compra = ?, forma_pagamento_id = ?, bandeira_id = ?,
+                    parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?
+                WHERE id = ?
+            """, (*dados, id))
+            conn.commit()
+
+            # Busca nova quantidade de parcelas e dados da bandeira
+            nova_qtd_parcelas = int(conn.execute(
+                "SELECT quantidade FROM QUANTIDADE_PARCELAS WHERE id = ?",
+                (request.form['quantidade_parcelas_id'],)
+            ).fetchone()['quantidade'])
+
+            bandeira_id = request.form['bandeira_id']
+            bandeira_dados = conn.execute(
+                "SELECT melhor_dia_compra, vencimento_dia FROM BANDEIRA WHERE id = ?",
+                (bandeira_id,)
+            ).fetchone()
+
+            melhor_dia_compra = bandeira_dados['melhor_dia_compra']
+            vencimento_dia = bandeira_dados['vencimento_dia']
+            nova_data_compra = datetime.strptime(request.form['data_compra'], "%d/%m/%Y")
+            novo_valor_parcela = float(request.form['valor_parcela'])
+
+            # Define data da primeira parcela
+            if nova_data_compra.day < melhor_dia_compra:
+                primeira_data = nova_data_compra.replace(day=1) + relativedelta(months=1)
+            else:
+                primeira_data = nova_data_compra.replace(day=1) + relativedelta(months=2)
+
+            try:
+                primeira_data = primeira_data.replace(day=vencimento_dia)
+            except ValueError:
+                primeira_data = (primeira_data + relativedelta(months=1, day=1)) - relativedelta(days=1)
+
+            # Gera novas datas
+            datas_novas = [primeira_data + relativedelta(months=i) for i in range(nova_qtd_parcelas)]
+
+            # Parcelas existentes
+            parcelas_existentes = conn.execute(
+                "SELECT * FROM PARCELAS WHERE despesa_id = ? ORDER BY numero_parcela", (id,)
+            ).fetchall()
+            qtd_parcelas_atual = len(parcelas_existentes)
+
+            # Adiciona novas parcelas
+            if nova_qtd_parcelas > qtd_parcelas_atual:
+                for i in range(qtd_parcelas_atual, nova_qtd_parcelas):
+                    conn.execute("""
+                        INSERT INTO PARCELAS (despesa_id, data_vencimento, valor_parcela, numero_parcela)
+                        VALUES (?, ?, ?, ?)
+                    """, (id, datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, i + 1))
+
+            # Remove parcelas excedentes
+            elif nova_qtd_parcelas < qtd_parcelas_atual:
+                for i in range(nova_qtd_parcelas, qtd_parcelas_atual):
+                    conn.execute("""
+                        DELETE FROM PARCELAS WHERE despesa_id = ? AND numero_parcela = ?
+                    """, (id, i + 1))
+
+            # Atualiza parcelas existentes
+            for i, parcela in enumerate(parcelas_existentes[:nova_qtd_parcelas]):
+                conn.execute("""
+                    UPDATE PARCELAS
+                    SET data_vencimento = ?, valor_parcela = ?
+                    WHERE id = ?
+                """, (datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, parcela['id']))
+
+            conn.commit()
+            flash("Despesa atualizada com sucesso!", "success")
+            return redirect(url_for('consultar_despesas'))
+
+        except Exception as e:
+            conn.rollback()
+            flash(f"Erro ao atualizar despesa: {e}", "danger")
+            print("Erro:", e)
+
+    # Carrega os dados do formulário para GET
+    estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO").fetchall()
+    categorias = conn.execute("SELECT * FROM CATEGORIA").fetchall()
+    locais = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
+    compradores = conn.execute("SELECT * FROM COMPRADOR").fetchall()
+    produtos = conn.execute("SELECT * FROM PRODUTO").fetchall()
+    formas = conn.execute("SELECT * FROM FORMA_PAGAMENTO").fetchall()
+    bandeiras = conn.execute("SELECT * FROM BANDEIRA").fetchall()
+    parcelamentos = conn.execute("SELECT * FROM PARCELAMENTO").fetchall()
+    quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
+    conn.close()
+
+    return render_template('editar_despesa.html',
+                           despesa=despesa,
+                           estabelecimentos=estabelecimentos,
+                           categorias=categorias,
+                           locais=locais,
+                           compradores=compradores,
+                           produtos=produtos,
+                           formas=formas,
+                           bandeiras=bandeiras,
+                           parcelamentos=parcelamentos,
+                           quantidades=quantidade_parcelas)
+
+                       
+@app.route('/excluir_despesa/<int:id>', methods=['POST'])
+def excluir_despesa(id):
+    conn = get_db_connection()
+
+    # Verifica se a despesa existe
+    despesa = conn.execute("SELECT * FROM DESPESAS WHERE id = ?", (id,)).fetchone()
+
+    if not despesa:
+        conn.close()
+        flash("Despesa não encontrada!", "danger")
+        return redirect(url_for('consultar_despesas'))
+
+    try:
+        # Exclui parcelas associadas
+        conn.execute("DELETE FROM PARCELAS WHERE despesa_id = ?", (id,))
+        # Exclui a despesa
+        conn.execute("DELETE FROM DESPESAS WHERE id = ?", (id,))
+        conn.commit()
+        flash("Despesa excluída com sucesso!", "success")
+    except Exception as e:
+        flash(f"Erro ao excluir despesa: {e}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('consultar_despesas'))
 
 
 @app.route('/cadastro/<tipo>/consultar')
@@ -347,14 +573,38 @@ def excluir_cadastro(tipo, id):
 @app.route('/cadastro/estabelecimento/novo', methods=['GET', 'POST'])
 def novo_estabelecimento():
     if request.method == 'POST':
-        nome = request.form['nome']
+        nome = request.form.get('nome', '').strip().upper()  # Normaliza e coloca em MAIÚSCULAS
+
+        if not nome:
+            flash("O nome do estabelecimento é obrigatório.", "warning")
+            return redirect(request.url)
+
         conn = get_db_connection()
-        conn.execute("INSERT INTO ESTABELECIMENTO (nome) VALUES (?)", (nome,))
-        conn.commit()
-        conn.close()
-        flash("Estabelecimento cadastrado com sucesso!", "success")
+
+        # Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+        existente = conn.execute(
+            "SELECT 1 FROM ESTABELECIMENTO WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+
+        if existente:
+            flash("Já existe um estabelecimento com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        try:
+            conn.execute("INSERT INTO ESTABELECIMENTO (nome) VALUES (?)", (nome,))
+            conn.commit()
+            flash("Estabelecimento cadastrado com sucesso!", "success")
+        except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+        finally:
+            conn.close()
+
         return redirect(url_for('listar_estabelecimentos'))
+
     return render_template('editar_estabelecimento.html', registro=None, tipo='estabelecimento')
+
+
 # CONSULTAR ESTABELECIMENTOS
 @app.route('/cadastro/estabelecimento')
 def consultar_estabelecimento():
@@ -380,7 +630,23 @@ def editar_estabelecimento(id):
         return redirect(url_for('listar_estabelecimentos'))
 
     if request.method == 'POST':
-        novo_nome = request.form['nome']
+        novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
+
+        if not novo_nome:
+            flash("O nome do estabelecimento é obrigatório.", "warning")
+            return redirect(request.url)
+
+        # Verifica se outro estabelecimento já usa esse nome
+        duplicado = conn.execute(
+            "SELECT 1 FROM ESTABELECIMENTO WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
+
+        if duplicado:
+            flash("Já existe outro estabelecimento com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
         conn.execute("UPDATE ESTABELECIMENTO SET nome = ? WHERE id = ?", (novo_nome, id))
         conn.commit()
         conn.close()
@@ -388,7 +654,8 @@ def editar_estabelecimento(id):
         return redirect(url_for('listar_estabelecimentos'))
 
     conn.close()
-    return render_template('editar_estabelecimento.html', registro=estabelecimento, tipo='estabelecimento')  # reusando o template
+    return render_template('editar_estabelecimento.html', registro=estabelecimento, tipo='estabelecimento')
+ # reusando o template
 
 @app.route('/estabelecimentos')
 def listar_estabelecimentos():
@@ -568,7 +835,7 @@ def editar_produto(id):
 @app.route('/produtos')
 def listar_produtos():
     conn = get_db_connection()
-    produtos = conn.execute("SELECT * FROM PRODUTO").fetchall()
+    produtos = conn.execute("SELECT * FROM PRODUTO ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_produto.html', produtos=produtos)
 
@@ -587,21 +854,20 @@ def excluir_produto(id):
 @app.route('/cadastro/bandeira/novo', methods=['GET', 'POST'])
 def nova_bandeira():
     if request.method == 'POST':
-     nome = request.form['nome']
-     vencimento = request.form['vencimento']
-     melhor_dia_compra = request.form['melhor_dia_compra']  # corrigido sem espaço
-
-     conn = get_db_connection()
-     conn.execute(
-        "INSERT INTO BANDEIRA (nome, vencimento, melhor_dia_compra) VALUES (?, ?, ?)",
-        (nome, vencimento, melhor_dia_compra)
-    )
-     conn.commit()
-     conn.close()
-
-     flash("Bandeira cadastrada com sucesso!", "success")
-     return redirect(url_for('listar_bandeiras'))
-
+        nome = request.form['nome']
+        vencimento_dia = request.form['vencimento_dia']
+        melhor_dia_compra = request.form['melhor_dia_compra']
+        
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO BANDEIRA (nome, vencimento_dia, melhor_dia_compra) VALUES (?, ?, ?)",
+            (nome, vencimento_dia, melhor_dia_compra)
+        )
+        conn.commit()
+        conn.close()
+        flash("Bandeira cadastrada com sucesso!", "success")
+        return redirect(url_for('listar_bandeiras'))
+    
     return render_template('editar_bandeira.html', registro=None, tipo='bandeira')
 
 
@@ -618,37 +884,46 @@ def editar_bandeira(id):
     bandeira = conn.execute("SELECT * FROM bandeira WHERE id = ?", (id,)).fetchone()
 
     if not bandeira:
-        flash("bandeira não encontrada.", "danger")
-        conn.close()
+        flash("Bandeira não encontrada.", "danger")
         return redirect(url_for('listar_bandeiras'))
 
     if request.method == 'POST':
-        novo_nome = request.form['nome']
-        novo_vencimento = request.form['vencimento']
-        novo_melhor_dia = request.form['melhor_dia_compra']
+        novo_nome = request.form.get('nome')
+        novo_vencimento_dia = request.form.get('vencimento_dia')
+        novo_melhor_dia_compra = request.form.get('melhor_dia_compra')
+
+        if not (novo_nome and novo_vencimento_dia and novo_melhor_dia_compra):
+            flash("Todos os campos devem ser preenchidos.", "warning")
+            return redirect(request.url)
+
+        # Conversão segura para inteiros
+        try:
+            novo_vencimento_dia = int(novo_vencimento_dia)
+            novo_melhor_dia_compra = int(novo_melhor_dia_compra)
+        except ValueError:
+            flash("Os campos de dias devem conter números válidos.", "danger")
+            return redirect(request.url)
 
         conn.execute("""
-            UPDATE bandeira 
-            SET nome = ?, vencimento = ?, melhor_dia_compra = ?
+            UPDATE bandeira
+            SET nome = ?, vencimento_dia = ?, melhor_dia_compra = ?
             WHERE id = ?
-        """, (novo_nome, novo_vencimento, novo_melhor_dia, id))
+        """, (novo_nome, novo_vencimento_dia, novo_melhor_dia_compra, id))
 
         conn.commit()
         conn.close()
         flash("Bandeira atualizada com sucesso!", "success")
         return redirect(url_for('listar_bandeiras'))
 
-    # Só fecha a conexão no GET, depois de carregar o registro
     conn.close()
-
-    # Renderiza o formulário no GET com os dados para edição
     return render_template('editar_bandeira.html', registro=bandeira, tipo='bandeira')
+
 
 
 @app.route('/bandeiras')
 def listar_bandeiras():
     conn = get_db_connection()
-    bandeiras = conn.execute("SELECT * FROM bandeira").fetchall()
+    bandeiras = conn.execute("SELECT * FROM bandeira ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_bandeira.html', bandeiras=bandeiras)
 
@@ -777,234 +1052,6 @@ def excluir_comprador(id):
 
 
 
-@app.route('/consultar_despesas', methods=['GET', 'POST'])
-def consultar_despesas():
-    conn = get_db_connection()
-
-    # Filtros da URL
-    bandeira_filtro = request.args.get('bandeira', '').strip()
-    data_inicio = request.args.get('data_inicio', '').strip()
-    data_fim = request.args.get('data_fim', '').strip()
-
-    # Buscar todas as bandeiras para popular o filtro
-    bandeiras = conn.execute("SELECT id, nome FROM BANDEIRA").fetchall()
-
-    # Monta a query base
-    query = """
-        SELECT
-            D.id,
-            P.nome AS produto_nome,
-            D.valor_compra,
-            D.data_compra,
-            FP.nome AS forma_pagamento,
-            B.nome AS bandeira_nome,
-            PQP.tipo AS parcelamento_tipo,
-            D.valor_parcela
-        FROM DESPESAS D
-        LEFT JOIN PRODUTO P ON D.produto_id = P.id
-        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
-        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-        LEFT JOIN PARCELAMENTO PQP ON D.parcelamento_id = PQP.id
-        WHERE 1=1
-    """
-
-    params = []
-
-    # Filtro por bandeira
-    if bandeira_filtro:
-        query += " AND B.id = ?"
-        params.append(bandeira_filtro)
-
-    # Filtro por data (formato dd/mm/yyyy como string)
-    if data_inicio:
-        query += """
-            AND (
-                substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
-            ) >= ?
-        """
-        params.append(data_inicio.replace("-", ""))  # yyyy-mm-dd → yyyymmdd
-
-    if data_fim:
-        query += """
-            AND (
-                substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
-            ) <= ?
-        """
-        params.append(data_fim.replace("-", ""))
-
-    # Ordenação decrescente por data
-    query += """
-        ORDER BY substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2) DESC
-    """
-
-    # Debug
-    print("Query SQL:", query)
-    print("Parâmetros:", params)
-
-    # Executa a consulta
-    despesas = conn.execute(query, params).fetchall()
-    conn.close()
-
-    # Renderiza o template
-    return render_template(
-        'consultar_despesas.html',
-        despesas=despesas,
-        bandeiras=bandeiras,
-        bandeira_selecionada=bandeira_filtro
-    )
-
-
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-@app.route('/editar_despesa/<int:id>', methods=['GET', 'POST'])
-def editar_despesa(id):
-    conn = get_db_connection()
-    despesa = conn.execute("SELECT * FROM DESPESAS WHERE id = ?", (id,)).fetchone()
-
-    if not despesa:
-        flash("Despesa não encontrada!", "danger")
-        return redirect(url_for('consultar_despesas'))
-
-    if request.method == 'POST':
-        # Captura os dados do formulário
-        dados = (
-            request.form['estabelecimento_id'],
-            request.form['categoria_id'],
-            request.form['local_compra_id'],
-            request.form['comprador_id'],
-            request.form['produto_id'],
-            request.form['data_compra'],
-            request.form['valor_compra'],
-            request.form['forma_pagamento_id'],
-            request.form['bandeira_id'],
-            request.form['parcelamento_id'],
-            request.form['quantidade_parcelas_id'],
-            request.form['vencimento_bandeira_id'],
-            request.form['melhor_dia_compra_id'],
-            request.form['valor_parcela']
-        )
-
-        conn.execute("""
-            UPDATE DESPESAS
-            SET estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
-                produto_id = ?, data_compra = ?, valor_compra = ?, forma_pagamento_id = ?, bandeira_id = ?,
-                parcelamento_id = ?, quantidade_parcelas_id = ?, vencimento_bandeira_id = ?,
-                melhor_dia_compra_id = ?, valor_parcela = ?
-            WHERE id = ?
-        """, (*dados, id))
-        conn.commit()
-
-        nova_qtd_parcelas = int(request.form['quantidade_parcelas_id'])
-        melhor_dia_compra = int(request.form['melhor_dia_compra_id'])
-        vencimento_dia = 2
-        nova_data_compra = datetime.strptime(request.form['data_compra'], "%d/%m/%Y")
-        novo_valor_parcela = float(request.form['valor_parcela'])
-
-        # Definir data da primeira parcela
-        if nova_data_compra.day < melhor_dia_compra:
-            primeira_data = nova_data_compra.replace(day=1) + relativedelta(months=1)
-        else:
-            primeira_data = nova_data_compra.replace(day=1) + relativedelta(months=2)
-
-        try:
-            primeira_data = primeira_data.replace(day=vencimento_dia)
-        except ValueError:
-            primeira_data = (primeira_data + relativedelta(months=1, day=1)) - relativedelta(days=1)
-
-        # Geração das datas
-        datas_novas = [primeira_data + relativedelta(months=i) for i in range(nova_qtd_parcelas)]
-
-        # Parcelas existentes
-        parcelas_existentes = conn.execute(
-            "SELECT * FROM PARCELAS WHERE despesa_id = ? ORDER BY numero_parcela", (id,)
-        ).fetchall()
-
-        qtd_parcelas_atual = len(parcelas_existentes)
-
-        # Adiciona novas parcelas
-        if nova_qtd_parcelas > qtd_parcelas_atual:
-            for i in range(qtd_parcelas_atual, nova_qtd_parcelas):
-                conn.execute("""
-                    INSERT INTO PARCELAS (despesa_id, data_vencimento, valor_parcela, numero_parcela)
-                    VALUES (?, ?, ?, ?)
-                """, (id, datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, i + 1))
-
-        # Remove parcelas excedentes
-        elif nova_qtd_parcelas < qtd_parcelas_atual:
-            for i in range(nova_qtd_parcelas, qtd_parcelas_atual):
-                conn.execute("""
-                    DELETE FROM PARCELAS WHERE despesa_id = ? AND numero_parcela = ?
-                """, (id, i + 1))
-
-        # Atualiza parcelas existentes
-        for i, parcela in enumerate(parcelas_existentes[:nova_qtd_parcelas]):
-            conn.execute("""
-                UPDATE PARCELAS
-                SET data_vencimento = ?, valor_parcela = ?
-                WHERE id = ?
-            """, (datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, parcela['id']))
-
-        conn.commit()
-        conn.close()
-
-        flash("Despesa atualizada com sucesso!", "success")
-        return redirect(url_for('consultar_despesas'))
-
-    # Carrega os dados do formulário para GET
-    estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO").fetchall()
-    categorias = conn.execute("SELECT * FROM CATEGORIA").fetchall()
-    locais = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
-    compradores = conn.execute("SELECT * FROM COMPRADOR").fetchall()
-    produtos = conn.execute("SELECT * FROM PRODUTO").fetchall()
-    formas = conn.execute("SELECT * FROM FORMA_PAGAMENTO").fetchall()
-    bandeiras = conn.execute("SELECT * FROM BANDEIRA").fetchall()
-    parcelamentos = conn.execute("SELECT * FROM PARCELAMENTO").fetchall()
-    quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
-    vencimento_bandeira = conn.execute("SELECT * FROM VENCIMENTO_BANDEIRA").fetchall()
-    melhor_dia_compra = conn.execute("SELECT * FROM MELHOR_DIA_COMPRA").fetchall()
-    conn.close()
-
-    return render_template('editar_despesa.html',
-                           despesa=despesa,
-                           estabelecimentos=estabelecimentos,
-                           categorias=categorias,
-                           locais=locais,
-                           compradores=compradores,
-                           produtos=produtos,
-                           formas=formas,
-                           bandeiras=bandeiras,
-                           parcelamentos=parcelamentos,
-                           quantidades=quantidade_parcelas,
-                           vencimentos=vencimento_bandeira,
-                           melhores_dias=melhor_dia_compra)
-
-
-@app.route('/excluir_despesa/<int:id>', methods=['POST'])
-def excluir_despesa(id):
-    conn = get_db_connection()
-
-    # Verifica se a despesa existe
-    despesa = conn.execute("SELECT * FROM DESPESAS WHERE id = ?", (id,)).fetchone()
-
-    if not despesa:
-        conn.close()
-        flash("Despesa não encontrada!", "danger")
-        return redirect(url_for('consultar_despesas'))
-
-    try:
-        # Exclui parcelas associadas
-        conn.execute("DELETE FROM PARCELAS WHERE despesa_id = ?", (id,))
-        # Exclui a despesa
-        conn.execute("DELETE FROM DESPESAS WHERE id = ?", (id,))
-        conn.commit()
-        flash("Despesa excluída com sucesso!", "success")
-    except Exception as e:
-        flash(f"Erro ao excluir despesa: {e}", "danger")
-    finally:
-        conn.close()
-
-    return redirect(url_for('consultar_despesas'))
 
 
 @app.route('/totais-despesas-mensais')
@@ -1166,6 +1213,67 @@ def export_csv():
     return Response(output, 
                     mimetype='text/csv', 
                     headers={"Content-Disposition": "attachment;filename=despesas.csv"})
+
+
+@app.route('/logout')
+def logout():
+    session.clear()  # limpa toda a sessão do usuário (remove login)
+    flash('Você saiu do sistema com sucesso.', 'success')
+    return redirect(url_for('login'))  # redireciona para a página de login
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        usuario = request.form['usuario'].strip()
+        senha = request.form['senha'].strip()
+
+        conn = get_db_connection()
+        user = conn.execute("SELECT * FROM usuario WHERE usuario = ?", (usuario,)).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user['senha_hash'], senha):
+            session['user_id'] = user['usuario']  # ou user['id'] se preferir armazenar o id
+            flash('Login realizado com sucesso!', 'success')
+            return redirect(url_for('dashboard_login'))  # página após login
+        else:
+            flash('Usuário ou senha incorretos.', 'danger')
+
+    return render_template('login.html')
+@app.route('/')
+def dashboard_login():
+    if 'user_id' not in session:
+        flash('Você precisa fazer login para acessar esta página.', 'warning')
+        return redirect(url_for('login'))
+    return render_template('dashboard_login.html', usuario=session['user_id'])
+
+@app.route('/cadastro/usuarios', methods=['GET', 'POST'])
+def cadastro_usuario():
+    if request.method == 'POST':
+        usuario = request.form.get('usuario', '').strip()
+        senha = request.form.get('senha', '').strip()
+
+        if not usuario or not senha:
+            flash("Usuário e senha são obrigatórios.", "warning")
+            return redirect(request.url)
+
+        senha_hash = generate_password_hash(senha)
+
+        conn = get_db_connection()
+
+        existente = conn.execute("SELECT 1 FROM usuario WHERE usuario = ?", (usuario,)).fetchone()
+        if existente:
+            flash("Usuário já existe.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        conn.execute("INSERT INTO usuario (usuario, senha_hash) VALUES (?, ?)", (usuario, senha_hash))
+        conn.commit()
+        conn.close()
+
+        flash("Usuário cadastrado com sucesso!", "success")
+        return redirect(url_for('login'))  # ou outra página
+    print("Renderizando cadastro_usuario.html")
+    return render_template('cadastro_usuario.html')
 
 if __name__ == '__main__':
     app.secret_key = 'segredo-super-seguro'

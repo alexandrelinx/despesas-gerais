@@ -119,26 +119,6 @@
         </div>
 
         <div class="col-md-6">
-            <label>Vencimento da Bandeira</label>
-            <select name="vencimento_bandeira_id" class="form-control" required>
-                <option value="" disabled {% if not despesa.vencimento_bandeira_id %} selected {% endif %}>Selecione</option>
-                {% for v in vencimentos %}
-                <option value="{{ v.id }}" {% if v.id == despesa.vencimento_bandeira_id %} selected {% endif %}>{{ v.dia }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="col-md-6">
-            <label>Melhor dia de compra</label>
-            <select name="melhor_dia_compra_id" class="form-control" required>
-                <option value="" disabled {% if not despesa.melhor_dia_compra_id %} selected {% endif %}>Selecione</option>
-                {% for m in melhores_dias %}
-                <option value="{{ m.id }}" {% if m.id == despesa.melhor_dia_compra_id %} selected {% endif %}>{{ m.dia }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="col-md-6">
             <label>Valor da Parcela</label>
             <input type="number" step="0.01" name="valor_parcela" class="form-control" value="{{ despesa.valor_parcela }}" required>
         </div>
