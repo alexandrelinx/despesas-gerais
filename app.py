@@ -307,6 +307,7 @@ def consultar_despesas():
     query = """
         SELECT
             D.id,
+            E.nome  AS estabelecimento,
             P.nome AS produto_nome,
             D.valor_compra,
             D.data_compra,
@@ -318,6 +319,7 @@ def consultar_despesas():
         LEFT JOIN PRODUTO P ON D.produto_id = P.id
         LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
         LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
         LEFT JOIN PARCELAMENTO PQP ON D.parcelamento_id = PQP.id
         WHERE 1=1
     """

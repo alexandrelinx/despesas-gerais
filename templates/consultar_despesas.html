@@ -36,10 +36,10 @@
       <thead class="thead-dark">
         <tr>
           <th>ID</th>
+          <th style="min-width: 150px;">Estabelecimento</th>
           <th style="min-width: 150px;">Produto</th>
           <th class="text-end">Valor Compra</th>
           <th>Data Compra</th>
-          <th style="min-width: 140px;">Forma de Pagamento</th>
           <th>Bandeira</th>
           <th>Parcelamento</th>
           <th class="text-end">Valor Parcela</th>
@@ -50,10 +50,10 @@
         {% for despesa in despesas %}
         <tr>
           <td>{{ despesa.id }}</td>
+          <td>{{ despesa.estabelecimento }}</td>
           <td>{{ despesa.produto_nome }}</td>
           <td class="text-end">{{ despesa.valor_compra | real  }}</td>
           <td>{{ despesa.data_compra }}</td>
-          <td>{{ despesa.forma_pagamento }}</td>
           <td>{{ despesa.bandeira_nome }}</td>
           <td>{{ despesa.parcelamento_tipo }}</td>
           <td class="text-end">{{ despesa.valor_parcela | real  }}</td>

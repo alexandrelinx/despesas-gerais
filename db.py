@@ -73,6 +73,16 @@ def inicializar_banco(db_name="despesas.db"):
         VALOR_SALARIO REAL
     );
 
+        
+    CREATE TABLE IF NOT EXISTS usuario (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario TEXT UNIQUE NOT NULL,
+        senha_hash TEXT NOT NULL
+    
+     );
+
+    
+
     -- Tabela principal
     CREATE TABLE IF NOT EXISTS DESPESAS (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,6 +139,7 @@ def inicializar_banco(db_name="despesas.db"):
         [('Sim',), ('Não',)]
     )
 
+   
     # Fechar conexão
     conn.commit()
     conn.close()
