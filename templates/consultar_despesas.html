@@ -56,7 +56,13 @@
           <td>{{ despesa.data_compra }}</td>
           <td>{{ despesa.bandeira_nome }}</td>
           <td>{{ despesa.parcelamento_tipo }}</td>
-          <td class="text-end">{{ despesa.valor_parcela | real  }}</td>
+        <!--  <td class="text-end">{{ despesa.valor_parcela | real  }}</td>> -->
+          <td class="text-end {% if despesa.parcela_alterada %}text-primary font-weight-bold{% endif %}">
+          {{ despesa.valor_parcela | real }}
+          {% if despesa.parcela_alterada %}
+          <span title="Valor alterado manualmente">🟦</span>
+          {% endif %}
+          </td>
           <td class="text-center">
             <div class="d-flex justify-content-center">
               <a href="{{ url_for('editar_despesa', id=despesa.id) }}" class="btn btn-sm btn-warning mr-2">Editar</a>

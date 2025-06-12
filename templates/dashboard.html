@@ -48,7 +48,13 @@
                     <td>{{ p['bandeira_nome'] }}</td>
                     <td>{{ p['numero_parcela'] }}/{{ p['quantidade_parcelas'] }}</td>
                     <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
-                    <td>R$ {{ '%.2f'|format(p['valor_parcela']) }}</td>
+                    <!--<td>R$ {{ '%.2f'|format(p['valor_parcela']) }}</td> -->
+                    <td class="{% if p['parcela_alterada'] %}text-primary font-weight-bold{% endif %}">
+                        R$ {{ '%.2f'|format(p['valor_parcela']) }}
+                        {% if p['parcela_alterada'] %}
+                           <span title="Valor de parcela alterado">🟦</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

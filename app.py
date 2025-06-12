@@ -12,6 +12,12 @@ from flask import session, redirect, url_for, flash
 from flask import request, redirect, url_for, flash, render_template
 from werkzeug.security import generate_password_hash
 from werkzeug.security import check_password_hash
+from flask import render_template
+from collections import defaultdict
+from util.helpers import calcular_parcelas 
+
+
+
 app = Flask(__name__)
 DB = 'despesas.db'
 
@@ -38,114 +44,115 @@ except:
     locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
 
 # Função para calcular as parcelas com base na data da compra e vencimento
-def calcular_parcelas(data_compra, quantidade_parcelas, vencimento_bandeira):
-    try:
-        data_compra = datetime.strptime(data_compra, "%d/%m/%Y")
-    except Exception as e:
-        print(f"Erro ao converter data: {data_compra} -> {e}")
-        return []
+#def calcular_parcelas(data_compra, quantidade_parcelas, vencimento_bandeira):
+  #  try:
+     #   data_compra = datetime.strptime(data_compra, "%d/%m/%Y")
+    #except Exception as e:
+     #   print(f"Erro ao converter data: {data_compra} -> {e}")
+      #  return []
 
-    parcelas = []
+    #parcelas = []
 
     # Define a data da primeira parcela com base no vencimento
-    if data_compra.day < vencimento_bandeira:
-        primeira_parcela = data_compra.replace(day=1) + relativedelta(months=1)
-    else:
-        primeira_parcela = data_compra.replace(day=1) + relativedelta(months=2)
+    #if data_compra.day < vencimento_bandeira:
+    #    primeira_parcela = data_compra.replace(day=1) + relativedelta(months=1)
+    #else:
+    #    primeira_parcela = data_compra.replace(day=1) + relativedelta(months=2)
 
     # Garante que o dia do vencimento seja possível (ex: não existe 31 em todos os meses)
-    try:
-        primeira_parcela = primeira_parcela.replace(day=vencimento_bandeira)
-    except ValueError:
+   # try:
+    #    primeira_parcela = primeira_parcela.replace(day=vencimento_bandeira)
+    #except ValueError:
         # Se o dia não existe no mês, pega o último dia do mês
-        ultima_do_mes = (primeira_parcela + relativedelta(months=1, day=1)) - relativedelta(days=1)
-        primeira_parcela = ultima_do_mes
+     #   ultima_do_mes = (primeira_parcela + relativedelta(months=1, day=1)) - relativedelta(days=1)
+      #  primeira_parcela = ultima_do_mes
 
     # Gera as parcelas
-    for i in range(quantidade_parcelas):
-        vencimento = primeira_parcela + relativedelta(months=i)
-        parcelas.append(vencimento)
+    #for i in range(quantidade_parcelas):
+      #  vencimento = primeira_parcela + relativedelta(months=i)
+       # parcelas.append(vencimento)
 
-    return parcelas
-
-
-
-from flask import render_template
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
+    #return parcelas
 
 
-from datetime import datetime
-from collections import defaultdict
-
-from datetime import datetime
 
 
 @app.route('/')
+ # ajuste o import conforme seu projeto
+
 def dashboard():
     conn = get_db_connection()
 
-    # Consulta para obter as parcelas com os dados necessários
-    parcelas = conn.execute("""
+    despesas = conn.execute("""
        SELECT 
-        P.id AS parcela_id,
-        P.numero_parcela,
-        P.data_vencimento,
-        P.valor_parcela,
+        D.id AS despesa_id,
         D.data_compra,
         D.valor_compra,
         D.valor_parcela AS valor_parcela_despesa,
+        D.parcela_alterada,                    
         QP.quantidade AS quantidade_parcelas,
         PRD.nome AS produto_nome,
         B.nome AS bandeira_nome,
         B.vencimento_dia AS vencimento_bandeira,
         B.melhor_dia_compra AS melhor_dia_compra,
-        E.nome  AS estabelecimento  -- Campo 'estabelecimento' adicionado
-    FROM PARCELAS P
-    LEFT JOIN DESPESAS D ON P.despesa_id = D.id
+        E.nome  AS estabelecimento
+    FROM DESPESAS D
     LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id                        
     LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
     LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
     LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-    
-    ORDER BY  D.data_compra DESC
+    ORDER BY D.data_compra DESC
     """)
 
-    # Converte para uma lista de dicionários
-    parcelas = [dict(row) for row in parcelas]
+    despesas = [dict(row) for row in despesas]
 
-    # Convertendo a data_vencimento para datetime, caso seja uma string
-    for p in parcelas:
-        if isinstance(p['data_vencimento'], str):
-            try:
-                # Convertendo a data para o formato correto ('dd/mm/yyyy')
-                p['data_vencimento'] = datetime.strptime(p['data_vencimento'], '%d/%m/%Y')
-            except ValueError as e:
-                print(f"Erro na conversão da data: {e}")
-
-    # Agrupamento por bandeira/mês
     parcelas_por_mes = defaultdict(lambda: defaultdict(float))
     meses_set = set()
+    parcelas_exibidas = []
 
-    for p in parcelas:
-        data_vencimento = p['data_vencimento']
-        valor = float(p['valor_parcela'])
-        bandeira_nome = p['bandeira_nome'] or "DESCONHECIDA"
-        chave_bandeira = f"{bandeira_nome} - {p['vencimento_bandeira']}"
+    for despesa in despesas:
+        # Calcula as parcelas reais conforme a bandeira e regras
+        parcelas = calcular_parcelas(
+            despesa['data_compra'],
+            despesa['quantidade_parcelas'],
+            despesa['vencimento_bandeira'],
+            despesa['melhor_dia_compra'],
+            despesa['bandeira_nome']
+        )
 
-        chave_mes_ano = data_vencimento.strftime("%m/%Y")
-        meses_set.add(chave_mes_ano)
+        valor_parcela = float(despesa['valor_parcela_despesa'])
 
-        parcelas_por_mes[chave_bandeira][chave_mes_ano] += valor
+        for idx, vencimento in enumerate(parcelas, start=1):
+            mes_ano = vencimento.strftime("%m/%Y")
+            meses_set.add(mes_ano)
+
+            chave_bandeira = f"{despesa['bandeira_nome']} - {despesa['vencimento_bandeira']}"
+            parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
+
+            # Guarda para exibir detalhes individuais das parcelas, se quiser
+            parcelas_exibidas.append({
+                "despesa_id": despesa['despesa_id'],
+                "numero_parcela": idx,
+                "total_parcelas": despesa['quantidade_parcelas'],
+                "data_vencimento": vencimento,
+                "valor_parcela": valor_parcela,
+                "parcela_alterada": bool(despesa.get("parcela_alterada", 0)),
+                "produto_nome": despesa['produto_nome'],
+                "bandeira_nome": despesa['bandeira_nome'],
+                "estabelecimento": despesa['estabelecimento'],
+                "data_compra": despesa['data_compra'],
+            })
 
     colunas_meses = sorted(meses_set, key=lambda x: datetime.strptime(x, "%m/%Y"))
-
     conn.close()
 
-    return render_template('dashboard.html',
-                          parcelas=parcelas,
-                          parcelas_por_mes=parcelas_por_mes,
-                          colunas_meses=colunas_meses)
+    return render_template(
+        'dashboard.html',
+        parcelas=parcelas_exibidas,
+        parcelas_por_mes=parcelas_por_mes,
+        colunas_meses=colunas_meses
+    )
+
 
 
 @app.route('/cadastro/<tipo>', methods=['GET', 'POST'])
@@ -314,7 +321,8 @@ def consultar_despesas():
             FP.nome AS forma_pagamento,
             B.nome AS bandeira_nome,
             PQP.tipo AS parcelamento_tipo,
-            D.valor_parcela
+            D.valor_parcela,
+            D.parcela_alterada  
         FROM DESPESAS D
         LEFT JOIN PRODUTO P ON D.produto_id = P.id
         LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
@@ -384,6 +392,7 @@ def editar_despesa(id):
         return redirect(url_for('consultar_despesas'))
 
     if request.method == 'POST':
+        print("valor_parcela do form:", request.form.get('valor_parcela'))
         try:
             # Captura os dados do formulário
             dados = (
@@ -400,18 +409,21 @@ def editar_despesa(id):
                 request.form['quantidade_parcelas_id'],
                 request.form['valor_parcela']
             )
+            parcela_alterada = 1
+            print(f"parcela_alterada definida para: {parcela_alterada}")
 
-            # Atualiza a despesa
             conn.execute("""
                 UPDATE DESPESAS
                 SET estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
                     produto_id = ?, data_compra = ?, valor_compra = ?, forma_pagamento_id = ?, bandeira_id = ?,
-                    parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?
+                    parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?, parcela_alterada = ?
                 WHERE id = ?
-            """, (*dados, id))
-            conn.commit()
+            """, (*dados, parcela_alterada, id))
 
-            # Busca nova quantidade de parcelas e dados da bandeira
+            conn.commit()
+            print("Despesa atualizada com sucesso, ID:", id)
+
+            # Atualização das parcelas - seu código original abaixo (mantido igual)
             nova_qtd_parcelas = int(conn.execute(
                 "SELECT quantidade FROM QUANTIDADE_PARCELAS WHERE id = ?",
                 (request.form['quantidade_parcelas_id'],)
@@ -428,7 +440,6 @@ def editar_despesa(id):
             nova_data_compra = datetime.strptime(request.form['data_compra'], "%d/%m/%Y")
             novo_valor_parcela = float(request.form['valor_parcela'])
 
-            # Define data da primeira parcela
             if nova_data_compra.day < melhor_dia_compra:
                 primeira_data = nova_data_compra.replace(day=1) + relativedelta(months=1)
             else:
@@ -439,16 +450,13 @@ def editar_despesa(id):
             except ValueError:
                 primeira_data = (primeira_data + relativedelta(months=1, day=1)) - relativedelta(days=1)
 
-            # Gera novas datas
             datas_novas = [primeira_data + relativedelta(months=i) for i in range(nova_qtd_parcelas)]
 
-            # Parcelas existentes
             parcelas_existentes = conn.execute(
                 "SELECT * FROM PARCELAS WHERE despesa_id = ? ORDER BY numero_parcela", (id,)
             ).fetchall()
             qtd_parcelas_atual = len(parcelas_existentes)
 
-            # Adiciona novas parcelas
             if nova_qtd_parcelas > qtd_parcelas_atual:
                 for i in range(qtd_parcelas_atual, nova_qtd_parcelas):
                     conn.execute("""
@@ -456,14 +464,12 @@ def editar_despesa(id):
                         VALUES (?, ?, ?, ?)
                     """, (id, datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, i + 1))
 
-            # Remove parcelas excedentes
             elif nova_qtd_parcelas < qtd_parcelas_atual:
                 for i in range(nova_qtd_parcelas, qtd_parcelas_atual):
                     conn.execute("""
                         DELETE FROM PARCELAS WHERE despesa_id = ? AND numero_parcela = ?
                     """, (id, i + 1))
 
-            # Atualiza parcelas existentes
             for i, parcela in enumerate(parcelas_existentes[:nova_qtd_parcelas]):
                 conn.execute("""
                     UPDATE PARCELAS
@@ -477,10 +483,11 @@ def editar_despesa(id):
 
         except Exception as e:
             conn.rollback()
+            print("Erro ao atualizar despesa:", e)
             flash(f"Erro ao atualizar despesa: {e}", "danger")
             print("Erro:", e)
 
-    # Carrega os dados do formulário para GET
+    # Carrega dados para GET
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO").fetchall()
     categorias = conn.execute("SELECT * FROM CATEGORIA").fetchall()
     locais = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
