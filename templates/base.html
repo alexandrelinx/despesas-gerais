@@ -30,6 +30,8 @@
             z-index: 1000;
             transition: all 0.3s ease;
             overflow-y: auto;
+            text-align: left;  /* Alinha o texto à direita */
+            padding-right: 20px;
         }
 
         .sidebar.collapsed {
@@ -37,15 +39,24 @@
             padding: 0;
             overflow: hidden;
         }
-
+        .sidebar a,
+        .sidebar h5{  margin-top:15px; }
+        .sidebar h6 {
+             margin-top:15px;    /* espaço maior acima dos títulos */
+             margin-bottom: 5px; /* espaço maior abaixo dos títulos */
+        }
+        .sidebar a:first-of-type {
+            margin-bottom: 15px; /* aumenta espaço depois do primeiro link Dashboard */
+        }
         .sidebar a {
             color: white;
             display: block;
-            padding: 8px;
+            padding: 2px;
             text-decoration: none;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-align: left;
         }
         .sidebar a:hover {
             background: #495057;
@@ -66,10 +77,12 @@
 
         .submenu {
             display: none;
+             margin-left: 0;
             margin-left: 15px;
         }
         .submenu a {
-            padding-left: 20px;
+            padding-right: 20px;
+            padding-left: 0; 
         }
 
         @media (max-width: 992px) {
@@ -99,8 +112,8 @@
         /* Botão toggle fixo no topo, à esquerda */
         #sidebarToggle {
             position: fixed;
-            top: 12px;
-            left: 250px;
+            top: 6px;
+            left: 130px;
             z-index: 1100; /* acima da sidebar */
             border: none;
             background: transparent;
