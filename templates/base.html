@@ -1,29 +1,43 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>{% block title %}Despesas{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <style>
         body {
             display: flex;
             min-height: 100vh;
             overflow-x: hidden;
+            flex-direction: column;
+        }
+        nav.navbar.static-top {
+            height: 56px;
+            line-height: 56px;
+            padding: 0 1rem;
         }
         .sidebar {
             width: 260px;
-            height: 100vh;
+            height: calc(100vh - 56px);
             background: #343a40;
             color: white;
             padding: 15px;
             position: fixed;
-            top: 0;
+            top: 56px;
             left: 0;
             z-index: 1000;
             transition: all 0.3s ease;
+            overflow-y: auto;
         }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
         .sidebar a {
             color: white;
             display: block;
@@ -36,12 +50,20 @@
         .sidebar a:hover {
             background: #495057;
         }
+
         .content {
-            margin-left: 250px;
+            margin-left: 260px;
             padding: 20px;
             flex: 1;
             transition: margin-left 0.3s;
+            position: relative;
+            margin-top: 56px;
         }
+
+        .content.expanded {
+            margin-left: 0 !important;
+        }
+
         .submenu {
             display: none;
             margin-left: 15px;
@@ -49,41 +71,57 @@
         .submenu a {
             padding-left: 20px;
         }
-        .sidebar .navbar-toggler {
-            display: none;
-        }
+
         @media (max-width: 992px) {
             .sidebar {
-                position: absolute;
-                left: -250px;
-                width: 100%;
+                position: fixed;
+                left: -260px;
+                width: 260px;
+                top: 56px;
+                height: calc(100vh - 56px);
                 transition: left 0.3s ease;
-            }
-            .content {
-                margin-left: 0;
             }
             .sidebar.active {
                 left: 0;
             }
-          
-            .sidebar .navbar-toggler {
-                display: block;
+            .content {
+                margin-left: 0 !important;
+                margin-top: 56px;
             }
         }
-       .sidebar a.active {
-        background-color: #0d6efd;
-        color: white;
-        font-weight: bold;
-        }  
 
-        
+        .sidebar a.active {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Botão toggle fixo no topo, à esquerda */
+        #sidebarToggle {
+            position: fixed;
+            top: 12px;
+            left: 250px;
+            z-index: 1100; /* acima da sidebar */
+            border: none;
+            background: transparent;
+            color: white;
+            font-size: 1.5rem;
+        }
+        #sidebarToggle:hover {
+            color: #0d6efd;
+            cursor: pointer;
+        }
     </style>
 </head>
 
-
-
 <body>
-    
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
+      <div class="container-fluid d-flex align-items-center">
+        <button id="sidebarToggle" class="btn btn-dark me-3" title="Expandir/Ocultar Sidebar">☰</button>
+        <a class="navbar-brand mb-0 h1" href="#">Dashboard</a>
+      </div>
+    </nav>
+
     <div class="sidebar">
         <h5>Menu</h5>
         <a href="/">Dashboard</a>
@@ -91,50 +129,44 @@
         <h6 class="menu-toggle">Cadastros</h6>
         <div class="submenu">
             <a href="/cadastro/estabelecimento">Estabelecimento</a>
-          <!-- <a href="/cadastro/estabelecimento/consultar" class="ms-3">Consultar Estabelecimento</a> -->
             <a href="/cadastro/categoria">Categorias</a>
-          <!--  <a href="/cadastro/categoria/consultar">Consultar Categorias</a>-->
             <a href="/cadastro/local_compra">Local da Compra</a>
-           <!-- <a href="/cadastro/local_compra/consultar" class="ms-3 {% if request.path == '/cadastro/local_compra/consultar' %}active{% endif %}">
-    Consultar Local da Compra
-</a>-->
             <a href="/cadastro/produto">Produto</a>
             <a href="/cadastro/comprador">Comprador</a>
             <a href="/cadastro/forma_pagamento">Forma de Pagamento</a>
             <a href="/cadastro/bandeira">Bandeira</a>
             <a href="/cadastro/usuarios">Usuários</a>
-            <!--<a href="/cadastro/parcelamento">Parcelamento</a> -->
         </div>
 
         <h6 class="menu-toggle">Lançamentos</h6>
         <div class="submenu">
-           <a href="/despesas">Lançamento de Despesas</a>
-           <a href="/consultar_despesas">Consultar Lançamentos de Despesas</a>
-            <!-- Novo submenu -->
-           <a href="/totais-despesas-mensais">Totais de Despesas Mensais</a>
+            <a href="/despesas">Lançamento de Despesas</a>
+            <a href="/consultar_despesas">Consultar Lançamentos de Despesas</a>
+            <a href="/totais-despesas-mensais">Totais de Despesas Mensais</a>
         </div>
-         <a href="/logout" class="sair">Sair</a>
+        <a href="/logout" class="sair">Sair</a>
     </div>
 
     <div class="content">
-        <button class="btn btn-primary d-lg-none" id="menuToggle">☰</button>
-
         {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
     </div>
-     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
+        // Toggle submenu
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function () {
                 let submenu = this.nextElementSibling;
@@ -142,54 +174,68 @@
             });
         });
 
-        document.getElementById('menuToggle').addEventListener('click', function () {
-            document.querySelector('.sidebar').classList.toggle('active');
+        // Toggle sidebar
+        const sidebar = document.querySelector('.sidebar');
+        const content = document.querySelector('.content');
+        const toggleBtn = document.getElementById('sidebarToggle');
+
+        // Aplica estado salvo no localStorage
+        function aplicarEstadoSidebar() {
+            const estado = localStorage.getItem('sidebarCollapsed');
+            if (estado === 'true') {
+                sidebar.classList.add('collapsed');
+                content.classList.add('expanded');
+            } else {
+                sidebar.classList.remove('collapsed');
+                content.classList.remove('expanded');
+            }
+        }
+
+        aplicarEstadoSidebar();
+
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            content.classList.toggle('expanded');
+            const estaColapsado = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', estaColapsado);
+        });
+
+        // Código das células valor-mes (deixe como está)
+        document.querySelectorAll('.valor-mes').forEach(td => {
+            td.addEventListener('click', () => {
+                const valorText = td.innerText;
+                const valor = parseFloat(valorText.replace('R$ ', '').replace(',', '.'));
+                const mes = td.getAttribute('data-mes');
+                const bandeira = td.getAttribute('data-bandeira');
+
+                if (td.dataset.pago === 'true') {
+                    alert('Este valor já foi pago.');
+                    return;
+                }
+
+                if (confirm(`Deseja pagar o valor de ${valorText} para ${bandeira} no mês ${mes}?`)) {
+                    td.style.backgroundColor = 'lightgreen';
+
+                    fetch('/pagar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ mes: mes, bandeira: bandeira }),
+                    }).then(response => response.json())
+                      .then(data => {
+                          if (data.success) {
+                              td.dataset.pago = 'true';
+                          } else {
+                              alert('Erro ao marcar como pago.');
+                          }
+                      });
+                }
+            });
         });
     </script>
-    <script>
-document.querySelectorAll('.valor-mes').forEach(td => {
-    td.addEventListener('click', () => {
-        const valorText = td.innerText;
-        const valor = parseFloat(valorText.replace('R$ ', '').replace(',', '.'));
-        const mes = td.getAttribute('data-mes');
-        const bandeira = td.getAttribute('data-bandeira');
 
-        if (td.dataset.pago === 'true') {
-            alert('Este valor já foi pago.');
-            return;
-        }
-
-        if (confirm(`Deseja pagar o valor de ${valorText} para ${bandeira} no mês ${mes}?`)) {
-            // Marca como pago: muda o fundo para verde
-            td.style.backgroundColor = 'lightgreen';
-
-            // Opcional: envia uma requisição AJAX para atualizar o banco
-            fetch('/pagar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ mes: mes, bandeira: bandeira }),
-            }).then(response => response.json())
-              .then(data => {
-                  if (data.success) {
-                      td.dataset.pago = 'true';
-                  } else {
-                      alert('Erro ao marcar como pago.');
-                  }
-              });
-        }
-    });
-});
-</script>
-
-<!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
-<!-- Bootstrap JS já existente -->
-<!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
-<!-- jQuery (necessário para DataTables) -->
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 </body>
 </html>
