@@ -15,10 +15,18 @@ from werkzeug.security import check_password_hash
 from flask import render_template
 from collections import defaultdict
 from util.helpers import calcular_parcelas 
-
+from util.helpers import calcular_totais_por_mes
+from flask_wtf.csrf import CSRFProtect
+from flask import request, jsonify
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'despesas'  
+csrf = CSRFProtect(app)
+
 DB = 'despesas.db'
 
 # Função para conexão com o banco de dados
@@ -39,9 +47,9 @@ app.jinja_env.filters['real'] = real
 
 # Configuração de localidade para exibir datas em português
 try:
-    locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')  # Linux/Mac
+     locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')  # Linux/Mac
 except:
-    locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
+     locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
 
 # Função para calcular as parcelas com base na data da compra e vencimento
 #def calcular_parcelas(data_compra, quantidade_parcelas, vencimento_bandeira):
@@ -74,14 +82,74 @@ except:
 
     #return parcelas
 
+from flask import request, jsonify
+from datetime import datetime
+from datetime import datetime
+from flask import request, jsonify
+
+@app.route('/toggle_pagamento', methods=['POST'])
+def toggle_pagamento_ajax():
+    data = request.get_json()
+    bandeira = data.get('bandeira')
+    mes_ano = data.get('mes_ano')  # formato "mm/YYYY"
+   
+    print(f"Dados recebidos no toggle: bandeira='{bandeira}', mes_ano='{mes_ano}'") 
+   
+    if not bandeira or not mes_ano:
+        return jsonify({'success': False, 'error': 'Parâmetros insuficientes'}), 400
+    
+    bandeira_param = bandeira.split(' - ')[0] + '%'
+
+    try:
+        dt = datetime.strptime(mes_ano, "%m/%Y")
+        mes = f"{dt.month:02d}"
+        ano = str(dt.year)
+     
+       
+    
+        conn = get_db_connection()
+        parcelas = conn.execute("""
+            SELECT P.id, P.pago
+            FROM parcelas P
+            JOIN despesas D ON P.despesa_id = D.id
+            JOIN bandeira B ON D.bandeira_id = B.id
+            WHERE B.nome LIKE ?
+            AND substr(P.data_vencimento, 4, 2) = ?  
+            AND substr(P.data_vencimento, 7, 4) = ?  
+        """, (bandeira_param, mes, ano)).fetchall()  # -- (bandeira, f"{mes:02d}", str(ano))).fetchall()
+       
+        print(f"Parcelas encontradas: {len(parcelas)}")  # Debug
 
 
+        if not parcelas:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Nenhuma parcela encontrada'}), 404
+
+        todas_pagas = all(bool(p['pago']) for p in parcelas)
+        novo_status = 0 if todas_pagas else 1  # SQLite usa 0/1 para False/True
+
+         
+        for p in parcelas:
+            print(f"Atualizando parcela {p['id']} para pago={novo_status}")
+            conn.execute(
+                "UPDATE parcelas SET pago = ? WHERE id = ?",
+                (novo_status, p['id'])
+            )
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'pago': novo_status == 1})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/')
- # ajuste o import conforme seu projeto
-
 def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     conn = get_db_connection()
+    cursor = conn.cursor()
 
     despesas = conn.execute("""
        SELECT 
@@ -89,70 +157,90 @@ def dashboard():
         D.data_compra,
         D.valor_compra,
         D.valor_parcela AS valor_parcela_despesa,
-        D.parcela_alterada,                    
+        D.parcela_alterada,
+        D.pago,
         QP.quantidade AS quantidade_parcelas,
         PRD.nome AS produto_nome,
         B.nome AS bandeira_nome,
         B.vencimento_dia AS vencimento_bandeira,
         B.melhor_dia_compra AS melhor_dia_compra,
-        E.nome  AS estabelecimento
+        E.nome AS estabelecimento
     FROM DESPESAS D
     LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id                        
     LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
     LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
     LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
     ORDER BY D.data_compra DESC
-    """)
+    """).fetchall()
 
     despesas = [dict(row) for row in despesas]
 
     parcelas_por_mes = defaultdict(lambda: defaultdict(float))
+    parcelas_status_pagamento = defaultdict(lambda: defaultdict(list))
     meses_set = set()
     parcelas_exibidas = []
 
     for despesa in despesas:
-        # Calcula as parcelas reais conforme a bandeira e regras
-        parcelas = calcular_parcelas(
-            despesa['data_compra'],
-            despesa['quantidade_parcelas'],
-            despesa['vencimento_bandeira'],
-            despesa['melhor_dia_compra'],
-            despesa['bandeira_nome']
-        )
-
         valor_parcela = float(despesa['valor_parcela_despesa'])
 
-        for idx, vencimento in enumerate(parcelas, start=1):
-            mes_ano = vencimento.strftime("%m/%Y")
+        parcelas_no_banco = conn.execute("""
+            SELECT id, data_vencimento, pago
+            FROM parcelas 
+            WHERE despesa_id = ?
+            ORDER BY data_vencimento
+        """, (despesa['despesa_id'],)).fetchall()
+
+        for idx, parcela in enumerate(parcelas_no_banco, start=1):
+            vencimento_str = parcela['data_vencimento']  # Ex: '15/06/2025'
+            dt_vencimento = datetime.strptime(vencimento_str, "%d/%m/%Y")
+            mes_ano = dt_vencimento.strftime("%m/%Y")
             meses_set.add(mes_ano)
 
+            pago_parcela = int(parcela['pago'] or 0)
             chave_bandeira = f"{despesa['bandeira_nome']} - {despesa['vencimento_bandeira']}"
-            parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
 
-            # Guarda para exibir detalhes individuais das parcelas, se quiser
+            parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
+            parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
+
             parcelas_exibidas.append({
-                "despesa_id": despesa['despesa_id'],
+                "id": despesa['despesa_id'],
                 "numero_parcela": idx,
                 "total_parcelas": despesa['quantidade_parcelas'],
-                "data_vencimento": vencimento,
+                "data_vencimento": dt_vencimento,
                 "valor_parcela": valor_parcela,
                 "parcela_alterada": bool(despesa.get("parcela_alterada", 0)),
                 "produto_nome": despesa['produto_nome'],
                 "bandeira_nome": despesa['bandeira_nome'],
                 "estabelecimento": despesa['estabelecimento'],
                 "data_compra": despesa['data_compra'],
+                "pago": pago_parcela
             })
 
+    pagamento_por_mes_bandeira = {}
+    for bandeira, meses in parcelas_status_pagamento.items():
+        pagamento_por_mes_bandeira[bandeira] = {}
+        for mes, lista_pagamentos in meses.items():
+            status_normalizado = [bool(p) for p in lista_pagamentos]
+            pagamento_por_mes_bandeira[bandeira][mes] = all(status_normalizado)
+            print(f"{bandeira} | {mes} => Original: {lista_pagamentos}, Normalizado: {status_normalizado}")
+
     colunas_meses = sorted(meses_set, key=lambda x: datetime.strptime(x, "%m/%Y"))
+    totais_por_mes, total_geral = calcular_totais_por_mes(parcelas_por_mes, colunas_meses)
+
     conn.close()
+
+    csrf_token = generate_csrf()
 
     return render_template(
         'dashboard.html',
         parcelas=parcelas_exibidas,
         parcelas_por_mes=parcelas_por_mes,
-        colunas_meses=colunas_meses
+        colunas_meses=colunas_meses,
+        totais_por_mes=totais_por_mes,
+        total_geral=total_geral,
+        pagamento_por_mes_bandeira=pagamento_por_mes_bandeira,
+        csrf_token=csrf_token
     )
-
 
 
 @app.route('/cadastro/<tipo>', methods=['GET', 'POST'])
@@ -177,7 +265,6 @@ def cadastro(tipo):
     return render_template('cadastro.html', tipo=tipo)
 
 @app.route('/despesas', methods=['GET', 'POST'])
-
 def lancar_despesas():
     conn = get_db_connection()
 
@@ -196,7 +283,8 @@ def lancar_despesas():
                 request.form['bandeira_id'],
                 request.form['parcelamento_id'],
                 request.form['quantidade_parcelas_id'],
-                request.form['valor_parcela']
+                request.form['valor_parcela'],
+                request.form.get('observacao', '')
             )
 
             # Verifica se todos os campos foram preenchidos
@@ -211,8 +299,8 @@ def lancar_despesas():
                 INSERT INTO DESPESAS (
                     estabelecimento_id, categoria_id, local_compra_id, comprador_id,
                     produto_id, data_compra, valor_compra, forma_pagamento_id, bandeira_id,
-                    parcelamento_id, quantidade_parcelas_id, valor_parcela
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    parcelamento_id, quantidade_parcelas_id, valor_parcela, observacao
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
             """, dados)
             conn.commit()
 
@@ -297,7 +385,6 @@ def lancar_despesas():
                            parcelamentos=parcelamentos, 
                            quantidades=quantidade_parcelas)
 
-
 @app.route('/consultar_despesas', methods=['GET', 'POST'])
 def consultar_despesas():
     conn = get_db_connection()
@@ -322,7 +409,9 @@ def consultar_despesas():
             B.nome AS bandeira_nome,
             PQP.tipo AS parcelamento_tipo,
             D.valor_parcela,
-            D.parcela_alterada  
+            D.observacao, 
+            D.parcela_alterada
+           
         FROM DESPESAS D
         LEFT JOIN PRODUTO P ON D.produto_id = P.id
         LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
@@ -377,8 +466,6 @@ def consultar_despesas():
         bandeira_selecionada=bandeira_filtro
     )
 
-
-
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -407,7 +494,8 @@ def editar_despesa(id):
                 request.form['bandeira_id'],
                 request.form['parcelamento_id'],
                 request.form['quantidade_parcelas_id'],
-                request.form['valor_parcela']
+                request.form['valor_parcela'],
+                request.form.get('observacao', '') 
             )
             parcela_alterada = 1
             print(f"parcela_alterada definida para: {parcela_alterada}")
@@ -416,7 +504,7 @@ def editar_despesa(id):
                 UPDATE DESPESAS
                 SET estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
                     produto_id = ?, data_compra = ?, valor_compra = ?, forma_pagamento_id = ?, bandeira_id = ?,
-                    parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?, parcela_alterada = ?
+                    parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?,observacao = ?, parcela_alterada = ?
                 WHERE id = ?
             """, (*dados, parcela_alterada, id))
 
@@ -510,7 +598,6 @@ def editar_despesa(id):
                            bandeiras=bandeiras,
                            parcelamentos=parcelamentos,
                            quantidades=quantidade_parcelas)
-
                        
 @app.route('/excluir_despesa/<int:id>', methods=['POST'])
 def excluir_despesa(id):
@@ -538,7 +625,6 @@ def excluir_despesa(id):
 
     return redirect(url_for('consultar_despesas'))
 
-
 @app.route('/cadastro/<tipo>/consultar')
 def consultar_cadastro(tipo):
     conn = get_db_connection()
@@ -550,7 +636,6 @@ def consultar_cadastro(tipo):
     finally:
         conn.close()
     return render_template('consultar_cadastro.html', tipo=tipo, registros=registros)
-
 
 @app.route('/cadastro/<tipo>/editar/<int:id>', methods=['GET', 'POST'])
 def editar_cadastro(tipo, id):
@@ -567,7 +652,6 @@ def editar_cadastro(tipo, id):
     conn.close()
     return render_template('editar_cadastro.html', tipo=tipo, registro=registro)
 
-
 @app.route('/cadastro/<tipo>/excluir/<int:id>', methods=['POST'])
 def excluir_cadastro(tipo, id):
     conn = get_db_connection()
@@ -576,8 +660,6 @@ def excluir_cadastro(tipo, id):
     conn.close()
     flash(f"{tipo.capitalize()} excluído com sucesso!", "success")
     return redirect(url_for('consultar_cadastro', tipo=tipo))
-
-
 # estabelecimento
 @app.route('/cadastro/estabelecimento/novo', methods=['GET', 'POST'])
 def novo_estabelecimento():
@@ -612,8 +694,6 @@ def novo_estabelecimento():
         return redirect(url_for('listar_estabelecimentos'))
 
     return render_template('editar_estabelecimento.html', registro=None, tipo='estabelecimento')
-
-
 # CONSULTAR ESTABELECIMENTOS
 @app.route('/cadastro/estabelecimento')
 def consultar_estabelecimento():
@@ -626,8 +706,6 @@ def consultar_estabelecimento():
     finally:
         conn.close()
     return render_template('consultar_estabelecimento.html', estabelecimentos=estabelecimentos)
-
-
 # EDITAR ESTABELECIMENTO
 @app.route('/cadastro/estabelecimento/editar/<int:id>', methods=['GET', 'POST'])
 def editar_estabelecimento(id):
@@ -672,9 +750,6 @@ def listar_estabelecimentos():
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_estabelecimento.html', estabelecimentos=estabelecimentos)
-
-
-
 # EXCLUIR ESTABELECIMENTO
 @app.route('/estabelecimento/excluir/<int:id>', methods=['POST'])
 def excluir_estabelecimento(id):
@@ -684,8 +759,6 @@ def excluir_estabelecimento(id):
     conn.close()
     flash("Estabelecimento excluído com sucesso!", "success")
     return redirect(url_for('listar_estabelecimentos'))
-
-
 #Rota para Categoria 
 @app.route('/cadastro/categoria/novo', methods=['GET', 'POST'])
 def nova_categoria():
@@ -698,7 +771,6 @@ def nova_categoria():
         flash("Categoria cadastrada com sucesso!", "success")
         return redirect(url_for('listar_categorias'))
     return render_template('editar_categoria.html', registro=None, tipo='categoria')
-
 
 @app.route('/cadastro/categoria')
 def consultar_categoria():
@@ -742,8 +814,6 @@ def excluir_categoria(id):
     conn.close()
     flash("Categoria excluída com sucesso!", "success")
     return redirect(url_for('listar_categorias'))
-
-
 #local da compra
 @app.route('/cadastro/local_compra/novo', methods=['GET', 'POST'])
 def novo_local_compra():
@@ -756,7 +826,6 @@ def novo_local_compra():
         flash("Local da compra cadastrado com sucesso!", "success")
         return redirect(url_for('listar_local_compra'))
     return render_template('editar_local_compra.html', registro=None, tipo='local_compra')
-
 
 @app.route('/cadastro/local_compra')
 def consultar_local_compra():
@@ -800,7 +869,6 @@ def excluir_local_compra(id):
     conn.close()
     flash("Local da Compra excluído com sucesso!", "success")
     return redirect(url_for('listar_local_compra'))
-
 #produtos
 @app.route('/cadastro/produto/novo', methods=['GET', 'POST'])
 def novo_produto():
@@ -879,7 +947,6 @@ def nova_bandeira():
     
     return render_template('editar_bandeira.html', registro=None, tipo='bandeira')
 
-
 @app.route('/cadastro/bandeira')
 def consultar_bandeira():
     conn = get_db_connection()
@@ -927,8 +994,6 @@ def editar_bandeira(id):
     conn.close()
     return render_template('editar_bandeira.html', registro=bandeira, tipo='bandeira')
 
-
-
 @app.route('/bandeiras')
 def listar_bandeiras():
     conn = get_db_connection()
@@ -944,7 +1009,6 @@ def excluir_bandeira(id):
     conn.close()
     flash("bandeira excluído com sucesso!", "success")
     return redirect(url_for('listar_bandeiras'))
-
 
 #forma de pagamento
 @app.route('/cadastro/forma_pagamento/novo', methods=['GET', 'POST'])
@@ -1001,7 +1065,6 @@ def excluir_forma_pagamento(id):
     conn.close()
     flash("forma de pagamento excluída com sucesso!", "success")
     return redirect(url_for('listar_formas_pagamento'))
-
 #comprador
 @app.route('/cadastro/comprador/novo', methods=['GET', 'POST'])
 def novo_comprador():
@@ -1014,7 +1077,6 @@ def novo_comprador():
         flash("Comprador cadastrado com sucesso!", "success")
         return redirect(url_for('listar_comprador'))
     return render_template('editar_comprador.html', registro=None, tipo='comprador')
-
 
 @app.route('/cadastro/comprador')
 def consultar_comprador():
@@ -1151,8 +1213,6 @@ def pagar():
         return jsonify({'success': False})
 
 
-
-
 # Função para exportar os dados de despesas para CSV
 import csv
 from io import StringIO
@@ -1224,11 +1284,15 @@ def export_csv():
                     headers={"Content-Disposition": "attachment;filename=despesas.csv"})
 
 
-@app.route('/logout')
-def logout():
-    session.clear()  # limpa toda a sessão do usuário (remove login)
-    flash('Você saiu do sistema com sucesso.', 'success')
-    return redirect(url_for('login'))  # redireciona para a página de login
+
+
+app.before_request
+def verificar_login():
+    rotas_livres = ['login', 'logout', 'static']
+    if request.endpoint not in rotas_livres and 'user_id' not in session:
+        flash('Você precisa estar logado para acessar esta página.', 'warning')
+        return redirect(url_for('login'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1241,19 +1305,24 @@ def login():
         conn.close()
 
         if user and check_password_hash(user['senha_hash'], senha):
-            session['user_id'] = user['usuario']  # ou user['id'] se preferir armazenar o id
+            session['user_id'] = user['usuario']
+            print("Sessão após login:", dict(session))  # Debug: imprime sessão no console
             flash('Login realizado com sucesso!', 'success')
-            return redirect(url_for('dashboard_login'))  # página após login
+            return redirect(url_for('dashboard'))
         else:
             flash('Usuário ou senha incorretos.', 'danger')
 
+    print("Sessão ao exibir login GET:", dict(session))  # Debug para sessão no GET
     return render_template('login.html')
-@app.route('/')
-def dashboard_login():
-    if 'user_id' not in session:
-        flash('Você precisa fazer login para acessar esta página.', 'warning')
-        return redirect(url_for('login'))
-    return render_template('dashboard_login.html', usuario=session['user_id'])
+
+
+@app.route('/logout')
+def logout():
+    session.clear()  # limpa toda a sessão do usuário (remove login)
+    flash('Você saiu do sistema com sucesso.', 'success')
+    return redirect(url_for('login'))  # redireciona para a página de login
+
+
 
 @app.route('/cadastro/usuarios', methods=['GET', 'POST'])
 def cadastro_usuario():

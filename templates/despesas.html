@@ -119,8 +119,13 @@
       <label>Valor da Parcela</label>
       <input type="number" step="0.01" name="valor_parcela" class="form-control" required>
     </div>
+
+   <div class="col-md-12">
+      <label>Observação</label>
+      <textarea name="observacao" class="form-control" rows="3" placeholder="Digite aqui alguma observação..." autocorrect="on" autocapitalize="sentences" spellcheck="true">{{ request.form.observacao or '' }}</textarea>
   </div>
 
+  </div>
   <br>
   <button type="submit" class="btn btn-success">Salvar Lançamento</button>
 </form>

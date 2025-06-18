@@ -20,6 +20,7 @@
         {% endwith %}
 
         <form method="POST" class="mt-3">
+           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
             <label for="usuario" class="form-label">Usuário:</label>
             <input type="text" id="usuario" name="usuario" class="form-control" required>
@@ -28,6 +29,7 @@
           <div class="mb-3">
             <label for="senha" class="form-label">Senha:</label>
             <input type="password" id="senha" name="senha" class="form-control" required>
+            <small class="form-text text-muted">Use ao menos 8 caracteres, com letras e números.</small>
           </div>
 
           <button type="submit" class="btn btn-primary">Cadastrar</button>

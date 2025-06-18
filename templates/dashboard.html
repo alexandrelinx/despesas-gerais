@@ -20,10 +20,19 @@
     border: 1px solid #ddd;
     background-color: #fdfdfd;
 }
+
+/* Classe para célula marcada como paga */
+.pago {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+    font-weight: bold !important;
+    cursor: pointer;
+}
 </style>
 
 <div class="dashboard-container">
 
+    <!-- ... demais seções ... -->
     <!-- Seção 1: Parcelas Detalhadas -->
     <div class="secao">
         <h5>Parcelas Detalhadas</h5>
@@ -46,7 +55,7 @@
                     <td>{{ p['estabelecimento'] }}</td>
                     <td>{{ p['produto_nome'] }}</td>
                     <td>{{ p['bandeira_nome'] }}</td>
-                    <td>{{ p['numero_parcela'] }}/{{ p['quantidade_parcelas'] }}</td>
+                    <td>{{ p['numero_parcela'] }}/{{ p['total_parcelas'] }}</td>
                     <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
                     <!--<td>R$ {{ '%.2f'|format(p['valor_parcela']) }}</td> -->
                     <td class="{% if p['parcela_alterada'] %}text-primary font-weight-bold{% endif %}">
@@ -80,21 +89,77 @@
                     <td>{{ bandeira }}</td>
                     {% set total_bandeira = 0 %}
                     {% for mes_ano in colunas_meses %}
-                        <td>
-                            {% if mes_ano in valores %}
-                                R$ {{ '%.2f'|format(valores[mes_ano]) }}
-                            {% else %}
-                                R$ 0.00
-                            {% endif %}
+                        {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
+                        {% set total_bandeira = total_bandeira + valor %}
+                        {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+                        <td
+                            class="text-center total-cell {% if pago %}pago{% endif %}"
+                            data-bandeira="{{ bandeira }}"
+                            data-mes-ano="{{ mes_ano }}"
+                            onclick="togglePagamento(this)"
+                            title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+                            style="cursor:pointer;"
+                        >
+                            R$ {{ '%.2f'|format(valor) }}
                         </td>
-                        {% set total_bandeira = total_bandeira + (valores[mes_ano] if mes_ano in valores else 0) %}
                     {% endfor %}
                     <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th>Total Geral</th>
+                    {% for mes_ano in colunas_meses %}
+                        <th>R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</th>
+                    {% endfor %}
+                    <th><strong>R$ {{ '%.2f'|format(total_geral) }}</strong></th>
+                </tr>
+            </tfoot>
         </table>
     </div>
 
 </div>
+
+<script>
+
+const csrfToken = "{{ csrf_token }}";
+
+
+function togglePagamento(cell) {
+    const bandeira = cell.dataset.bandeira;
+    const mesAno = cell.dataset.mesAno;
+
+     console.log("Toggle clicado: bandeira =", bandeira, ", mesAno =", mesAno);
+
+    fetch('/toggle_pagamento', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ bandeira: bandeira, mes_ano: mesAno })
+    })
+   .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 🔁 Atualiza todas as células do mesmo grupo
+            const allCells = document.querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`);
+            allCells.forEach(c => {
+                if (data.pago) {
+                    c.classList.add('pago');
+                    c.title = 'Marcado como pago';
+                } else {
+                    c.classList.remove('pago');
+                    c.title = 'Clique para marcar como pago';
+                }
+            });
+        } else {
+            alert('Erro ao atualizar pagamento: ' + (data.error || ''));
+        }
+    })
+    .catch(() => alert('Erro na comunicação com o servidor'));
+}
+ </script>
+
 {% endblock %}

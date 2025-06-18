@@ -1,19 +1,13 @@
-{% extends 'base.html' %}
+{% extends 'base_login.html' %}
 
 {% block title %}Login{% endblock %}
 
+{% block page_title %}Login{% endblock %}
+
 {% block content %}
-  <h2>Login</h2>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
   <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
     <div class="mb-3">
       <label for="usuario" class="form-label">Usuário:</label>
       <input type="text" id="usuario" name="usuario" class="form-control" required>
@@ -24,6 +18,13 @@
       <input type="password" id="senha" name="senha" class="form-control" required>
     </div>
 
-    <button type="submit" class="btn btn-primary">Entrar</button>
+    <div class="d-grid gap-2 d-md-flex justify-content-center">
+      <button type="submit" class="btn btn-primary">Entrar</button>
+    <!--<button type="button" class="btn btn-secondary ms-2" onclick="window.close()">Fechar</button> -->
+    </div>
+    </div>
   </form>
 {% endblock %}
+
+
+

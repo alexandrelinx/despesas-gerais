@@ -81,3 +81,16 @@ def obter_dados_dashboard(despesas):
         {'mes_ano': mes_ano, 'bandeira': bandeira, 'total': total}
         for (mes_ano, bandeira), total in totais_agrupados.items()
     ]
+
+def calcular_totais_por_mes(parcelas_por_mes, colunas_meses):
+    totais_por_mes = {}
+    total_geral = 0
+
+    for mes_ano in colunas_meses:
+        total_mes = 0
+        for bandeira, valores in parcelas_por_mes.items():
+            total_mes += valores.get(mes_ano, 0)
+        totais_por_mes[mes_ano] = total_mes
+        total_geral += total_mes
+
+    return totais_por_mes, total_geral

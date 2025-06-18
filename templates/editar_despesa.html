@@ -17,6 +17,7 @@
 {% endwith %}
 
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
         <div class="col-md-6">
             <label>Estabelecimento</label>
@@ -122,8 +123,12 @@
             <label>Valor da Parcela</label>
             <input type="number" step="0.01" name="valor_parcela" class="form-control" value="{{ despesa.valor_parcela }}" required>
         </div>
+         <div class="col-md-12 mt-3">
+            <label>Observação</label>
+            <textarea name="observacao" class="form-control" rows="3" placeholder="Digite uma observação (opcional)" autocorrect="on" autocapitalize="sentences" spellcheck="true">{{ request.form.observacao or '' }}</textarea>
+        </div>
     </div>
-
+  
     <br>
     <button type="submit" class="btn btn-success">Salvar Alterações</button>
 </form>
