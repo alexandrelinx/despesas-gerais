@@ -21,6 +21,13 @@ from flask import request, jsonify
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+
+
+
+
 
 
 app = Flask(__name__)
@@ -82,10 +89,10 @@ except:
 
     #return parcelas
 
-from flask import request, jsonify
-from datetime import datetime
-from datetime import datetime
-from flask import request, jsonify
+# from flask import request, jsonify
+# from datetime import datetime
+# from datetime import datetime
+# from flask import request, jsonify
 
 @app.route('/toggle_pagamento', methods=['POST'])
 def toggle_pagamento_ajax():
@@ -243,27 +250,6 @@ def dashboard():
     )
 
 
-@app.route('/cadastro/<tipo>', methods=['GET', 'POST'])
-def cadastro(tipo):
-    if request.method == 'POST':
-        nome = request.form['nome']
-        conn = get_db_connection()
-
-        try:
-            if tipo.lower() == 'parcelamento':
-                conn.execute("INSERT INTO PARCELAMENTO (tipo) VALUES (?)", (nome,))
-            else:
-                conn.execute(f"INSERT INTO {tipo.upper()} (nome) VALUES (?)", (nome,))
-            conn.commit()
-        except Exception as e:
-            flash(f"Erro ao cadastrar {tipo}: {str(e)}", "danger")
-        finally:
-            conn.close()
-
-        return redirect(url_for('cadastro', tipo=tipo))
-
-    return render_template('cadastro.html', tipo=tipo)
-
 @app.route('/despesas', methods=['GET', 'POST'])
 def lancar_despesas():
     conn = get_db_connection()
@@ -294,6 +280,32 @@ def lancar_despesas():
 
             cursor = conn.cursor()
 
+          
+            # ⬇️ INSERIR VERIFICAÇÃO DE DESPESA DUPLICADA AQUI
+            cursor.execute("""
+            SELECT COUNT(*) as count FROM DESPESAS 
+            WHERE estabelecimento_id = ?
+            AND categoria_id = ?
+            AND local_compra_id = ?
+            AND comprador_id = ?
+            AND produto_id = ?
+            AND data_compra = ?
+            AND valor_compra = ?
+            AND forma_pagamento_id = ?
+            AND bandeira_id = ?
+            AND parcelamento_id = ?
+            AND quantidade_parcelas_id = ?
+            AND valor_parcela = ?
+            """, dados[:12])
+
+            existe = cursor.fetchone()['count']
+
+            if existe > 0:
+               flash("Despesa já cadastrada com os mesmos dados.", "warning")
+               conn.close()
+               return redirect(url_for('lancar_despesas')) 
+                
+              
             # Insere a despesa (sem vencimento_bandeira_id e melhor_dia_compra_id)
             cursor.execute("""
                 INSERT INTO DESPESAS (
@@ -466,9 +478,6 @@ def consultar_despesas():
         bandeira_selecionada=bandeira_filtro
     )
 
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
 @app.route('/editar_despesa/<int:id>', methods=['GET', 'POST'])
 def editar_despesa(id):
     conn = get_db_connection()
@@ -625,42 +634,69 @@ def excluir_despesa(id):
 
     return redirect(url_for('consultar_despesas'))
 
-@app.route('/cadastro/<tipo>/consultar')
-def consultar_cadastro(tipo):
-    conn = get_db_connection()
-    try:
-        registros = conn.execute(f"SELECT * FROM {tipo.upper()} ORDER BY nome").fetchall()
-    except Exception as e:
-        registros = []
-        flash(f"Erro ao consultar {tipo}: {str(e)}", "danger")
-    finally:
-        conn.close()
-    return render_template('consultar_cadastro.html', tipo=tipo, registros=registros)
 
-@app.route('/cadastro/<tipo>/editar/<int:id>', methods=['GET', 'POST'])
-def editar_cadastro(tipo, id):
-    conn = get_db_connection()
-    if request.method == 'POST':
-        nome = request.form['nome']
-        conn.execute(f"UPDATE {tipo.upper()} SET nome = ? WHERE id = ?", (nome, id))
-        conn.commit()
-        conn.close()
-        flash(f"{tipo.capitalize()} atualizado com sucesso!", "success")
-        return redirect(url_for('consultar_cadastro', tipo=tipo))
 
-    registro = conn.execute(f"SELECT * FROM {tipo.upper()} WHERE id = ?", (id,)).fetchone()
-    conn.close()
-    return render_template('editar_cadastro.html', tipo=tipo, registro=registro)
+# @app.route('/cadastro/<tipo>', methods=['GET', 'POST'])
+# def cadastro(tipo):
+#     if request.method == 'POST':
+#         nome = request.form['nome']
+#         conn = get_db_connection()
 
-@app.route('/cadastro/<tipo>/excluir/<int:id>', methods=['POST'])
-def excluir_cadastro(tipo, id):
-    conn = get_db_connection()
-    conn.execute(f"DELETE FROM {tipo.upper()} WHERE id = ?", (id,))
-    conn.commit()
-    conn.close()
-    flash(f"{tipo.capitalize()} excluído com sucesso!", "success")
-    return redirect(url_for('consultar_cadastro', tipo=tipo))
-# estabelecimento
+#         try:
+#             if tipo.lower() == 'parcelamento':
+#                 conn.execute("INSERT INTO PARCELAMENTO (tipo) VALUES (?)", (nome,))
+#             else:
+#                 conn.execute(f"INSERT INTO {tipo.upper()} (nome) VALUES (?)", (nome,))
+#             conn.commit()
+#         except Exception as e:
+#             flash(f"Erro ao cadastrar {tipo}: {str(e)}", "danger")
+#         finally:
+#             conn.close()
+
+#         return redirect(url_for('cadastro', tipo=tipo))
+
+#     return render_template('cadastro.html', tipo=tipo)
+
+
+# @app.route('/cadastro/<tipo>/consultar')
+# def consultar_cadastro(tipo):
+#     conn = get_db_connection()
+#     try:
+#         registros = conn.execute(f"SELECT * FROM {tipo.upper()} ORDER BY nome").fetchall()
+#     except Exception as e:
+#         registros = []
+#         flash(f"Erro ao consultar {tipo}: {str(e)}", "danger")
+#     finally:
+#         conn.close()
+#     return render_template('consultar_cadastro.html', tipo=tipo, registros=registros)
+
+# @app.route('/cadastro/<tipo>/editar/<int:id>', methods=['GET', 'POST'])
+# def editar_cadastro(tipo, id):
+#     conn = get_db_connection()
+#     if request.method == 'POST':
+#         nome = request.form['nome']
+#         conn.execute(f"UPDATE {tipo.upper()} SET nome = ? WHERE id = ?", (nome, id))
+#         conn.commit()
+#         conn.close()
+#         flash(f"{tipo.capitalize()} atualizado com sucesso!", "success")
+#         return redirect(url_for('consultar_cadastro', tipo=tipo))
+
+#     registro = conn.execute(f"SELECT * FROM {tipo.upper()} WHERE id = ?", (id,)).fetchone()
+#     conn.close()
+#     return render_template('editar_cadastro.html', tipo=tipo, registro=registro)
+
+# @app.route('/cadastro/<tipo>/excluir/<int:id>', methods=['POST'])
+# def excluir_cadastro(tipo, id):
+#     conn = get_db_connection()
+#     conn.execute(f"DELETE FROM {tipo.upper()} WHERE id = ?", (id,))
+#     conn.commit()
+#     conn.close()
+#     flash(f"{tipo.capitalize()} excluído com sucesso!", "success")
+#     return redirect(url_for('consultar_cadastro', tipo=tipo))
+
+
+# Rotas do CRUD de estabelecimento
+
 @app.route('/cadastro/estabelecimento/novo', methods=['GET', 'POST'])
 def novo_estabelecimento():
     if request.method == 'POST':
@@ -694,7 +730,7 @@ def novo_estabelecimento():
         return redirect(url_for('listar_estabelecimentos'))
 
     return render_template('editar_estabelecimento.html', registro=None, tipo='estabelecimento')
-# CONSULTAR ESTABELECIMENTOS
+
 @app.route('/cadastro/estabelecimento')
 def consultar_estabelecimento():
     conn = get_db_connection()
@@ -706,7 +742,7 @@ def consultar_estabelecimento():
     finally:
         conn.close()
     return render_template('consultar_estabelecimento.html', estabelecimentos=estabelecimentos)
-# EDITAR ESTABELECIMENTO
+
 @app.route('/cadastro/estabelecimento/editar/<int:id>', methods=['GET', 'POST'])
 def editar_estabelecimento(id):
     conn = get_db_connection()
@@ -750,7 +786,7 @@ def listar_estabelecimentos():
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO ORDER BY nome").fetchall()
     conn.close()
     return render_template('consultar_estabelecimento.html', estabelecimentos=estabelecimentos)
-# EXCLUIR ESTABELECIMENTO
+
 @app.route('/estabelecimento/excluir/<int:id>', methods=['POST'])
 def excluir_estabelecimento(id):
     conn = get_db_connection()
@@ -759,24 +795,58 @@ def excluir_estabelecimento(id):
     conn.close()
     flash("Estabelecimento excluído com sucesso!", "success")
     return redirect(url_for('listar_estabelecimentos'))
-#Rota para Categoria 
+
+
+
+
+
+#Rotas do CRUD de Categoria 
+
 @app.route('/cadastro/categoria/novo', methods=['GET', 'POST'])
 def nova_categoria():
     if request.method == 'POST':
-        nome = request.form['nome']
-        conn = get_db_connection()
-        conn.execute("INSERT INTO CATEGORIA (nome) VALUES (?)", (nome,))
-        conn.commit()
-        conn.close()
-        flash("Categoria cadastrada com sucesso!", "success")
-        return redirect(url_for('listar_categorias'))
+         nome = request.form.get('nome', '').strip().upper()  # Normaliza e coloca em MAIÚSCULAS
+      
+        
+         if not nome:
+            flash("O nome da categoria é obrigatório.", "warning")
+            return redirect(request.url)
+
+         conn = get_db_connection()
+
+             # Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+         existente = conn.execute(
+            "SELECT 1 FROM CATEGORIA WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+
+         if existente:
+            flash("Já existe um estabelecimento com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+         try:
+            conn.execute("INSERT INTO CATEGORIA (nome) VALUES (?)", (nome,))
+            conn.commit()
+            flash("Categoria cadastrada com sucesso!", "success")
+         except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+         finally:
+            conn.close()
+
+         return redirect(url_for('listar_categorias'))
+
     return render_template('editar_categoria.html', registro=None, tipo='categoria')
 
 @app.route('/cadastro/categoria')
 def consultar_categoria():
     conn = get_db_connection()
-    categorias = conn.execute("SELECT * FROM CATEGORIA ORDER BY nome").fetchall()
-    conn.close()
+    try:
+        categorias = conn.execute("SELECT * FROM CATEGORIA ORDER BY nome").fetchall()
+    except Exception as e:
+        categorias = []
+        flash(f"Erro ao consultar categoria: {str(e)}", "danger")
+    finally:
+        conn.close()
     return render_template('consultar_categoria.html', categorias=categorias)
 
 @app.route('/cadastro/categoria/editar/<int:id>', methods=['GET', 'POST'])
@@ -789,12 +859,28 @@ def editar_categoria(id):
         return redirect(url_for('listar_categorias'))
 
     if request.method == 'POST':
-        novo_nome = request.form['nome']
-        conn.execute("UPDATE CATEGORIA SET nome = ? WHERE id = ?", (novo_nome, id))
-        conn.commit()
-        conn.close()
-        flash("Categoria atualizada com sucesso!", "success")
-        return redirect(url_for('listar_categorias'))
+       novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
+
+       if not novo_nome:
+            flash("O nome da categoria é obrigatório.", "warning")
+            return redirect(request.url)
+
+        # Verifica se outro estabelecimento já usa esse nome
+       duplicado = conn.execute(
+            "SELECT 1 FROM CATEGORIA WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
+
+       if duplicado:
+            flash("Já existe outro categoria com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url) 
+
+       conn.execute("UPDATE CATEGORIA SET nome = ? WHERE id = ?", (novo_nome, id))
+       conn.commit()
+       conn.close()
+       flash("Categoria atualizada com sucesso!", "success")
+       return redirect(url_for('listar_categorias'))
 
     conn.close()
     return render_template('editar_categoria.html', registro=categoria, tipo='categoria')
@@ -814,24 +900,57 @@ def excluir_categoria(id):
     conn.close()
     flash("Categoria excluída com sucesso!", "success")
     return redirect(url_for('listar_categorias'))
-#local da compra
+
+
+
+
+
+#Rotas do CRUD de local da compra
+
 @app.route('/cadastro/local_compra/novo', methods=['GET', 'POST'])
 def novo_local_compra():
     if request.method == 'POST':
-        nome = request.form['nome']
+        nome = request.form.get('nome', '').strip().upper()  # Normaliza e coloca em MAIÚSCULAS
+
+        if not nome:
+            flash("O nome do local da compra é obrigatório.", "warning")
+            return redirect(request.url)
+
         conn = get_db_connection()
-        conn.execute("INSERT INTO LOCAL_COMPRA (nome) VALUES (?)", (nome,))
-        conn.commit()
-        conn.close()
-        flash("Local da compra cadastrado com sucesso!", "success")
+
+        # Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+        existente = conn.execute(
+            "SELECT 1 FROM LOCAL_COMPRA WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+
+        if existente:
+            flash("Já existe um local da compra com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        try:
+            conn.execute("INSERT INTO LOCAL_COMPRA (nome) VALUES (?)", (nome,))
+            conn.commit()
+            flash("Local da compra cadastrada com sucesso!", "success")
+        except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+        finally:
+            conn.close()
+           
         return redirect(url_for('listar_local_compra'))
+    
     return render_template('editar_local_compra.html', registro=None, tipo='local_compra')
 
 @app.route('/cadastro/local_compra')
 def consultar_local_compra():
     conn = get_db_connection()
-    locais = conn.execute("SELECT * FROM LOCAL_COMPRA ORDER BY nome").fetchall()
-    conn.close()
+    try:
+        locais = conn.execute("SELECT * FROM LOCAL_COMPRA ORDER BY nome").fetchall()
+    except Exception as e:
+        locais = []
+        flash(f"Erro ao consultar estabelecimentos: {str(e)}", "danger")
+    finally:
+        conn.close()
     return render_template('consultar_local_compra.html', local_compras=locais)
 
 @app.route('/cadastro/local_compra/editar/<int:id>', methods=['GET', 'POST'])
@@ -840,11 +959,28 @@ def editar_local_compra(id):
     local_compra = conn.execute("SELECT * FROM LOCAL_COMPRA WHERE id = ?", (id,)).fetchone()
 
     if not local_compra:
-        flash("Categoria não encontrada.", "danger")
+        flash("Local da compra não encontrado.", "danger")
         return redirect(url_for('listar_local_compra'))
-
+    
     if request.method == 'POST':
-        novo_nome = request.form['nome']
+        novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
+
+        if not novo_nome:
+            flash("O nome do Local da compra é obrigatório.", "warning")
+            return redirect(request.url)
+
+        # Verifica se outro estabelecimento já usa esse nome
+        duplicado = conn.execute(
+            "SELECT 1 FROM LOCAL_COMPRA WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
+
+        if duplicado:
+            flash("Já existe outro local da compra com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+    
         conn.execute("UPDATE LOCAL_COMPRA SET nome = ? WHERE id = ?", (novo_nome, id))
         conn.commit()
         conn.close()
@@ -869,24 +1005,57 @@ def excluir_local_compra(id):
     conn.close()
     flash("Local da Compra excluído com sucesso!", "success")
     return redirect(url_for('listar_local_compra'))
-#produtos
+
+
+
+
+
+#Rotas do CRUD de produtos
+
 @app.route('/cadastro/produto/novo', methods=['GET', 'POST'])
 def novo_produto():
     if request.method == 'POST':
-        nome = request.form['nome']
+        nome = request.form.get('nome', '').strip().upper()  # Normaliza e coloca em MAIÚSCULAS
+               
+        if not nome:
+            flash("O nome do produto é obrigatório.", "warning")
+            return redirect(request.url)
+          
         conn = get_db_connection()
-        conn.execute("INSERT INTO PRODUTO (nome) VALUES (?)", (nome,))
-        conn.commit()
-        conn.close()
-        flash("Produto cadastrado com sucesso!", "success")
+
+ # Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+        existente = conn.execute(
+            "SELECT 1 FROM PRODUTO WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+
+        if existente:
+            flash("Já existe um produto esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        try:
+            conn.execute("INSERT INTO PRODUTO (nome) VALUES (?)", (nome,))
+            conn.commit()
+            flash("Produto cadastrado com sucesso!", "success")
+        except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+        finally:
+            conn.close()
+
         return redirect(url_for('listar_produtos'))
+    
     return render_template('editar_produto.html', registro=None, tipo='produto')
 
 @app.route('/cadastro/produto')
 def consultar_produto():
     conn = get_db_connection()
-    produtos = conn.execute("SELECT * FROM PRODUTO ORDER BY nome").fetchall()
-    conn.close()
+    try:
+       produtos = conn.execute("SELECT * FROM PRODUTO ORDER BY nome").fetchall()
+    except Exception as e:
+       produtos = []
+       flash(f"Erro ao consultar estabelecimentos: {str(e)}", "danger")
+    finally:
+          conn.close()
     return render_template('consultar_produto.html', produtos=produtos)
 
 @app.route('/cadastro/produto/editar/<int:id>', methods=['GET', 'POST'])
@@ -899,7 +1068,23 @@ def editar_produto(id):
         return redirect(url_for('listar_produtos'))
 
     if request.method == 'POST':
-        novo_nome = request.form['nome']
+        novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
+
+        if not novo_nome:
+            flash("O nome do produto é obrigatório.", "warning")
+            return redirect(request.url)
+
+        # Verifica se outro estabelecimento já usa esse nome
+        duplicado = conn.execute(
+            "SELECT 1 FROM PRODUTO WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
+
+        if duplicado:
+            flash("Já existe outro produto com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
         conn.execute("UPDATE PRODUTO SET nome = ? WHERE id = ?", (novo_nome, id))
         conn.commit()
         conn.close()
@@ -926,23 +1111,45 @@ def excluir_produto(id):
     return redirect(url_for('listar_produtos'))
 
 
- #bandeiras 
+
+
+
+#Rotas do CRUD de bandeira
 
 @app.route('/cadastro/bandeira/novo', methods=['GET', 'POST'])
 def nova_bandeira():
     if request.method == 'POST':
-        nome = request.form['nome']
+        nome = request.form.get('nome', '').strip().upper()
         vencimento_dia = request.form['vencimento_dia']
         melhor_dia_compra = request.form['melhor_dia_compra']
-        
+
+
+        if not nome:
+            flash("O nome da bandeira é obrigatória.", "warning")
+            return redirect(request.url)
+
+      
         conn = get_db_connection()
-        conn.execute(
-            "INSERT INTO BANDEIRA (nome, vencimento_dia, melhor_dia_compra) VALUES (?, ?, ?)",
-            (nome, vencimento_dia, melhor_dia_compra)
-        )
-        conn.commit()
-        conn.close()
-        flash("Bandeira cadastrada com sucesso!", "success")
+
+# Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+        existente = conn.execute(
+            "SELECT 1 FROM BANDEIRA WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+
+        if existente:
+            flash("Já existe uma bandeira com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        try:
+            conn.execute("INSERT INTO BANDEIRA (nome, vencimento_dia, melhor_dia_compra) VALUES (?, ?, ?)", (nome, vencimento_dia, melhor_dia_compra))
+            conn.commit()
+            flash("Bandeira cadastrada com sucesso!", "success")
+        except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+        finally:
+            conn.close()
+
         return redirect(url_for('listar_bandeiras'))
     
     return render_template('editar_bandeira.html', registro=None, tipo='bandeira')
@@ -950,8 +1157,13 @@ def nova_bandeira():
 @app.route('/cadastro/bandeira')
 def consultar_bandeira():
     conn = get_db_connection()
-    bandeiras = conn.execute("SELECT * FROM bandeira ORDER BY nome").fetchall()
-    conn.close()
+    try:   
+        bandeiras = conn.execute("SELECT * FROM BANDEIRA ORDER BY nome").fetchall()
+    except Exception as e:
+        bandeiras = []
+        flash(f"Erro ao consultar Bandeiras: {str(e)}", "danger")
+    finally:
+       conn.close()
     return render_template('consultar_bandeira.html', bandeiras=bandeiras)
 
 @app.route('/cadastro/bandeira/editar/<int:id>', methods=['GET', 'POST'])
@@ -964,14 +1176,25 @@ def editar_bandeira(id):
         return redirect(url_for('listar_bandeiras'))
 
     if request.method == 'POST':
-        novo_nome = request.form.get('nome')
+        novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
         novo_vencimento_dia = request.form.get('vencimento_dia')
         novo_melhor_dia_compra = request.form.get('melhor_dia_compra')
 
         if not (novo_nome and novo_vencimento_dia and novo_melhor_dia_compra):
             flash("Todos os campos devem ser preenchidos.", "warning")
             return redirect(request.url)
+        
+         # Verifica se outro estabelecimento já usa esse nome
+        duplicado = conn.execute(
+            "SELECT 1 FROM BANDEIRA WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
 
+        
+        if duplicado:
+            flash("Já existe outro bandeira com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
         # Conversão segura para inteiros
         try:
             novo_vencimento_dia = int(novo_vencimento_dia)
@@ -1010,24 +1233,58 @@ def excluir_bandeira(id):
     flash("bandeira excluído com sucesso!", "success")
     return redirect(url_for('listar_bandeiras'))
 
-#forma de pagamento
+
+
+
+
+#Rotas do CRUD de forma de pagamento
+
 @app.route('/cadastro/forma_pagamento/novo', methods=['GET', 'POST'])
 def nova_forma_pagamento():
     if request.method == 'POST':
-        nome = request.form['nome']
+        nome = request.form.get('nome', '').strip().upper()  # Normaliza e coloca em MAIÚSCULAS
+        
+        if not nome:
+            flash("O nome do forma de pagamento é obrigatório.", "warning")
+            return redirect(request.url)
+       
         conn = get_db_connection()
-        conn.execute("INSERT INTO FORMA_PAGAMENTO (nome) VALUES (?)", (nome,))
-        conn.commit()
-        conn.close()
-        flash("Forma de Pagamento cadastrada com sucesso!", "success")
+
+        # Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+        existente = conn.execute(
+            "SELECT 1 FROM FORMA_PAGAMENTO WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+
+        if existente:
+            flash("Já existe uma Forma de Pagamento com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        try:
+            
+            conn.execute("INSERT INTO FORMA_PAGAMENTO (nome) VALUES (?)", (nome,))
+            conn.commit()
+            flash("Forma de Pagamento cadastrada com sucesso!", "success")
+        except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+        finally:
+            conn.close()
+
+
         return redirect(url_for('listar_formas_pagamento'))
-    return render_template('editar_forma_pagamento.html', registro=None, tipo='forma_pagamento')
+    
+    return render_template('editar_forma_pagamento.html', registro=None, tipo='forma de pagamento')
 
 @app.route('/cadastro/forma_pagamento')
 def consultar_forma_pagamento():
     conn = get_db_connection()
-    forma_pagamento= conn.execute("SELECT * FROM FORMA_PAGAMENTO ORDER BY nome").fetchall()
-    conn.close()
+    try:
+        forma_pagamento= conn.execute("SELECT * FROM FORMA_PAGAMENTO ORDER BY nome").fetchall()
+    except Exception as e:
+        forma_pagamento = []
+        flash(f"Erro ao consultar forma de pagamento: {str(e)}", "danger")
+    finally:
+        conn.close()
     return render_template('consultar_forma_pagamento.html', forma_pagamento=forma_pagamento)
 
 @app.route('/cadastro/forma_pagamento/editar/<int:id>', methods=['GET', 'POST'])
@@ -1040,7 +1297,23 @@ def editar_forma_pagamento(id):
         return redirect(url_for('listar_formas_pagamento'))
 
     if request.method == 'POST':
-        novo_nome = request.form['nome']
+        novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
+
+        if not novo_nome:
+            flash("A forma de pagamento é obrigatória.", "warning")
+            return redirect(request.url)
+
+        # Verifica se outro estabelecimento já usa esse nome
+        duplicado = conn.execute(
+            "SELECT 1 FROM FORMA_PAGAMENTO  WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
+
+        if duplicado:
+            flash("Já existe outra forma de pagamento com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+      
         conn.execute("UPDATE FORMA_PAGAMENTO SET nome = ? WHERE id = ?", (novo_nome, id))
         conn.commit()
         conn.close()
@@ -1065,24 +1338,57 @@ def excluir_forma_pagamento(id):
     conn.close()
     flash("forma de pagamento excluída com sucesso!", "success")
     return redirect(url_for('listar_formas_pagamento'))
-#comprador
+
+
+
+
+
+# Rotas do CRUD de comprador
+
 @app.route('/cadastro/comprador/novo', methods=['GET', 'POST'])
 def novo_comprador():
     if request.method == 'POST':
-        nome = request.form['nome']
+        nome = request.form.get('nome', '').strip().upper()  # Normaliza e coloca em MAIÚSCULAS
+       
+        if not nome:
+            flash("O nome do comprador é obrigatório.", "warning")
+            return redirect(request.url)
+        
         conn = get_db_connection()
-        conn.execute("INSERT INTO COMPRADOR (nome) VALUES (?)", (nome,))
-        conn.commit()
-        conn.close()
-        flash("Comprador cadastrado com sucesso!", "success")
+
+          # Verifica duplicidade com nome em maiúsculas (garante comparação exata)
+        existente = conn.execute(
+            "SELECT 1 FROM COMPRADOR WHERE UPPER(TRIM(nome)) = ?", (nome,)
+        ).fetchone()
+        
+        if existente:
+            flash("Já existe um comprador com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+        try:
+           conn.execute("INSERT INTO COMPRADOR (nome) VALUES (?)", (nome,))
+           conn.commit()
+           flash("Comprador cadastrado com sucesso!", "success")
+        except sqlite3.IntegrityError:
+            flash("Erro ao cadastrar: nome já cadastrado.", "danger")
+        finally:
+              conn.close()
+
         return redirect(url_for('listar_comprador'))
+    
     return render_template('editar_comprador.html', registro=None, tipo='comprador')
 
 @app.route('/cadastro/comprador')
 def consultar_comprador():
     conn = get_db_connection()
-    comprador = conn.execute("SELECT * FROM COMPRADOR ORDER BY nome").fetchall()
-    conn.close()
+    try:
+        comprador = conn.execute("SELECT * FROM COMPRADOR ORDER BY nome").fetchall()
+    except Exception as e:
+        comprador = []
+        flash(f"Erro ao consultar comprador: {str(e)}", "danger")
+    finally:   
+          conn.close()
     return render_template('consultar_comprador.html', comprador=comprador)
 
 @app.route('/cadastro/comprador/editar/<int:id>', methods=['GET', 'POST'])
@@ -1095,7 +1401,23 @@ def editar_comprador(id):
         return redirect(url_for('listar_comprador'))
 
     if request.method == 'POST':
-        novo_nome = request.form['nome']
+        novo_nome = request.form.get('nome', '').strip().upper()  # Nome em MAIÚSCULO
+        if not novo_nome:
+            flash("O nome do comprador é obrigatório.", "warning")
+            return redirect(request.url)
+
+        # Verifica se outro estabelecimento já usa esse nome
+        duplicado = conn.execute(
+            "SELECT 1 FROM COMPRADOR WHERE UPPER(TRIM(nome)) = ? AND id != ?", 
+            (novo_nome, id)
+        ).fetchone()
+
+        if duplicado:
+            flash("Já existe outro comprador com esse nome.", "danger")
+            conn.close()
+            return redirect(request.url)
+
+
         conn.execute("UPDATE COMPRADOR SET nome = ? WHERE id = ?", (novo_nome, id))
         conn.commit()
         conn.close()
@@ -1103,7 +1425,7 @@ def editar_comprador(id):
         return redirect(url_for('listar_comprador'))
 
     conn.close()
-    return render_template('editar_produto.html', registro=comprador, tipo='comprador')
+    return render_template('editar_comprador.html', registro=comprador, tipo='comprador')
 
 @app.route('/comprador')
 def listar_comprador():
@@ -1178,9 +1500,7 @@ def totais_despesas_mensais():
         bandeiras=sorted(bandeiras_set)
     )
 
-
-
-from flask import jsonify
+#from flask import jsonify
 
 @app.route('/pagar', methods=['POST'])
 def pagar():
@@ -1284,15 +1604,14 @@ def export_csv():
                     headers={"Content-Disposition": "attachment;filename=despesas.csv"})
 
 
+#Rotas para login e logout
 
-
-app.before_request
+@app.before_request
 def verificar_login():
     rotas_livres = ['login', 'logout', 'static']
     if request.endpoint not in rotas_livres and 'user_id' not in session:
         flash('Você precisa estar logado para acessar esta página.', 'warning')
         return redirect(url_for('login'))
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1315,17 +1634,15 @@ def login():
     print("Sessão ao exibir login GET:", dict(session))  # Debug para sessão no GET
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     session.clear()  # limpa toda a sessão do usuário (remove login)
     flash('Você saiu do sistema com sucesso.', 'success')
     return redirect(url_for('login'))  # redireciona para a página de login
 
-
-
 @app.route('/cadastro/usuarios', methods=['GET', 'POST'])
 def cadastro_usuario():
+    
     if request.method == 'POST':
         usuario = request.form.get('usuario', '').strip()
         senha = request.form.get('senha', '').strip()
@@ -1352,6 +1669,73 @@ def cadastro_usuario():
         return redirect(url_for('login'))  # ou outra página
     print("Renderizando cadastro_usuario.html")
     return render_template('cadastro_usuario.html')
+
+@app.route('/usuarios')
+def consultar_usuario():
+    conn = get_db_connection()
+    usuarios = conn.execute("SELECT id, usuario FROM usuario ORDER BY usuario ASC").fetchall()
+    conn.close()
+    return render_template('consultar_usuarios.html', usuarios=usuarios)
+
+@app.route('/usuarios', methods=['GET'])
+def listar_usuarios():
+    conn = get_db_connection()
+    usuarios = conn.execute("SELECT id, usuario FROM usuario ORDER BY usuario ASC").fetchall()
+    conn.close()
+    return render_template('listar_usuarios.html', usuarios=usuarios)
+
+@app.route('/usuarios/editar/<int:id>', methods=['GET', 'POST'])
+def editar_usuario(id):
+    conn = get_db_connection()
+
+    if request.method == 'POST':
+        usuario = request.form.get('usuario', '').strip()
+        senha = request.form.get('senha', '').strip()
+
+        if not usuario:
+            flash("O nome de usuário é obrigatório.", "warning")
+            return redirect(request.url)
+
+        # Atualiza com ou sem nova senha
+        if senha:
+            senha_hash = generate_password_hash(senha)
+            conn.execute(
+                "UPDATE usuario SET usuario = ?, senha_hash = ? WHERE id = ?",
+                (usuario, senha_hash, id)
+            )
+        else:
+            conn.execute(
+                "UPDATE usuario SET usuario = ? WHERE id = ?",
+                (usuario, id)
+            )
+
+        conn.commit()
+        conn.close()
+        flash("Usuário atualizado com sucesso!", "success")
+        return redirect(url_for('listar_usuarios'))
+
+    # GET: carregar dados do usuário
+    usuario = conn.execute("SELECT * FROM usuario WHERE id = ?", (id,)).fetchone()
+    conn.close()
+
+    if usuario is None:
+        flash("Usuário não encontrado.", "danger")
+        return redirect(url_for('listar_usuarios'))
+
+    return render_template('editar_usuario.html', usuario=usuario)
+
+@app.route('/usuarios/excluir/<int:id>', methods=['POST'])
+def excluir_usuario(id):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM usuario WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    flash("Usuário excluído com sucesso!", "success")
+    return redirect(url_for('listar_usuarios'))
+
+
+
+
 
 if __name__ == '__main__':
     app.secret_key = 'segredo-super-seguro'
