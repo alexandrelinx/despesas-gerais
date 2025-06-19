@@ -4,13 +4,17 @@ from collections import defaultdict
 
 def calcular_parcelas_neon(data_compra, quantidade_parcelas, vencimento_dia, melhor_dia_compra):
     # Define o próximo "melhor dia de compra"
-    melhor_data_corte = data_compra.replace(day=melhor_dia_compra)
-    if data_compra.day > melhor_dia_compra:
-        melhor_data_corte += relativedelta(months=1)
+    # melhor_data_corte = data_compra.replace(day=melhor_dia_compra)
+    # if data_compra.day > melhor_dia_compra:
+    #     melhor_data_corte += relativedelta(months=1)
 
     # Se comprou antes do corte, vai para a próxima fatura
-    if data_compra < melhor_data_corte:
-        primeiro_mes = data_compra + relativedelta(months=1)
+    # if data_compra < melhor_data_corte:
+    #     primeiro_mes = data_compra + relativedelta(months=1)
+    # else:
+    #     primeiro_mes = data_compra + relativedelta(months=2)
+    if data_compra.day <= melhor_dia_compra:
+       primeiro_mes = data_compra + relativedelta(months=1)
     else:
         primeiro_mes = data_compra + relativedelta(months=2)
 
