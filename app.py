@@ -23,16 +23,19 @@ from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
-
-
-
+from flask_wtf.csrf import CSRFError
 
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'despesas'  
 csrf = CSRFProtect(app)
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    flash('Erro de segurança: token CSRF inválido ou expirado. Recarregue a página e tente novamente.', 'danger')
+    return redirect(request.url)
 
 DB = 'despesas.db'
 
@@ -255,6 +258,7 @@ def lancar_despesas():
     conn = get_db_connection()
 
     if request.method == 'POST':
+        print("Form data recebida:", request.form.to_dict())
         try:
             # Captura os dados do formulário
             dados = (
@@ -274,9 +278,14 @@ def lancar_despesas():
             )
 
             # Verifica se todos os campos foram preenchidos
-            if not all(dados):
-                flash("Todos os campos devem ser preenchidos.", "danger")
-                return redirect(url_for('lancar_despesas'))
+           # if not all(dados):
+            #    flash("Todos os campos devem ser preenchidos.", "danger")
+             #   return redirect(url_for('lancar_despesas'))
+            campos_obrigatorios = dados[:-1] 
+
+            if any((v is None or str(v).strip() == '') for v in campos_obrigatorios):
+               flash("Todos os campos devem ser preenchidos.", "danger")
+               return redirect(url_for('lancar_despesas'))  
 
             cursor = conn.cursor()
 

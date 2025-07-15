@@ -14,7 +14,8 @@
 {% endwith %}
 
 <form method="post">
-  <div class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <div class="row">
     <div class="col-md-6">
       <label>Estabelecimento</label>
       <select name="estabelecimento_id" class="form-control" required>
@@ -127,6 +128,6 @@
 
   </div>
   <br>
-  <button type="submit" class="btn btn-success">Salvar Lançamento</button>
+  <button type="submit"  class="btn btn-success">Salvar Lançamento</button>
 </form>
 {% endblock %}
