@@ -1,10 +1,27 @@
 import sqlite3
 
-def inicializar_banco(db_name="despesas.db"):
-    # Conexão com o SQLite
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
+import os
+from collections import defaultdict
+from datetime import datetime
 
+
+
+DB_PATH = os.path.join(os.path.dirname(__file__),  'banco', 'despesas.db')
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+def inicializar_banco():
+    # Conexão com o SQLite
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  # permite acessar colunas por nome
+    criar_tabela(conn)
+    return conn
+      #conn = sqlite3.connect(db_name)
+      #cursor = conn.cursor()
+
+def criar_tabela(conn):
+   # conn = inicializar_banco()
+    cursor = conn.cursor()
+  
     # Habilita suporte a Foreign Keys
     cursor.execute("PRAGMA foreign_keys = ON;")
 
@@ -134,8 +151,14 @@ def inicializar_banco(db_name="despesas.db"):
     # Fechar conexão
     conn.commit()
     conn.close()
-    print(f"Banco de dados '{db_name}' criado com sucesso e tabelas auxiliares populadas.")
+    print(f"Banco de dados '{DB_PATH}' criado com sucesso e tabelas auxiliares populadas.")
 
 # Se quiser rodar este script separadamente
+#if __name__ == "__main__":
+ #   inicializar_banco()
+
+
+# Se rodar diretamente
 if __name__ == "__main__":
-    inicializar_banco()
+    conn = inicializar_banco()
+    conn.close()

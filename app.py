@@ -2,6 +2,7 @@ from db import inicializar_banco
 inicializar_banco()
 
 from flask import Flask, render_template, request, redirect, url_for, flash
+import os
 import sqlite3
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -37,11 +38,12 @@ def handle_csrf_error(e):
     flash('Erro de segurança: token CSRF inválido ou expirado. Recarregue a página e tente novamente.', 'danger')
     return redirect(request.url)
 
-DB = 'despesas.db'
+#DB = 'despesas.db'
 
+DB_PATH = os.path.join(os.path.dirname(__file__), 'banco', 'despesas.db')
 # Função para conexão com o banco de dados
 def get_db_connection():
-    conn = sqlite3.connect(DB)
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
