@@ -1,0 +1,234 @@
+
+├── README.md
+├── __pycache__
+│   └── db.cpython-312.pyc
+├── app.py
+├── banco
+│   └── despesas.db
+├── db.py
+├── despesas.db_funcional
+├── estrutura_projeto.log
+├── from app import db.py
+├── import.py
+├── inicia_app.bat
+├── leiame.txt
+├── requirements.txt
+├── source
+│   ├── Include
+│   ├── Lib
+│   │   └── site-packages
+│   │       ├── 30fcd23745efe32ce681__mypyc.cp312-win_amd64.pyd
+│   │       ├── MarkupSafe-3.0.2.dist-info
+│   │       ├── PIL
+│   │       ├── PyInstaller
+│   │       ├── PySocks-1.7.1.dist-info
+│   │       ├── __pycache__
+│   │       ├── _black_version.py
+│   │       ├── _cffi_backend.cp312-win_amd64.pyd
+│   │       ├── _distutils_hack
+│   │       ├── _pyinstaller_hooks_contrib
+│   │       ├── altgraph
+│   │       ├── altgraph-0.17.4.dist-info
+│   │       ├── attr
+│   │       ├── attrs
+│   │       ├── attrs-25.3.0.dist-info
+│   │       ├── babel
+│   │       ├── babel-2.17.0.dist-info
+│   │       ├── black
+│   │       ├── black-25.1.0.dist-info
+│   │       ├── blackd
+│   │       ├── blib2to3
+│   │       ├── blinker
+│   │       ├── blinker-1.9.0.dist-info
+│   │       ├── certifi
+│   │       ├── certifi-2025.4.26.dist-info
+│   │       ├── cffi
+│   │       ├── cffi-1.17.1.dist-info
+│   │       ├── chardet
+│   │       ├── chardet-5.2.0.dist-info
+│   │       ├── charset_normalizer
+│   │       ├── charset_normalizer-3.4.2.dist-info
+│   │       ├── click
+│   │       ├── click-8.2.0.dist-info
+│   │       ├── colorama
+│   │       ├── colorama-0.4.6.dist-info
+│   │       ├── dateutil
+│   │       ├── distutils-precedence.pth
+│   │       ├── dotenv
+│   │       ├── flask
+│   │       ├── flask-3.1.1.dist-info
+│   │       ├── flask_wtf
+│   │       ├── flask_wtf-1.2.2.dist-info
+│   │       ├── h11
+│   │       ├── h11-0.16.0.dist-info
+│   │       ├── idna
+│   │       ├── idna-3.10.dist-info
+│   │       ├── itsdangerous
+│   │       ├── itsdangerous-2.2.0.dist-info
+│   │       ├── jinja2
+│   │       ├── jinja2-3.1.6.dist-info
+│   │       ├── markupsafe
+│   │       ├── mypy_extensions-1.1.0.dist-info
+│   │       ├── mypy_extensions.py
+│   │       ├── ordlookup
+│   │       ├── outcome
+│   │       ├── outcome-1.3.0.post0.dist-info
+│   │       ├── packaging
+│   │       ├── packaging-25.0.dist-info
+│   │       ├── pathspec
+│   │       ├── pathspec-0.12.1.dist-info
+│   │       ├── pefile-2023.2.7.dist-info
+│   │       ├── pefile.py
+│   │       ├── peutils.py
+│   │       ├── pillow-11.2.1.dist-info
+│   │       ├── pip
+│   │       ├── pip-24.0.dist-info
+│   │       ├── pkg_resources
+│   │       ├── platformdirs
+│   │       ├── platformdirs-4.3.8.dist-info
+│   │       ├── pycparser
+│   │       ├── pycparser-2.22.dist-info
+│   │       ├── pyinstaller-6.14.0.dist-info
+│   │       ├── pyinstaller_hooks_contrib-2025.4.dist-info
+│   │       ├── python_dateutil-2.9.0.post0.dist-info
+│   │       ├── python_dotenv-1.1.0.dist-info
+│   │       ├── pywin32_ctypes-0.2.3.dist-info
+│   │       ├── reportlab
+│   │       ├── reportlab-4.4.1.dist-info
+│   │       ├── requests
+│   │       ├── requests-2.32.3.dist-info
+│   │       ├── selenium
+│   │       ├── selenium-4.33.0.dist-info
+│   │       ├── setuptools
+│   │       ├── setuptools-80.9.0.dist-info
+│   │       ├── six-1.17.0.dist-info
+│   │       ├── six.py
+│   │       ├── sniffio
+│   │       ├── sniffio-1.3.1.dist-info
+│   │       ├── socks.py
+│   │       ├── sockshandler.py
+│   │       ├── sortedcontainers
+│   │       ├── sortedcontainers-2.4.0.dist-info
+│   │       ├── tkcalendar
+│   │       ├── tkcalendar-1.6.1.dist-info
+│   │       ├── trio
+│   │       ├── trio-0.30.0.dist-info
+│   │       ├── trio_websocket
+│   │       ├── trio_websocket-0.12.2.dist-info
+│   │       ├── typing_extensions-4.13.2.dist-info
+│   │       ├── typing_extensions.py
+│   │       ├── urllib3
+│   │       ├── urllib3-2.4.0.dist-info
+│   │       ├── webdriver_manager
+│   │       ├── webdriver_manager-4.0.2.dist-info
+│   │       ├── websocket
+│   │       ├── websocket_client-1.8.0.dist-info
+│   │       ├── werkzeug
+│   │       ├── werkzeug-3.1.3.dist-info
+│   │       ├── win32ctypes
+│   │       ├── wsproto
+│   │       ├── wsproto-1.2.0.dist-info
+│   │       ├── wtforms
+│   │       └── wtforms-3.2.1.dist-info
+│   ├── Scripts
+│   │   ├── Activate.ps1
+│   │   ├── activate
+│   │   ├── activate.bat
+│   │   ├── black.exe
+│   │   ├── blackd.exe
+│   │   ├── chardetect.exe
+│   │   ├── deactivate.bat
+│   │   ├── dotenv.exe
+│   │   ├── flask.exe
+│   │   ├── normalizer.exe
+│   │   ├── pip.exe
+│   │   ├── pip3.12.exe
+│   │   ├── pip3.exe
+│   │   ├── pybabel.exe
+│   │   ├── pyi-archive_viewer.exe
+│   │   ├── pyi-bindepend.exe
+│   │   ├── pyi-grab_version.exe
+│   │   ├── pyi-makespec.exe
+│   │   ├── pyi-set_version.exe
+│   │   ├── pyinstaller.exe
+│   │   ├── python.exe
+│   │   ├── pythonw.exe
+│   │   └── wsdump.exe
+│   └── pyvenv.cfg
+├── static
+│   └── style.css
+├── temp
+│   ├── BANDEIRA 202505151205.sql
+│   ├── CATEGORIA 202505151205.sql
+│   ├── COMPRADOR 202505151206.sql
+│   ├── ESTABELECIMENTO 202505151206.sql
+│   ├── Editar_cadastro.html
+│   ├── FORMA_PAGAMENTO 202505151206.sql
+│   ├── LOCAL_COMPRA 202505151207.sql
+│   ├── PRODUTO 202505151207.sql
+│   ├── adicionar.html
+│   ├── alterar_despesas.html
+│   ├── app.py
+│   ├── base_public.html
+│   ├── consultar_cadastro.html
+│   ├── dashboard_login.html
+│   ├── db.py
+│   ├── despesas.db
+│   └── despesas.html
+├── templates
+│   ├── Incluir_bandeira.html
+│   ├── Incluir_categoria.html
+│   ├── Incluir_comprador.html
+│   ├── Incluir_estabelecimento.html
+│   ├── Incluir_forma_pagamento.html
+│   ├── Incluir_local_compra.html
+│   ├── Incluir_produto.html
+│   ├── base.html
+│   ├── base_login.html
+│   ├── cadastro.html
+│   ├── cadastro_usuario.html
+│   ├── categorias.html
+│   ├── consultar_bandeira.html
+│   ├── consultar_categoria.html
+│   ├── consultar_comprador.html
+│   ├── consultar_despesas.html
+│   ├── consultar_estabelecimento.html
+│   ├── consultar_forma_pagamento.html
+│   ├── consultar_local_compra.html
+│   ├── consultar_produto.html
+│   ├── consultar_usuarios.html
+│   ├── dashboard.html
+│   ├── despesas.html
+│   ├── editar_bandeira.html
+│   ├── editar_categoria.html
+│   ├── editar_comprador.html
+│   ├── editar_despesa.html
+│   ├── editar_estabelecimento.html
+│   ├── editar_forma_pagamento.html
+│   ├── editar_local_compra.html
+│   ├── editar_produto.html
+│   ├── editar_usuario.html
+│   ├── login.html
+│   ├── macros.html
+│   └── totais_despesas_mensais.html
+├── util
+│   ├── __pycache__
+│   │   └── helpers.cpython-312.pyc
+│   └── helpers.py
+└── venv
+    ├── Include
+    ├── Lib
+    │   └── site-packages
+    │       ├── pip
+    │       └── pip-24.0.dist-info
+    ├── Scripts
+    │   ├── Activate.ps1
+    │   ├── activate
+    │   ├── activate.bat
+    │   ├── deactivate.bat
+    │   ├── pip.exe
+    │   ├── pip3.12.exe
+    │   ├── pip3.exe
+    │   ├── python.exe
+    │   └── pythonw.exe
+    └── pyvenv.cfg

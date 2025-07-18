@@ -63,41 +63,6 @@ try:
 except:
      locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
 
-# Função para calcular as parcelas com base na data da compra e vencimento
-#def calcular_parcelas(data_compra, quantidade_parcelas, vencimento_bandeira):
-  #  try:
-     #   data_compra = datetime.strptime(data_compra, "%d/%m/%Y")
-    #except Exception as e:
-     #   print(f"Erro ao converter data: {data_compra} -> {e}")
-      #  return []
-
-    #parcelas = []
-
-    # Define a data da primeira parcela com base no vencimento
-    #if data_compra.day < vencimento_bandeira:
-    #    primeira_parcela = data_compra.replace(day=1) + relativedelta(months=1)
-    #else:
-    #    primeira_parcela = data_compra.replace(day=1) + relativedelta(months=2)
-
-    # Garante que o dia do vencimento seja possível (ex: não existe 31 em todos os meses)
-   # try:
-    #    primeira_parcela = primeira_parcela.replace(day=vencimento_bandeira)
-    #except ValueError:
-        # Se o dia não existe no mês, pega o último dia do mês
-     #   ultima_do_mes = (primeira_parcela + relativedelta(months=1, day=1)) - relativedelta(days=1)
-      #  primeira_parcela = ultima_do_mes
-
-    # Gera as parcelas
-    #for i in range(quantidade_parcelas):
-      #  vencimento = primeira_parcela + relativedelta(months=i)
-       # parcelas.append(vencimento)
-
-    #return parcelas
-
-# from flask import request, jsonify
-# from datetime import datetime
-# from datetime import datetime
-# from flask import request, jsonify
 
 @app.route('/toggle_pagamento', methods=['POST'])
 def toggle_pagamento_ajax():
@@ -397,7 +362,7 @@ def lancar_despesas():
     quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
     conn.close()
 
-    return render_template('despesas.html', 
+    return render_template('Incluir_despesas.html', 
                            estabelecimentos=estabelecimentos, 
                            categorias=categorias,
                            locais=locais, 
@@ -663,66 +628,6 @@ def excluir_despesa(id):
         conn.close()
 
     return redirect(url_for('consultar_despesas'))
-
-
-
-# @app.route('/cadastro/<tipo>', methods=['GET', 'POST'])
-# def cadastro(tipo):
-#     if request.method == 'POST':
-#         nome = request.form['nome']
-#         conn = get_db_connection()
-
-#         try:
-#             if tipo.lower() == 'parcelamento':
-#                 conn.execute("INSERT INTO PARCELAMENTO (tipo) VALUES (?)", (nome,))
-#             else:
-#                 conn.execute(f"INSERT INTO {tipo.upper()} (nome) VALUES (?)", (nome,))
-#             conn.commit()
-#         except Exception as e:
-#             flash(f"Erro ao cadastrar {tipo}: {str(e)}", "danger")
-#         finally:
-#             conn.close()
-
-#         return redirect(url_for('cadastro', tipo=tipo))
-
-#     return render_template('cadastro.html', tipo=tipo)
-
-
-# @app.route('/cadastro/<tipo>/consultar')
-# def consultar_cadastro(tipo):
-#     conn = get_db_connection()
-#     try:
-#         registros = conn.execute(f"SELECT * FROM {tipo.upper()} ORDER BY nome").fetchall()
-#     except Exception as e:
-#         registros = []
-#         flash(f"Erro ao consultar {tipo}: {str(e)}", "danger")
-#     finally:
-#         conn.close()
-#     return render_template('consultar_cadastro.html', tipo=tipo, registros=registros)
-
-# @app.route('/cadastro/<tipo>/editar/<int:id>', methods=['GET', 'POST'])
-# def editar_cadastro(tipo, id):
-#     conn = get_db_connection()
-#     if request.method == 'POST':
-#         nome = request.form['nome']
-#         conn.execute(f"UPDATE {tipo.upper()} SET nome = ? WHERE id = ?", (nome, id))
-#         conn.commit()
-#         conn.close()
-#         flash(f"{tipo.capitalize()} atualizado com sucesso!", "success")
-#         return redirect(url_for('consultar_cadastro', tipo=tipo))
-
-#     registro = conn.execute(f"SELECT * FROM {tipo.upper()} WHERE id = ?", (id,)).fetchone()
-#     conn.close()
-#     return render_template('editar_cadastro.html', tipo=tipo, registro=registro)
-
-# @app.route('/cadastro/<tipo>/excluir/<int:id>', methods=['POST'])
-# def excluir_cadastro(tipo, id):
-#     conn = get_db_connection()
-#     conn.execute(f"DELETE FROM {tipo.upper()} WHERE id = ?", (id,))
-#     conn.commit()
-#     conn.close()
-#     flash(f"{tipo.capitalize()} excluído com sucesso!", "success")
-#     return redirect(url_for('consultar_cadastro', tipo=tipo))
 
 
 # Rotas do CRUD de estabelecimento
