@@ -2,48 +2,31 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 
-# def calcular_parcelas_neon(data_compra, quantidade_parcelas, vencimento_dia, melhor_dia_compra):
-#     # Define o próximo "melhor dia de compra"
-#     # melhor_data_corte = data_compra.replace(day=melhor_dia_compra)
-#     # if data_compra.day > melhor_dia_compra:
-#     #     melhor_data_corte += relativedelta(months=1)
-
-#     # Se comprou antes do corte, vai para a próxima fatura
-#     # if data_compra < melhor_data_corte:
-#     #     primeiro_mes = data_compra + relativedelta(months=1)
-#     # else:
-#     #     primeiro_mes = data_compra + relativedelta(months=2)
-#     if data_compra.day <= melhor_dia_compra:
-#        primeiro_mes = data_compra + relativedelta(months=1)
-#     else:
-#         primeiro_mes = data_compra + relativedelta(months=2)
-
-#     # Ajusta o vencimento
-#     try:
-#         primeira_parcela = primeiro_mes.replace(day=vencimento_dia)
-#     except ValueError:
-#         proximo_mes = primeiro_mes + relativedelta(months=1, day=1)
-#         primeira_parcela = proximo_mes - relativedelta(days=1)
-
-#     parcelas = [primeira_parcela + relativedelta(months=i) for i in range(quantidade_parcelas)]
-
-#     return parcelas
 def calcular_parcelas_neon(data_compra, quantidade_parcelas, vencimento_dia, melhor_dia_compra):
-    # O mês base para vencimento é o mês seguinte ao mês da compra
-    mes_base = (data_compra.replace(day=1) + relativedelta(months=1))
+    # Define o próximo "melhor dia de compra"
+    # melhor_data_corte = data_compra.replace(day=melhor_dia_compra)
+    # if data_compra.day > melhor_dia_compra:
+    #     melhor_data_corte += relativedelta(months=1)
 
-    # Se a compra foi depois do melhor dia, o vencimento começa nesse mês base
-    # Caso contrário, começa no mês base anterior (ou seja, fatura atual)
+    # Se comprou antes do corte, vai para a próxima fatura
+    # if data_compra < melhor_data_corte:
+    #     primeiro_mes = data_compra + relativedelta(months=1)
+    # else:
+    #     primeiro_mes = data_compra + relativedelta(months=2)
     if data_compra.day <= melhor_dia_compra:
-        mes_base = mes_base - relativedelta(months=1)
+       primeiro_mes = data_compra + relativedelta(months=1)
+    else:
+        primeiro_mes = data_compra + relativedelta(months=2)
 
+    # Ajusta o vencimento
     try:
-        primeira_parcela = mes_base.replace(day=vencimento_dia)
+        primeira_parcela = primeiro_mes.replace(day=vencimento_dia)
     except ValueError:
-        proximo_mes = mes_base + relativedelta(months=1, day=1)
+        proximo_mes = primeiro_mes + relativedelta(months=1, day=1)
         primeira_parcela = proximo_mes - relativedelta(days=1)
 
     parcelas = [primeira_parcela + relativedelta(months=i) for i in range(quantidade_parcelas)]
+
     return parcelas
 
 

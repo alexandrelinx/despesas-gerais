@@ -25,7 +25,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from flask_wtf.csrf import CSRFError
-from util.helpers import calcular_parcelas
+
 
 
 app = Flask(__name__)
@@ -120,15 +120,6 @@ def toggle_pagamento_ajax():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# parcelas = calcular_parcelas(
-#             data_compra_str,
-#             quantidade_parcelas,
-#             vencimento_bandeira,
-#             melhor_dia_compra,
-#             nome_bandeira
-#         )
-
-
 @app.route('/')
 def dashboard():
     if 'user_id' not in session:
@@ -156,7 +147,7 @@ def dashboard():
     LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
     LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
     LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-    ORDER BY  B.vencimento_dia  DESC
+    ORDER BY D.data_compra DESC
     """).fetchall()
 
     despesas = [dict(row) for row in despesas]
@@ -167,99 +158,40 @@ def dashboard():
     parcelas_exibidas = []
 
     for despesa in despesas:
-        valor_total = float(despesa['valor_compra'])
-        quantidade_parcelas = int(despesa['quantidade_parcelas'])
-        data_compra_str = despesa['data_compra']  # Assumindo formato 'YYYY-MM-DD'
-        bandeira_nome = despesa['bandeira_nome']
-        vencimento_bandeira = despesa['vencimento_bandeira']
-        melhor_dia_compra = despesa['melhor_dia_compra']
+        valor_parcela = float(despesa['valor_parcela_despesa'])
 
-        # Converter data_compra para datetime, se precisar para calcular parcelas
-        data_compra_dt = datetime.strptime(data_compra_str, '%d/%m/%Y')
+        parcelas_no_banco = conn.execute("""
+            SELECT id, data_vencimento, pago
+            FROM parcelas 
+            WHERE despesa_id = ?
+            ORDER BY data_vencimento
+        """, (despesa['despesa_id'],)).fetchall()
 
-        # Para Neon (ou outra bandeira que precisar), recalcular parcelas
-        if bandeira_nome.lower() == 'neon':
-            # Chama a função que retorna as datas corretas das parcelas
-            datas_parcelas = calcular_parcelas(
-                data_compra_str,
-                quantidade_parcelas,
-                vencimento_bandeira,
-                melhor_dia_compra,
-                bandeira_nome
-            )
-            valor_parcela = valor_total / quantidade_parcelas
-        else:
-            # Usa valor parcela armazenado para outras bandeiras
-            valor_parcela = float(despesa['valor_parcela_despesa'])
-            datas_parcelas = []
+        for idx, parcela in enumerate(parcelas_no_banco, start=1):
+            vencimento_str = parcela['data_vencimento']  # Ex: '15/06/2025'
+            dt_vencimento = datetime.strptime(vencimento_str, "%d/%m/%Y")
+            mes_ano = dt_vencimento.strftime("%m/%Y")
+            meses_set.add(mes_ano)
 
-            # Também pegar as datas das parcelas do banco para outras bandeiras
-            parcelas_no_banco = conn.execute("""
-                SELECT id, data_vencimento, pago
-                FROM parcelas 
-                WHERE despesa_id = ?
-                ORDER BY data_vencimento
-            """, (despesa['despesa_id'],)).fetchall()
+            pago_parcela = int(parcela['pago'] or 0)
+            chave_bandeira = f"{despesa['bandeira_nome']} - {despesa['vencimento_bandeira']}"
 
-        # Agora monta as parcelas para exibir no dashboard
-        if bandeira_nome.lower() == 'neon':
-            for idx, dt_vencimento in enumerate(datas_parcelas, start=1):
-                mes_ano = dt_vencimento.strftime("%m/%Y")
-                meses_set.add(mes_ano)
+            parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
+            parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
 
-                # Busca o status de pagamento da parcela no banco
-                parcela_db = conn.execute("""
-                    SELECT id, pago FROM parcelas
-                    WHERE despesa_id = ? AND numero_parcela = ?
-                """, (despesa['despesa_id'], idx)).fetchone()
-
-                pago_parcela = int(parcela_db['pago'] if parcela_db else 0)
-
-                chave_bandeira = f"{bandeira_nome} - {vencimento_bandeira}"
-
-                parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
-                parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
-
-                parcelas_exibidas.append({
-                    "id": despesa['despesa_id'],
-                    "numero_parcela": idx,
-                    "total_parcelas": quantidade_parcelas,
-                    "data_vencimento": dt_vencimento,
-                    "valor_parcela": valor_parcela,
-                    "parcela_alterada": bool(despesa.get("parcela_alterada", 0)),
-                    "produto_nome": despesa['produto_nome'],
-                    "bandeira_nome": bandeira_nome,
-                    "estabelecimento": despesa['estabelecimento'],
-                    "data_compra": despesa['data_compra'],
-                    "pago": pago_parcela
-                })
-        else:
-            # Para outras bandeiras, usa os dados já do banco
-            for idx, parcela in enumerate(parcelas_no_banco, start=1):
-                vencimento_str = parcela['data_vencimento']  # Ex: '15/06/2025'
-                dt_vencimento = datetime.strptime(vencimento_str, "%d/%m/%Y")
-                mes_ano = dt_vencimento.strftime("%m/%Y")
-                meses_set.add(mes_ano)
-
-                pago_parcela = int(parcela['pago'] or 0)
-                chave_bandeira = f"{bandeira_nome} - {vencimento_bandeira}"
-
-                parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
-                parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
-
-                parcelas_exibidas.append({
-                    "id": despesa['despesa_id'],
-                    "numero_parcela": idx,
-                    "total_parcelas": quantidade_parcelas,
-                    "data_vencimento": dt_vencimento,
-                    "valor_parcela": valor_parcela,
-                    "parcela_alterada": bool(despesa.get("parcela_alterada", 0)),
-                    "produto_nome": despesa['produto_nome'],
-                    "bandeira_nome": bandeira_nome,
-                    "estabelecimento": despesa['estabelecimento'],
-                    "data_compra": despesa['data_compra'],
-                    "pago": pago_parcela
-                })
+            parcelas_exibidas.append({
+                "id": despesa['despesa_id'],
+                "numero_parcela": idx,
+                "total_parcelas": despesa['quantidade_parcelas'],
+                "data_vencimento": dt_vencimento,
+                "valor_parcela": valor_parcela,
+                "parcela_alterada": bool(despesa.get("parcela_alterada", 0)),
+                "produto_nome": despesa['produto_nome'],
+                "bandeira_nome": despesa['bandeira_nome'],
+                "estabelecimento": despesa['estabelecimento'],
+                "data_compra": despesa['data_compra'],
+                "pago": pago_parcela
+            })
 
     pagamento_por_mes_bandeira = {}
     for bandeira, meses in parcelas_status_pagamento.items():
@@ -364,53 +296,41 @@ def lancar_despesas():
             despesa_id = cursor.lastrowid
 
             # Obter dados para cálculo das parcelas
-          #  data_compra = request.form['data_compra']  # formato: yyyy-mm-dd #####
+            data_compra = request.form['data_compra']  # formato: yyyy-mm-dd
             quantidade_parcelas = int(conn.execute(
                 "SELECT quantidade FROM QUANTIDADE_PARCELAS WHERE id = ?", 
                 (request.form['quantidade_parcelas_id'],)
             ).fetchone()['quantidade'])
 
-           # bandeira_id = request.form['bandeira_id']
+            bandeira_id = request.form['bandeira_id']
             bandeira_dados = conn.execute(
-                "SELECT nome, melhor_dia_compra, vencimento_dia FROM BANDEIRA WHERE id = ?",
-                (request.form['bandeira_id'],)
+                "SELECT melhor_dia_compra, vencimento_dia FROM BANDEIRA WHERE id = ?",
+                (bandeira_id,)
             ).fetchone()
 
             melhor_dia_compra = bandeira_dados['melhor_dia_compra']
             vencimento_bandeira = bandeira_dados['vencimento_dia']
-            nome_bandeira = bandeira_dados['nome']
+
             # Converter a data de compra (YYYY-MM-DD)
-            # data_compra_dt = datetime.strptime(data_compra, "%d/%m/%Y")
+            data_compra_dt = datetime.strptime(data_compra, "%d/%m/%Y")
 
             # Define a data da primeira parcela com base no melhor dia de compra
-            # if data_compra_dt.day < melhor_dia_compra:
-            #     primeira_data = data_compra_dt.replace(day=1) + relativedelta(months=1)
-            # else:
-            #     primeira_data = data_compra_dt.replace(day=1) + relativedelta(months=2)
+            if data_compra_dt.day < melhor_dia_compra:
+                primeira_data = data_compra_dt.replace(day=1) + relativedelta(months=1)
+            else:
+                primeira_data = data_compra_dt.replace(day=1) + relativedelta(months=2)
 
-            # # Ajusta para o vencimento da fatura
-            # try:
-            #     primeira_data = primeira_data.replace(day=vencimento_bandeira)
-            # except ValueError:
-            #     ultima_do_mes = (primeira_data + relativedelta(months=1, day=1)) - relativedelta(days=1)
-            #     primeira_data = ultima_do_mes
+            # Ajusta para o vencimento da fatura
+            try:
+                primeira_data = primeira_data.replace(day=vencimento_bandeira)
+            except ValueError:
+                ultima_do_mes = (primeira_data + relativedelta(months=1, day=1)) - relativedelta(days=1)
+                primeira_data = ultima_do_mes
 
-            # # Gera as datas das parcelas
-            # parcelas = [primeira_data + relativedelta(months=i) for i in range(quantidade_parcelas)]
+            # Gera as datas das parcelas
+            parcelas = [primeira_data + relativedelta(months=i) for i in range(quantidade_parcelas)]
 
             # Inserir parcelas
-           
-            data_compra_str = datetime.strptime(request.form['data_compra'], "%d/%m/%Y").strftime("%d/%m/%Y")
-
-            parcelas = calcular_parcelas(
-            data_compra_str,
-            quantidade_parcelas,
-            vencimento_bandeira,
-            melhor_dia_compra,
-            nome_bandeira
-        )
-
-
             for idx, vencimento in enumerate(parcelas, start=1):
                 conn.execute("""
                     INSERT INTO PARCELAS (despesa_id, numero_parcela, data_vencimento, valor_parcela)
@@ -537,55 +457,53 @@ def consultar_despesas():
 @app.route('/editar_despesa/<int:id>', methods=['GET', 'POST'])
 def editar_despesa(id):
     conn = get_db_connection()
-
-    # Busca a despesa pelo id
     despesa = conn.execute("SELECT * FROM DESPESAS WHERE id = ?", (id,)).fetchone()
+
     if not despesa:
         flash("Despesa não encontrada!", "danger")
-        conn.close()
         return redirect(url_for('consultar_despesas'))
 
     if request.method == 'POST':
+        print("valor_parcela do form:", request.form.get('valor_parcela'))
         try:
-            # Captura dados do formulário
-            estabelecimento_id = request.form['estabelecimento_id']
-            categoria_id = request.form['categoria_id']
-            local_compra_id = request.form['local_compra_id']
-            comprador_id = request.form['comprador_id']
-            produto_id = request.form['produto_id']
-            data_compra_str = request.form['data_compra']
-            valor_compra = request.form['valor_compra']
-            forma_pagamento_id = request.form['forma_pagamento_id']
-            bandeira_id = request.form['bandeira_id']
-            parcelamento_id = request.form['parcelamento_id']
-            quantidade_parcelas_id = request.form['quantidade_parcelas_id']
-            valor_parcela = request.form['valor_parcela']
-            observacao = request.form.get('observacao', '')
-
+            # Captura os dados do formulário
+            dados = (
+                request.form['estabelecimento_id'],
+                request.form['categoria_id'],
+                request.form['local_compra_id'],
+                request.form['comprador_id'],
+                request.form['produto_id'],
+                request.form['data_compra'],
+                request.form['valor_compra'],
+                request.form['forma_pagamento_id'],
+                request.form['bandeira_id'],
+                request.form['parcelamento_id'],
+                request.form['quantidade_parcelas_id'],
+                request.form['valor_parcela'],
+                request.form.get('observacao', '')
+            )
             parcela_alterada = 1
+            print(f"parcela_alterada definida para: {parcela_alterada}")
 
-            # Atualiza tabela DESPESAS
             conn.execute("""
-                UPDATE DESPESAS SET
-                    estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
+                UPDATE DESPESAS
+                SET estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
                     produto_id = ?, data_compra = ?, valor_compra = ?, forma_pagamento_id = ?, bandeira_id = ?,
                     parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?, observacao = ?, parcela_alterada = ?
                 WHERE id = ?
-            """, (
-                estabelecimento_id, categoria_id, local_compra_id, comprador_id,
-                produto_id, data_compra_str, valor_compra, forma_pagamento_id, bandeira_id,
-                parcelamento_id, quantidade_parcelas_id, valor_parcela, observacao, parcela_alterada,
-                id
-            ))
+            """, (*dados, parcela_alterada, id))
+
             conn.commit()
+            print("Despesa atualizada com sucesso, ID:", id)
 
-            # Obtém quantidade de parcelas (int)
-            nova_qtd_parcelas = conn.execute(
+            # Atualização das parcelas
+            nova_qtd_parcelas = int(conn.execute(
                 "SELECT quantidade FROM QUANTIDADE_PARCELAS WHERE id = ?",
-                (quantidade_parcelas_id,)
-            ).fetchone()['quantidade']
+                (request.form['quantidade_parcelas_id'],)
+            ).fetchone()['quantidade'])
 
-            # Busca dados da bandeira para cálculo das datas
+            bandeira_id = request.form['bandeira_id']
+
             bandeira_dados = conn.execute(
                 "SELECT nome, melhor_dia_compra, vencimento_dia FROM BANDEIRA WHERE id = ?",
                 (bandeira_id,)
@@ -594,28 +512,38 @@ def editar_despesa(id):
             nome_bandeira = bandeira_dados['nome']
             melhor_dia_compra = bandeira_dados['melhor_dia_compra']
             vencimento_dia = bandeira_dados['vencimento_dia']
+            nova_data_compra = datetime.strptime(request.form['data_compra'], "%d/%m/%Y")
+            novo_valor_parcela = float(request.form['valor_parcela'])
 
-            # Formata data da compra para padrão esperado (dd/mm/yyyy)
-            data_compra_formatada = datetime.strptime(data_compra_str, "%d/%m/%Y").strftime("%d/%m/%Y")
+            if "neon" in nome_bandeira.lower():
+                # Regra especial da bandeira Neon
+                if nova_data_compra.day >= melhor_dia_compra:
+                    primeiro_mes = nova_data_compra + relativedelta(months=1)
+                else:
+                    primeiro_mes = nova_data_compra 
+            else:
+                # Regra padrão (das outras bandeiras)
+                if nova_data_compra.day < melhor_dia_compra:
+                    primeiro_mes = nova_data_compra + relativedelta(months=1)
+                else:
+                    primeiro_mes = nova_data_compra + relativedelta(months=2)
 
-            # Chama função externa que calcula as datas das parcelas
-            datas_novas = calcular_parcelas(
-                data_compra_formatada,
-                nova_qtd_parcelas,
-                vencimento_dia,
-                melhor_dia_compra,
-                nome_bandeira
-            )
+            try:
+                primeira_data = primeiro_mes.replace(day=vencimento_dia)
+            except ValueError:
+                primeira_data = (primeiro_mes + relativedelta(months=1, day=1)) - relativedelta(days=1)
 
-            # Busca parcelas atuais dessa despesa
+            datas_novas = [primeira_data + relativedelta(months=i) for i in range(nova_qtd_parcelas)]
+
+            print("📌 Datas novas calculadas para as parcelas:")
+            for i, d in enumerate(datas_novas, start=1):
+                print(f"  Parcela {i}: {d.strftime('%d/%m/%Y')}")
+
             parcelas_existentes = conn.execute(
                 "SELECT * FROM PARCELAS WHERE despesa_id = ? ORDER BY numero_parcela", (id,)
             ).fetchall()
-
             qtd_parcelas_atual = len(parcelas_existentes)
-            novo_valor_parcela = float(valor_parcela)
 
-            # Se precisar adicionar parcelas (nova qtd maior que atual)
             if nova_qtd_parcelas > qtd_parcelas_atual:
                 for i in range(qtd_parcelas_atual, nova_qtd_parcelas):
                     conn.execute("""
@@ -623,31 +551,32 @@ def editar_despesa(id):
                         VALUES (?, ?, ?, ?)
                     """, (id, datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, i + 1))
 
-            # Se precisar remover parcelas (nova qtd menor que atual)
             elif nova_qtd_parcelas < qtd_parcelas_atual:
                 for i in range(nova_qtd_parcelas, qtd_parcelas_atual):
                     conn.execute("""
                         DELETE FROM PARCELAS WHERE despesa_id = ? AND numero_parcela = ?
                     """, (id, i + 1))
 
-            # Atualiza as parcelas que permanecem
             for i, parcela in enumerate(parcelas_existentes[:nova_qtd_parcelas]):
+                print(f"🛠 Atualizando parcela ID {parcela['id']} -> nova data: {datas_novas[i].strftime('%d/%m/%Y')} | valor: {novo_valor_parcela}")
                 conn.execute("""
-                    UPDATE PARCELAS SET data_vencimento = ?, valor_parcela = ? WHERE id = ?
+                    UPDATE PARCELAS
+                    SET data_vencimento = ?, valor_parcela = ?
+                    WHERE id = ?
                 """, (datas_novas[i].strftime("%d/%m/%Y"), novo_valor_parcela, parcela['id']))
 
             conn.commit()
             flash("Despesa atualizada com sucesso!", "success")
-            conn.close()
+            print("✅ Commit realizado com sucesso. Parcelas atualizadas no banco.")
             return redirect(url_for('consultar_despesas'))
 
         except Exception as e:
             conn.rollback()
+            print("Erro ao atualizar despesa:", e)
             flash(f"Erro ao atualizar despesa: {e}", "danger")
-            conn.close()
-            return redirect(url_for('editar_despesa', id=id))
+            print("Erro:", e)
 
-    # Método GET - carrega dados para o formulário
+    # Carrega dados para GET
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO").fetchall()
     categorias = conn.execute("SELECT * FROM CATEGORIA").fetchall()
     locais = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
@@ -657,7 +586,6 @@ def editar_despesa(id):
     bandeiras = conn.execute("SELECT * FROM BANDEIRA").fetchall()
     parcelamentos = conn.execute("SELECT * FROM PARCELAMENTO").fetchall()
     quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
-
     conn.close()
 
     return render_template(
@@ -673,6 +601,7 @@ def editar_despesa(id):
         parcelamentos=parcelamentos,
         quantidades=quantidade_parcelas
     )
+
                        
 @app.route('/excluir_despesa/<int:id>', methods=['POST'])
 def excluir_despesa(id):
