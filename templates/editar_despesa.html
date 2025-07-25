@@ -125,7 +125,7 @@
         </div>
          <div class="col-md-12 mt-3">
             <label>Observação</label>
-            <textarea name="observacao" class="form-control" rows="3" placeholder="Digite uma observação (opcional)" autocorrect="on" autocapitalize="sentences" spellcheck="true">{{ request.form.observacao or '' }}</textarea>
+            <textarea name="observacao" class="form-control" rows="3" placeholder="Digite uma observação (opcional)" autocorrect="on" autocapitalize="sentences" spellcheck="true">{{ request.form.get('observacao') or despesa['observacao'] or '' }}</textarea>
         </div>
     </div>
   

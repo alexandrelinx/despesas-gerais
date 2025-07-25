@@ -37,13 +37,13 @@
         <tr>
           <th>ID</th>
           <th style="min-width: 150px;">Estabelecimento</th>
-          <th style="min-width: 150px;">Produto</th>
-          <th class="text-end">Valor Compra</th>
-          <th>Data Compra</th>
+          <th style="min-width: 250px;">Produto</th>
+          <th style="min-width: 150px;"class="text-end">Valor Compra</th>
+          <th style="min-width: 150px;"class="text-center">Data Compra</th>
           <th>Bandeira</th>
-          <th>Parcelamento</th>
-          <th>observacao</th>
-          <th class="text-end">Valor Parcela</th>
+          <th style="min-width: 150px;"class="text-center">Qdte de parcelas</th>
+          <th style="max-width: 150px;">observacao</th>
+          <th class="text-end" style="max-width: 250px;">Valor Parcela</th>
           <th class="text-center">Ações</th>
         </tr>
       </thead>
@@ -54,18 +54,18 @@
           <td>{{ despesa.estabelecimento }}</td>
           <td>{{ despesa.produto_nome }}</td>
           <td class="text-end">{{ despesa.valor_compra | real  }}</td>
-          <td>{{ despesa.data_compra }}</td>
+          <td class="text-center">{{ despesa.data_compra }}</td>
           <td>{{ despesa.bandeira_nome }}</td>
-          <td>{{ despesa.parcelamento_tipo }}</td>
-          <td>{{despesa.observacao}}</td>
+          <td class="text-center">{{ despesa.numero_parcela }}</td>
+          <td>{{ (despesa.observacao or '').replace('\n', '<br>') | safe }}</td>
         <!--  <td class="text-end">{{ despesa.valor_parcela | real  }}</td>> -->
-          <td class="text-end {% if despesa.parcela_alterada %}text-primary font-weight-bold{% endif %}">
+          <td style="min-width:150px" class="text-end  {% if despesa.parcela_alterada %}text-primary font-weight-bold{% endif %}">
           {{ despesa.valor_parcela | real }}
           {% if despesa.parcela_alterada %}
           <span title="Valor alterado manualmente">🟦</span>
           {% endif %}
           </td>
-          <td class="text-center">
+          <td style="min-width:190px" class="text-center">
             <div class="d-flex justify-content-center">
               <a href="{{ url_for('editar_despesa', id=despesa.id) }}" class="btn btn-sm btn-warning mr-2">Editar</a>
               <form action="{{ url_for('excluir_despesa', id=despesa.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa?');">

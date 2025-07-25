@@ -14,13 +14,31 @@
 }
 
 .secao {
-    flex: 1;
     overflow: auto;
     padding: 10px;
     border: 1px solid #ddd;
     background-color: #fdfdfd;
 }
 
+
+.secao:not(.secao-parcelas):not(.secao-totais) {
+    flex: 1;
+}
+
+.secao-parcelas {
+    height: 150px;  /* altura fixa menor, ajuste conforme quiser */
+    overflow-y: auto; /* mantém o scroll vertical */
+    flex: none;
+}
+
+.secao-totais {
+   /* flex-grow: 2; /* ocupa o dobro do espaço em relação às outras com flex-grow 1 */
+    height: 500px; /* aqui você coloca a altura que quiser */
+    overflow: auto;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background-color: #fdfdfd;
+}
 /* Classe para célula marcada como paga */
 .pago {
     background-color: #d4edda !important;
@@ -28,15 +46,77 @@
     font-weight: bold !important;
     cursor: pointer;
 }
+
+/* Scroll horizontal para tabelas largas */
+.scroll-container {
+    overflow-x: auto;
+     width: 100%;
+     position: relative; /* importante para sticky funcionar dentro */
+}
+
+.scroll-container table {
+    min-width: max-content; 
+     border-collapse: collapse;  /* força a tabela a ser "scrollável" */
+     
+}
+
+/* Fixar a primeira coluna */
+.scroll-container th:first-child,
+.scroll-container td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 4;
+    border-right: 1px solid #dee2e6;
+}
+
+/* Fixar a segunda coluna */
+.scroll-container th:nth-child(2),
+.scroll-container td:nth-child(2) {
+    position: sticky;
+    left: 214px; /* mesma largura da primeira coluna */
+    background-color: white;
+    z-index: 3; /* abaixo do cabeçalho mas acima do conteúdo */
+    border-right: 1px solid #dee2e6;
+}
+
+/* Para o cabeçalho da primeira coluna ficar acima das células */
+.table-sticky thead th:first-child {
+    background-color: #343a40; 
+    color: white; 
+    z-index: 6;
+}
+
+/* Cabeçalho da segunda coluna sobreposta corretamente */
+.table-sticky thead th:nth-child(2) {
+    background-color: #343a40; 
+    color: white; 
+    z-index: 5;
+}
+
+
+/* Garantir largura mínima razoável para colunas */
+.scroll-container th,
+.scroll-container td {
+    min-width: 120px;
+    text-align: center;
+}
+
+
+
+
+
+
+
 </style>
 
 <div class="dashboard-container">
 
     <!-- ... demais seções ... -->
     <!-- Seção 1: Parcelas Detalhadas -->
-    <div class="secao">
+    <div class="secao secao-parcelas">
         <h5>Parcelas Detalhadas</h5>
-        <table class="table table-bordered table-sm table-hover">
+        <table class="table table-bordered table-sm table-hover parcelas-detalhadas">
             <thead class="table-light">
                 <tr>
                     <th>Compra</th>
@@ -71,52 +151,127 @@
     </div>
 
     <!-- Seção 2: Totais por Mês e Bandeira -->
-    <div class="secao">
+
+    <div class="secao secao-totais">
         <h5>Totais por Mês e Bandeira</h5>
-        <table class="table table-striped table-bordered table-sm">
-            <thead class="table-dark">
-                <tr>
+        <div class="scroll-container">
+            <table class="table table-striped table-bordered table-sm">
+                <thead class="table-dark">
+                  <tr>
                     <th>Bandeira</th>
-                    {% for mes_ano in colunas_meses %}
-                        <th>{{ mes_ano }}</th>
+                   {% for mes_ano in colunas_meses %}
+                     <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
+                   {% endfor %}
+                   <th>Total</th>
+                 </tr>
+                </thead>
+                <tbody>
+                    {% for bandeira, valores in parcelas_por_mes.items() %}
+                    <tr>
+                        <td>{{ bandeira }}</td>
+                   <!--     {% set total_bandeira = 0 %} -->
+                        {% for mes_ano in colunas_meses %}
+                            {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+                           <!-- {% set total_bandeira = total_bandeira + valor %}-->
+                            {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+                            <td
+                               role="button"
+                                tabindex="0"
+                                class="text-center total-cell {% if pago %}pago{% endif %}"
+                                data-bandeira="{{ bandeira }}"
+                                data-mes-ano="{{ mes_ano }}"
+                                onclick="togglePagamento(this)"
+                                title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+                                style="cursor:pointer;"
+                            >
+                                R$ {{ '%.2f'|format(valor) }}
+                            </td>
+                        {% endfor %}
+                         <td><strong>R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}</strong></td>
+                      <!--   <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
+                    </tr>
                     {% endfor %}
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for bandeira, valores in parcelas_por_mes.items() %}
-                <tr>
-                    <td>{{ bandeira }}</td>
-                    {% set total_bandeira = 0 %}
-                    {% for mes_ano in colunas_meses %}
-                        {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
-                        {% set total_bandeira = total_bandeira + valor %}
-                        {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
-                        <td
-                            class="text-center total-cell {% if pago %}pago{% endif %}"
-                            data-bandeira="{{ bandeira }}"
-                            data-mes-ano="{{ mes_ano }}"
-                            onclick="togglePagamento(this)"
-                            title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
-                            style="cursor:pointer;"
-                        >
-                            R$ {{ '%.2f'|format(valor) }}
-                        </td>
+                   <script>
+                   window.addEventListener('load', () => {
+                     const scrollContainer = document.querySelector('.secao-totais .scroll-container');
+                      if (scrollContainer) {
+                       scrollContainer.scrollLeft = 480; // posição fixa que você quer
+                       console.log('Scroll setado manualmente em 480');
+                     }
+                  });
+                  </script>
+
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>Total Geral</th>
+                        {% for mes_ano in colunas_meses %}
+                            <th>R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</th>
+                        {% endfor %}
+                        <th><strong>R$ {{ '%.2f'|format(total_geral) }}</strong></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Seção 3: Totais por Mês e Bandeira (Sem Cartão de Crédito) -->
+    <div class="secao secao-totais-outros">
+        <h5>Totais por Mês e Bandeira (Outras Formas de Pagamento)</h5>
+        <div class="scroll-container">
+            <table class="table table-striped table-bordered table-sm  table-sticky">
+                <thead class="table-dark">
+                    <tr>
+                       <th>Despesas</th>
+                       <th>Pgto</th>
+                       {% for mes_ano in colunas_meses %}
+                         <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
+                       {% endfor %}
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+                    <tr>
+                        <td>{{ bandeira }}</td>
+                        <td>{{ formas_pagamento_outros.get(bandeira, 'N/A') }}</td>
+                       <!-- {% set total_bandeira = 0 %} -->
+                        {% for mes_ano in colunas_meses %}
+                            {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
+                            {% set valor_float = valor | float %}
+                         <!--  {% set total_bandeira = total_bandeira + valor_float %}-->
+                            {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+                            <td
+                                role="button"
+                                tabindex="0"
+                                class="text-center total-cell {% if pago %}pago{% endif %}"
+                                data-bandeira="{{ bandeira }}"
+                                data-mes-ano="{{ mes_ano }}"
+                                onclick="togglePagamento(this)"
+                                onkeypress="if(event.key === 'Enter' || event.key === ' ') togglePagamento(this)"
+                                title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+                                style="cursor:pointer;"
+                            >
+                                R$ {{ '%.2f'|format(valor_float) }}
+                            </td>
+                        {% endfor %}
+                          <td><strong>R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira]) }}</strong></td>
+                      <!--  <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
+                    </tr>
                     {% endfor %}
-                    <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="table-light">
-                <tr>
-                    <th>Total Geral</th>
-                    {% for mes_ano in colunas_meses %}
-                        <th>R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</th>
-                    {% endfor %}
-                    <th><strong>R$ {{ '%.2f'|format(total_geral) }}</strong></th>
-                </tr>
-            </tfoot>
-        </table>
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>Total Geral</th>
+                        <th></th>
+                        {% for mes_ano in colunas_meses %}
+                            <th>R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}</th>
+                        {% endfor %}
+                        <th><strong>R$ {{ '%.2f'|format(total_geral_outros) }}</strong></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 
 </div>
@@ -125,12 +280,11 @@
 
 const csrfToken = "{{ csrf_token }}";
 
-
 function togglePagamento(cell) {
     const bandeira = cell.dataset.bandeira;
     const mesAno = cell.dataset.mesAno;
 
-     console.log("Toggle clicado: bandeira =", bandeira, ", mesAno =", mesAno);
+    console.log("Toggle clicado: bandeira =", bandeira, ", mesAno =", mesAno);
 
     fetch('/toggle_pagamento', {
         method: 'POST',
@@ -140,10 +294,10 @@ function togglePagamento(cell) {
         },
         body: JSON.stringify({ bandeira: bandeira, mes_ano: mesAno })
     })
-   .then(response => response.json())
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 🔁 Atualiza todas as células do mesmo grupo
+            // Atualiza todas as células do mesmo grupo
             const allCells = document.querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`);
             allCells.forEach(c => {
                 if (data.pago) {
@@ -160,6 +314,55 @@ function togglePagamento(cell) {
     })
     .catch(() => alert('Erro na comunicação com o servidor'));
 }
- </script>
+
+window.addEventListener('load', () => {
+  const hoje = new Date();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // ex: "07"
+  const ano = hoje.getFullYear();                            // ex: "2025"
+  const mesAno = `${mes}/${ano}`;
+
+  // Função que posiciona scroll numa seção pelo seletor CSS
+  // colunasFixas: quantidade de colunas fixas antes dos meses (ex: 1 ou 2)
+  function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
+    const scrollContainer = document.querySelector(seletorSecao + ' .scroll-container');
+    if (!scrollContainer) {
+      console.log(`Scroll container não encontrado para a seção: ${seletorSecao}`);
+      return;
+    }
+
+    const tabela = scrollContainer.querySelector('table');
+    if (!tabela) {
+      console.log('Tabela não encontrada dentro do scroll container');
+      return;
+    }
+
+    const ths = tabela.querySelectorAll('thead th');
+    let indiceColuna = -1;
+
+    ths.forEach((th, i) => {
+      if (th.id === `coluna_${mesAno}`) {
+        indiceColuna = i;
+      }
+    });
+
+    if (indiceColuna === -1) {
+      console.log(`Coluna ${mesAno} não encontrada na seção ${seletorSecao}.`);
+      return;
+    }
+
+    const larguraColuna = 120; // conforme seu CSS
+    const deslocamentoScroll = (indiceColuna - colunasFixas) * larguraColuna - 1;
+    scrollContainer.scrollLeft = deslocamentoScroll;
+
+    console.log(`Rolando para a coluna ${mesAno} na seção ${seletorSecao}, índice ${indiceColuna}, scrollLeft ${deslocamentoScroll}`);
+  }
+
+  // Aplica o scroll nas duas seções
+  scrollParaMesAtual('.secao-totais', 1);          // Apenas a coluna Bandeira antes dos meses
+  scrollParaMesAtual('.secao-totais-outros', 2);   // Bandeira + Forma de Pagamento antes dos meses
+});
+
+
+</script>
 
 {% endblock %}
