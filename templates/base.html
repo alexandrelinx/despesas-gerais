@@ -276,5 +276,60 @@
 
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".abrir-modal-parcelas").forEach(el => {
+    el.addEventListener("click", function (e) {
+      e.preventDefault();
+      console.log('Clique detectado no link da parcela', this.dataset.id);
+      const despesaId = this.dataset.id;
+
+      fetch(`/parcelas/${despesaId}`)
+        .then(res => res.json())
+        .then(data => {
+          const cabecalho = document.getElementById("cabecalho-despesa");
+          cabecalho.innerHTML = `
+            <strong>ID:</strong> ${data.despesa.id} <br>
+            <strong>Produto:</strong> ${data.despesa.produto} <br>
+            <strong>Data da Compra:</strong> ${data.despesa.data_compra} <br>
+            <strong>Bandeira:</strong> ${data.despesa.bandeira} <br>
+            <strong>Quantidade de Parcelas:</strong> ${data.despesa.qtd_parcelas}
+          `;
+
+          const tbody = document.getElementById("parcelas-body");
+          tbody.innerHTML = "";
+
+          if (!data.parcelas.length) {
+            tbody.innerHTML = "<tr><td colspan='2' class='text-center'>Nenhuma parcela encontrada.</td></tr>";
+            return;
+          }
+
+             data.parcelas.forEach(parcela => {
+           console.log('Parcela:', parcela);
+           const statusPago = Number(parcela.pago) === 1 ? 'Pago' : 'Aberto';
+           console.log('Status Pago:', statusPago);
+
+          const row = `
+           <tr>
+             <td>${parcela.data_vencimento}</td>
+             <td>${parcela.valor}</td>
+             <td>${statusPago}</td>
+           </tr>
+         `;
+         tbody.insertAdjacentHTML("beforeend", row);
+       });
+         
+       
+          // Abrir o modal manualmente
+          $('#parcelasModal').modal('show');
+        })
+        .catch(err => {
+          console.error("Erro ao buscar parcelas:", err);
+        });
+    });
+  });
+});
+</script>
+
 </body>
 </html>

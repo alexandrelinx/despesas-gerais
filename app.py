@@ -1841,6 +1841,58 @@ def excluir_usuario(id):
 
 
 
+@app.route('/parcelas/<int:despesa_id>')
+def listar_parcelas(despesa_id):
+    conn = get_db_connection()
+
+    # Buscar dados da despesa com os mesmos joins do consultar_despesas, só para o cabeçalho
+    despesa = conn.execute("""
+        SELECT
+            D.id,
+            P.nome AS produto,
+            D.data_compra,
+            B.nome AS bandeira,
+            QP.quantidade AS qtd_parcelas
+        FROM DESPESAS D
+        LEFT JOIN PRODUTO P ON D.produto_id = P.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        WHERE D.id = ?
+    """, (despesa_id,)).fetchone()
+
+    if despesa is None:
+        conn.close()
+        return jsonify({'error': 'Despesa não encontrada'}), 404
+
+    # Buscar parcelas associadas (supondo tabela PARCELAS com despesa_id)
+    parcelas = conn.execute("""
+        SELECT data_vencimento, valor_parcela,pago
+        FROM PARCELAS
+        WHERE despesa_id = ?
+        ORDER BY data_vencimento
+    """, (despesa_id,)).fetchall()
+
+    conn.close()
+
+    # Montar o dict para JSON
+    dados_despesa = {
+        'id': despesa['id'],
+        'produto': despesa['produto'],
+        'data_compra': despesa['data_compra'],
+        'bandeira': despesa['bandeira'],
+        'qtd_parcelas': despesa['qtd_parcelas']
+    }
+    dados_parcelas = [
+    {
+        'data_vencimento': parcela['data_vencimento'],
+        'valor': f"R$ {float(parcela['valor_parcela']):,.2f}".replace('.', ','),  # formato moeda BR
+        'pago': parcela['pago']  # <-- aqui tem que ter vírgula, exceto se for o último item
+    }
+    for parcela in parcelas
+]
+
+    return jsonify({'despesa': dados_despesa, 'parcelas': dados_parcelas})
+
 if __name__ == '__main__':
     app.secret_key = 'segredo-super-seguro'
     app.run(debug=True)
