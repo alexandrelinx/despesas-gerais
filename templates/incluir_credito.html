@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Novo Crédito{% endblock %}
+
+{% block content %}
+<h2>Novo Crédito de Salário</h2>
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control" style="text-transform: uppercase;" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('listar_credito') }}" class="btn btn-secondary">Voltar</a>
+</form>
+{% endblock %}

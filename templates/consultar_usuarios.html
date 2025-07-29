@@ -10,7 +10,7 @@
             <tr>
                 <th>ID</th>
                 <th>Usuário</th>
-                <th>Ações</th>
+                <th class="text-center">Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -18,7 +18,7 @@
             <tr>
                 <td>{{ user.id }}</td>
                 <td>{{ user.usuario }}</td>
-                <td>
+                   <td style="text-align: center;">
                     <a href="{{ url_for('editar_usuario', id=user.id) }}" class="btn btn-sm btn-warning">Editar</a>
                     <form action="{{ url_for('excluir_usuario', id=user.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');">
                         <button type="submit" name="csrf_token" value="{{ csrf_token() }}"class="btn btn-sm btn-danger">Excluir</button>

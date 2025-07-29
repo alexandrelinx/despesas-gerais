@@ -187,6 +187,8 @@
             <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i>Comprador</a>
             <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i>Forma de Pagamento</a>
             <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i>Bandeira</a>
+            <a href="/cadastro/credito" ><i class="fas fa-hand-holding-usd"></i>Crédito Financeiro</a>
+
          </div>
           
        <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i>Segurança</h6>
@@ -311,7 +313,6 @@ document.addEventListener("DOMContentLoaded", function () {
             <strong>ID:</strong> ${data.despesa.id} <br>
             <strong>Produto:</strong> ${data.despesa.produto} <br>
             <strong>Data da Compra:</strong> ${data.despesa.data_compra} <br>
-            <strong>Bandeira:</strong> ${data.despesa.bandeira} <br>
             <strong>Quantidade de Parcelas:</strong> ${data.despesa.qtd_parcelas}
           `;
 
@@ -330,6 +331,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const row = `
            <tr>
+             <td>${bandeira}</td>
              <td>${parcela.data_vencimento}</td>
              <td>${parcela.valor}</td>
              <td>${statusPago}</td>
@@ -353,6 +355,7 @@ document.querySelectorAll('.valor-mes-comprador').forEach(td => {
   td.addEventListener('click', () => {
     const comprador = td.dataset.comprador;
     const mes = td.dataset.mes;
+    const bandeira =td.dataset.bandeira;
 
     fetch('/detalhes_comprador_mes', {
       method: 'POST',
@@ -361,7 +364,7 @@ document.querySelectorAll('.valor-mes-comprador').forEach(td => {
         // Se usar CSRF, adicione o token aqui, por exemplo:
          'X-CSRFToken': '{{ csrf_token }}'
       },
-      body: JSON.stringify({ comprador, mes })
+      body: JSON.stringify({ comprador, mes,bandeira })
     })
 
 
@@ -384,12 +387,15 @@ document.querySelectorAll('.valor-mes-comprador').forEach(td => {
            data.detalhes.forEach(item => {
               const pago = item.pago ? 'Sim' : 'Não';
               const estabelecimento = item.estabelecimento || '-';
+              const bandeira = item.bandeira || '-';
+             
               tbody.insertAdjacentHTML('beforeend', `
                 <tr>
                   <td>${estabelecimento}</td>
                   <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
                   <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
                   <td>R$ ${item.valor_compra.toFixed(2)}</td>
+                  <td>${bandeira}</td>
                   <td class="text-end">R$ ${item.valor_parcela_atual.toFixed(2)}</td>
                   <td>${pago}</td>
                </tr>
@@ -426,6 +432,7 @@ document.querySelectorAll('.valor-mes-comprador').forEach(td => {
           <p><strong>Comprador:</strong> <span id="modal-comprador"></span></p>
           <p><strong>Total do Mês:</strong> R$ <span id="modal-total-mes"></span></p>
           <p><strong>Quantidade de Parcelas:</strong> <span id="modal-quantidade-parcelas"></span></p>
+          <p><strong>Bandeira:</strong> <span id="modal-bandeira"></span></p>
         </div>
 
         <!-- Tabela com detalhes -->
@@ -436,6 +443,7 @@ document.querySelectorAll('.valor-mes-comprador').forEach(td => {
               <th>Data da Compra</th>
               <th>Vencimento</th>
               <th>Valor da Compra</th>
+                <th>Bandeira</th>
               <th>Valor da Parcela (Mês)</th>
               <th>Pago</th>
             </tr>

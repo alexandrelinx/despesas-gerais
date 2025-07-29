@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}
+  {% if registro %}
+    Editar Crédito
+  {% else %}
+    Novo Crédito
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<h2>
+  {% if registro %}
+    Editar Crédito de Salário
+  {% else %}
+    Novo Crédito de Salário
+  {% endif %}
+</h2>
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control" style="text-transform: uppercase;" value="{{ registro.nome if registro else '' }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('listar_credito') }}" class="btn btn-secondary">Voltar</a>
+</form>
+{% endblock %}

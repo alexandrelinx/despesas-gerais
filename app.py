@@ -26,6 +26,10 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from flask_wtf.csrf import CSRFError
 from util.helpers import calcular_parcelas
+from flask import Flask, render_template, request, redirect, url_for, flash
+from models import CreditoSalarial  # supondo que você tenha esse model
+
+
 
 
 app = Flask(__name__)
@@ -1652,6 +1656,115 @@ def excluir_comprador(id):
 
 
 
+
+
+
+@app.route('/cadastro/credito/novo', methods=['GET', 'POST'])
+def novo_credito():
+    if request.method == 'POST':
+        data_credito = request.form['data_credito']
+        valor_salario = request.form['valor_salario']
+
+        if not data_credito or not valor_salario:
+            flash('Data do crédito e valor são obrigatórios.', 'danger')
+            return redirect(url_for('novo_credito'))
+
+        try:
+            valor = float(valor_salario.replace(',', '.'))
+            # validação opcional da data
+            datetime.strptime(data_credito, '%Y-%m-%d')
+        except ValueError:
+            flash('Valor inválido ou data no formato incorreto.', 'danger')
+            return redirect(url_for('novo_credito'))
+
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO SALARIO_MES (DATA_DO_CREDITO, VALOR_SALARIO) VALUES (?, ?)",
+            (data_credito, valor)
+        )
+        conn.commit()
+        conn.close()
+        flash('Crédito salarial inserido com sucesso!', 'success')
+        return redirect(url_for('listar_credito'))
+
+    return render_template('editar_credito.html')
+
+
+
+@app.route('/cadastro/credito')
+def consultar_credito():
+    conn = get_db_connection()
+    try:
+       creditos = conn.execute("SELECT * FROM SALARIO_MES ORDER BY DATA_DO_CREDITO DESC").fetchall()
+    except Exception as e:
+         creditos = []
+         flash(f"Erro ao consultar comprador: {str(e)}", "danger")
+    finally: 
+          conn.close()
+    return render_template('consultar_credito.html', creditos=creditos)
+
+@app.route('/credito')
+def listar_credito():
+    conn = get_db_connection()
+    creditos = conn.execute("SELECT * FROM SALARIO_MES ORDER BY DATA_DO_CREDITO DESC").fetchall()
+    conn.close()
+    return render_template('consultar_credito.html', creditos=creditos)
+
+@app.route('/cadastro/credito/editar/<int:id>', methods=['GET', 'POST'])
+def editar_credito(id):
+    conn = get_db_connection()
+    credito = conn.execute("SELECT * FROM SALARIO_MES WHERE id = ?", (id,)).fetchone()
+
+    if credito is None:
+        flash('Crédito não encontrado.', 'danger')
+        conn.close()
+        return redirect(url_for('consultar_credito'))
+
+    if request.method == 'POST':
+        data_credito = request.form['data_credito']
+        valor_salario = request.form['valor_salario']
+
+        if not data_credito or not valor_salario:
+            flash('Data do crédito e valor são obrigatórios.', 'danger')
+            conn.close()
+            return redirect(url_for('editar_credito', id=id))
+
+        try:
+            valor = float(valor_salario.replace(',', '.'))
+            datetime.strptime(data_credito, '%Y-%m-%d')
+        except ValueError:
+            flash('Valor inválido ou data no formato incorreto.', 'danger')
+            conn.close()
+            return redirect(url_for('editar_credito', id=id))
+
+        conn.execute(
+            "UPDATE SALARIO_MES SET DATA_DO_CREDITO = ?, VALOR_SALARIO = ? WHERE id = ?",
+            (data_credito, valor, id)
+        )
+        conn.commit()
+        conn.close()
+        flash('Crédito salarial atualizado com sucesso!', 'success')
+        return redirect(url_for('listar_credito'))
+
+    conn.close()
+    return render_template('editar_credito.html', credito=credito)
+
+@app.route('/cadastro/credito/excluir/<int:id>', methods=['POST'])
+def excluir_credito(id):
+    conn = get_db_connection()
+    credito = conn.execute("SELECT * FROM SALARIO_MES WHERE id = ?", (id,)).fetchone()
+
+    if credito is None:
+        flash('Crédito não encontrado.', 'danger')
+        conn.close()
+        return redirect(url_for('consultar_credito'))
+
+    conn.execute("DELETE FROM SALARIO_MES WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    flash('Crédito salarial excluído com sucesso!', 'success')
+    return redirect(url_for('listar_credito'))
+
 @app.route('/totais-despesas-mensais')
 def totais_despesas_mensais():
     conn = get_db_connection()
@@ -2001,11 +2114,13 @@ from datetime import datetime
 def detalhes_comprador_mes():
     data = request.get_json()
     comprador_nome = data.get('comprador')
-    mes_ano = data.get('mes')  # formato "MM/YYYY"
+    mes_ano = data.get('mes')
+    bandeira_nome= data.get('bandeira') 
 
      # DEBUG: imprime os parâmetros recebidos
     print("Recebido comprador:", comprador_nome)
     print("Recebido mes_ano:", mes_ano)
+    print("Recebido bandeira_nome:",bandeira_nome)
 
 
     if not comprador_nome or not mes_ano:
@@ -2082,6 +2197,7 @@ def detalhes_comprador_mes():
        "comprador": comprador_nome,
         "total_mes": total_mes,
         "quantidade_parcelas": quantidade_parcelas,
+        "bandeira_mome": bandeira_nome,
         "detalhes":resultado
  
     })
