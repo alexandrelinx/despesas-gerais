@@ -74,11 +74,11 @@
 
         .content {
             margin-left: 260px;
-            padding: 20px;
+            padding: 0px 20px 20px;
             flex: 1;
             transition: margin-left 0.3s;
             position: relative;
-            margin-top: 56px;
+            margin-top: 36px;
         }
 
         .content.expanded {
@@ -141,6 +141,25 @@
     word-break: break-word;
      }
 
+     /* Faz o modal crescer com o conteúdo sem rolagem */
+.modal-dialog {
+  max-width: 90%;
+  margin: 1.75rem auto;
+}
+
+.modal-content {
+  max-height: none !important;
+}
+
+.modal-body {
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+/* Alinha o valor da parcela à direita */
+#detalhesCompradorCorpo td:nth-child(5) {
+  text-align: right;
+}
 
 
 
@@ -328,8 +347,113 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
   });
+
+document.querySelectorAll('.valor-mes-comprador').forEach(td => {
+  td.style.cursor = 'pointer'; // muda o cursor para indicar que é clicável
+  td.addEventListener('click', () => {
+    const comprador = td.dataset.comprador;
+    const mes = td.dataset.mes;
+
+    fetch('/detalhes_comprador_mes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Se usar CSRF, adicione o token aqui, por exemplo:
+         'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ comprador, mes })
+    })
+
+
+   
+    .then(res => res.json())
+    .then(data => {
+        
+        // Preencher cabeçalho do modal
+        document.getElementById('modal-comprador').textContent = data.comprador;
+        document.getElementById('modal-total-mes').textContent = data.total_mes.toFixed(2);
+        document.getElementById('modal-quantidade-parcelas').textContent = data.quantidade_parcelas;
+
+        // Preencher tabela de detalhes
+        const tbody = document.getElementById('detalhesCompradorCorpo');
+        tbody.innerHTML = '';
+
+        if (!data.detalhes.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhum dado encontrado.</td></tr>';
+        } else {
+           data.detalhes.forEach(item => {
+              const pago = item.pago ? 'Sim' : 'Não';
+              const estabelecimento = item.estabelecimento || '-';
+              tbody.insertAdjacentHTML('beforeend', `
+                <tr>
+                  <td>${estabelecimento}</td>
+                  <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
+                  <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
+                  <td>R$ ${item.valor_compra.toFixed(2)}</td>
+                  <td class="text-end">R$ ${item.valor_parcela_atual.toFixed(2)}</td>
+                  <td>${pago}</td>
+               </tr>
+          `);
+       });
+        }
+            const modal = new bootstrap.Modal(document.getElementById('detalhesCompradorModal'));
+      modal.show();
+    })
+    .catch(err => {
+      alert('Erro ao carregar detalhes');
+      console.error(err);
+    });
+  });
 });
+});
+
 </script>
+
+<!-- Modal Detalhes Comprador/Mês -->
+<div class="modal fade" id="detalhesCompradorModal" tabindex="-1" aria-labelledby="detalhesCompradorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl" style="max-width: 40%;">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="detalhesCompradorModalLabel">Detalhes do Comprador e Mês</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Cabeçalho com resumo -->
+        <div id="modal-cabecalho" class="mb-3">
+          <p><strong>Comprador:</strong> <span id="modal-comprador"></span></p>
+          <p><strong>Total do Mês:</strong> R$ <span id="modal-total-mes"></span></p>
+          <p><strong>Quantidade de Parcelas:</strong> <span id="modal-quantidade-parcelas"></span></p>
+        </div>
+
+        <!-- Tabela com detalhes -->
+        <table class="table table-bordered table-sm">
+          <thead>
+            <tr>
+              <th>Estabelecimento</th>
+              <th>Data da Compra</th>
+              <th>Vencimento</th>
+              <th>Valor da Compra</th>
+              <th>Valor da Parcela (Mês)</th>
+              <th>Pago</th>
+            </tr>
+          </thead>
+          <tbody id="detalhesCompradorCorpo">
+            <!-- Conteúdo será inserido aqui via JS -->
+          </tbody>
+        </table>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

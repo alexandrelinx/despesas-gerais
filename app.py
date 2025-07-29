@@ -166,15 +166,49 @@ def calcular_totais_por_coluna(parcelas_por_mes, colunas_meses):
 
 
 
-
 @app.route('/')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
     conn = get_db_connection()
-    cursor = conn.cursor()
 
+
+    #Totais por comprador e mês (para nova seção)
+    comprador_mes_raw = conn.execute("""
+     SELECT 
+        COALESCE(C.nome, 'Não especificado') AS comprador,
+        strftime('%m/%Y', 
+            substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
+       ) AS mes_ano,
+       SUM(D.valor_compra) AS total
+     FROM despesas D
+     LEFT JOIN comprador C ON D.comprador_id = C.id
+     WHERE D.data_compra IS NOT NULL
+     AND length(D.data_compra) = 10
+     AND UPPER(COALESCE(C.nome, 'Não especificado')) != 'ALEXANDRE'                               
+     GROUP BY comprador, mes_ano
+     ORDER BY comprador, mes_ano
+
+       """).fetchall()
+
+    # Converter para dicionário: {comprador: {mes: total}}
+    from collections import defaultdict
+    totais_por_comprador_mes = defaultdict(dict)
+    meses_compradores = set()
+
+    for row in comprador_mes_raw:
+        comprador = row['comprador']
+        mes = row['mes_ano']
+        total = float(row['total'])
+        totais_por_comprador_mes[comprador][mes] = total
+        if mes is not None:
+         meses_compradores.add(mes)
+
+
+     # Ordenar os meses para usar no template
+    colunas_meses_compradores = sorted(meses_compradores, key=lambda x: datetime.strptime(x, "%m/%Y"))
+    
     # Ajuste aqui conforme seu ID real de forma_pagamento que representa cartão de crédito
     CARTAO_CREDITO_ID = 2
 
@@ -192,12 +226,14 @@ def dashboard():
         B.vencimento_dia AS vencimento_bandeira,
         B.melhor_dia_compra AS melhor_dia_compra,
         E.nome AS estabelecimento,
-        D.forma_pagamento_id
+        D.forma_pagamento_id,
+        C.nome AS comprador_nome                     
     FROM DESPESAS D
     LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id                        
     LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
     LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
     LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+    LEFT JOIN COMPRADOR C ON D.comprador_id = C.id 
     ORDER BY  B.vencimento_dia  DESC
     """).fetchall()
 
@@ -212,6 +248,8 @@ def dashboard():
     meses_set = set()
     parcelas_exibidas = []
 
+    totais_por_comprador_mes = defaultdict(lambda: defaultdict(float))
+
     for despesa in despesas:
         forma_pagamento_id = despesa['forma_pagamento_id']
         valor_total = float(despesa['valor_compra'])
@@ -220,6 +258,17 @@ def dashboard():
         bandeira_nome = despesa['bandeira_nome']
         vencimento_bandeira = despesa['vencimento_bandeira']
         melhor_dia_compra = despesa['melhor_dia_compra']
+       # Gera a lista de todos os meses para colunas de compradores
+        meses_compradores = set()
+        for valores in totais_por_comprador_mes.values():
+               meses_compradores.update(valores.keys())
+
+        colunas_meses_compradores = sorted(meses_compradores, key=lambda x: datetime.strptime(x, "%m/%Y"))
+
+
+
+
+
        
 
         chave_bandeira = f"{bandeira_nome} - {vencimento_bandeira}"
@@ -246,6 +295,9 @@ def dashboard():
         if bandeira_nome.lower() == 'neon':
             for idx, dt_vencimento in enumerate(datas_parcelas, start=1):
                 mes_ano = dt_vencimento.strftime("%m/%Y")
+                comprador_nome = (despesa.get('comprador_nome') or "Não especificado").strip()
+                if comprador_nome.upper() != 'ALEXANDRE':
+                 totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
                 meses_set.add(mes_ano)
 
                 parcela_db = conn.execute("""
@@ -290,6 +342,9 @@ def dashboard():
                 vencimento_str = parcela['data_vencimento']
                 dt_vencimento = datetime.strptime(vencimento_str, "%d/%m/%Y")
                 mes_ano = dt_vencimento.strftime("%m/%Y")
+                comprador_nome = (despesa.get('comprador_nome') or "Não especificado").strip()
+                if comprador_nome.upper() != 'ALEXANDRE':
+                  totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
                 meses_set.add(mes_ano)
 
                 pago_parcela = int(parcela['pago'] or 0)
@@ -358,9 +413,46 @@ def dashboard():
     totais_por_coluna, total_geral_colunas = calcular_totais_por_coluna(parcelas_por_mes, colunas_meses)
     totais_por_coluna_outros, total_geral_colunas_outros = calcular_totais_por_coluna(parcelas_por_mes_outros, colunas_meses)
 
-    conn.close()
+   
+   # Depois de montar totais_por_comprador_mes, antes do return render_template:
+
+   
+
+    totais_por_mes_comprador = defaultdict(float)
+
+    for comprador, meses in totais_por_comprador_mes.items():
+     for mes, total in meses.items():
+        totais_por_mes_comprador[mes] += total
+
+    total_geral_compradores = sum(totais_por_mes_comprador.values())
+
+    mes_atual = datetime.now().strftime("%m/%Y")
+
+    cursor = conn.execute("""
+      SELECT SUM(VALOR_SALARIO) as total
+      FROM salario_mes
+       WHERE strftime('%m/%Y', substr(DATA_DO_CREDITO, 7, 4) || '-' || substr(DATA_DO_CREDITO, 4, 2) || '-' || substr(DATA_DO_CREDITO, 1, 2)) = ?
+     """, (mes_atual,))
+    resultado = cursor.fetchone()
+    total_creditos_mes = float(resultado["total"] or 0.0)
+ 
+
+ # Mês atual no formato MM/YYYY
+    mes_atual = datetime.now().strftime("%m/%Y")
+
+    valor_cartao = totais_por_mes.get(mes_atual, 0.0)
+    valor_outros = totais_por_mes_outros.get(mes_atual, 0.0)
+    valor_compradores = totais_por_mes_comprador.get(mes_atual, 0.0)
+
+# Fórmula corrigida: total = (cartão + outros) - compradores
+    total_despesas_mes = (valor_cartao + valor_outros) - valor_compradores
+
+   # Cálculo do saldo
+    saldo_mes = total_creditos_mes - total_despesas_mes
+
  
     csrf_token = generate_csrf()
+    conn.close()
 
     return render_template(
         'dashboard.html',
@@ -381,6 +473,15 @@ def dashboard():
         pagamento_por_mes_bandeira=pagamento_por_mes_bandeira,
         pagamento_por_mes_bandeira_outros=pagamento_por_mes_bandeira_outros,
         formas_pagamento_outros=formas_pagamento_outros,
+        totais_por_comprador_mes=totais_por_comprador_mes,
+        totais_por_mes_comprador=totais_por_mes_comprador, 
+        total_geral_compradores=total_geral_compradores, 
+        colunas_meses_compradores=colunas_meses_compradores,
+        total_creditos_mes=total_creditos_mes,
+        total_despesas_mes=total_despesas_mes,
+        mes_atual=mes_atual,
+        saldo_mes=saldo_mes,
+
         csrf_token=csrf_token,
         now=datetime.now()
     )
@@ -1892,6 +1993,100 @@ def listar_parcelas(despesa_id):
 ]
 
     return jsonify({'despesa': dados_despesa, 'parcelas': dados_parcelas})
+
+
+from datetime import datetime
+
+@app.route('/detalhes_comprador_mes', methods=['POST'])
+def detalhes_comprador_mes():
+    data = request.get_json()
+    comprador_nome = data.get('comprador')
+    mes_ano = data.get('mes')  # formato "MM/YYYY"
+
+     # DEBUG: imprime os parâmetros recebidos
+    print("Recebido comprador:", comprador_nome)
+    print("Recebido mes_ano:", mes_ano)
+
+
+    if not comprador_nome or not mes_ano:
+        return jsonify({'error': 'Parâmetros inválidos'}), 400
+
+    try:
+        datetime.strptime(mes_ano, "%m/%Y")
+    except ValueError:
+        return jsonify({'error': 'Formato de data inválido (esperado MM/YYYY)'}), 400
+
+    conn = get_db_connection()
+
+    mes_ano = data.get('mes')  # Ex: '07/2025'
+    mes, ano = mes_ano.split('/')
+
+
+    query = """
+    SELECT 
+     C.nome AS comprador,
+     E.nome AS estabelecimento,
+     D.data_compra,
+     D.valor_compra,
+     FP.nome AS forma_pagamento,
+     B.nome AS bandeira,
+     QP.quantidade AS quantidade_parcelas,
+     P.data_vencimento,
+     P.valor_parcela AS valor_parcela,
+     P.pago
+    FROM PARCELAS P
+    JOIN DESPESAS D ON P.despesa_id = D.id
+    JOIN COMPRADOR C ON D.comprador_id = C.id
+    LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
+    LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+    LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+    LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+    WHERE UPPER(C.nome) = UPPER(?)
+    AND substr(P.data_vencimento, 4, 7) = ?
+    """
+
+    despesas = conn.execute(query, [comprador_nome, mes_ano]).fetchall()
+
+      # DEBUG: quantas despesas foram retornadas
+    print(f"Despesas encontradas: {len(despesas)}")
+
+    conn.close()
+
+    if not despesas:
+          return jsonify({'error': 'Nenhuma despesa encontrada para esse comprador e mês.'}), 404
+
+    # Calcular total do mês (somatório de valor_compra)
+    total_mes = sum(float(d["valor_parcela"]) for d in despesas)
+   # Quantidade de parcelas - assumindo que é igual para todas as despesas do mês (pode pegar da primeira)
+    quantidade_parcelas = sum(d["quantidade_parcelas"] for d in despesas if d["quantidade_parcelas"])
+
+    resultado = []
+    for d in despesas:
+     data_vencimento_iso = datetime.strptime(d["data_vencimento"], "%d/%m/%Y").strftime("%Y-%m-%d")
+     resultado.append({
+        "comprador": d["comprador"],
+        "estabelecimento": d["estabelecimento"],
+        "data_compra": datetime.strptime(d["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d"),
+        "valor_compra": float(d["valor_compra"]),
+        "quantidade_parcelas": d["quantidade_parcelas"],
+        "forma_pagamento": d["forma_pagamento"],
+        "bandeira": d["bandeira"],
+        "valor_parcela_atual": float(d["valor_parcela"]),
+        "data_vencimento": data_vencimento_iso,
+        "pago": d["pago"]
+    })
+
+    
+
+    return jsonify({
+       "comprador": comprador_nome,
+        "total_mes": total_mes,
+        "quantidade_parcelas": quantidade_parcelas,
+        "detalhes":resultado
+ 
+    })
+
+
 
 if __name__ == '__main__':
     app.secret_key = 'segredo-super-seguro'
