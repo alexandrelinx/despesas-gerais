@@ -50,7 +50,7 @@
 
 /* Altura fixa e scroll vertical para parcelas */
 .secao-parcelas {
-    height: 150px;  /* altura fixa menor, ajuste conforme quiser */
+    height: 850px;  /* altura fixa menor, ajuste conforme quiser */
     overflow-y: auto; /* mantém o scroll vertical */
     flex: none;
 }
@@ -59,7 +59,7 @@
 
 
 
-.secao-totais,´
+.secao-totais,
 .secao-totais-compradores,
 .secao-totais-outros
  {
@@ -181,18 +181,39 @@
 }
 
 
-
+.nav-tabs .nav-link.active {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
 
 
 
 </style>
 
-<div class="dashboard-container">
+<!-- Abas para navegação -->
+<ul class="nav nav-tabs mb-3" id="dashboardTabs" role="tablist">
+ 
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="totais-tab" data-bs-toggle="tab" data-bs-target="#totais" type="button" role="tab">Totais por Bandeira</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="outros-tab" data-bs-toggle="tab" data-bs-target="#outros" type="button" role="tab">Totais Outros</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="compradores-tab" data-bs-toggle="tab" data-bs-target="#compradores" type="button" role="tab">Por Comprador</button>
+  </li>
+   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="parcelas-tab" data-bs-toggle="tab" data-bs-target="#parcelas" type="button" role="tab">Parcelas</button>
+  </li>
+</ul>
+
+<div class="tab-content dashboard-container">
 
 
     <!-- ... demais seções ... -->
     <!-- Seção 1: Parcelas Detalhadas -->
-    <!--<div class="secao secao-parcelas">
+    <div class="tab-pane fade " id="parcelas" role="tabpanel" aria-labelledby="parcelas-tab">
+    <div class="secao secao-parcelas">
         <h5>Parcelas Detalhadas</h5>
         <table class="table table-bordered table-sm table-hover parcelas-detalhadas">
             <thead class="table-light">
@@ -226,9 +247,10 @@
             </tbody>
         </table>
     </div>
--->
-    <!-- Seção 2: Totais por Mês e Bandeira -->
+  </div>
 
+    <!-- Seção 2: Totais por Mês e Bandeira -->
+ <div class="tab-pane fade show active" id="totais" role="tabpanel" aria-labelledby="totais-tab">
     <div class="secao secao-totais">
         <h5>Totais por Mês e Bandeira</h5>
         <div class="scroll-container">
@@ -291,8 +313,9 @@
             </table>
         </div>
     </div>
-
+ </div>
     <!-- Seção 3: Totais por Mês e Bandeira (Sem Cartão de Crédito) -->
+     <div class="tab-pane fade" id="outros" role="tabpanel" aria-labelledby="outros-tab"> 
     <div class="secao secao-totais-outros">
         <h5>Totais por Mês e Bandeira (Outras Formas de Pagamento)</h5>
         <div class="scroll-container">
@@ -350,7 +373,9 @@
             </table>
         </div>
     </div>
+ </div> 
 <!-- Seção 4: Totais por Comprador por Mês -->
+ <div class="tab-pane fade" id="compradores" role="tabpanel" aria-labelledby="compradores-tab">
 <div class="secao secao-totais-compradores">
   <h5>Totais por Comprador por Mês</h5>
   <div class="scroll-container">
@@ -395,11 +420,12 @@
     </table>
    </div>
  </div>
-
+ </div>
 <script>
 
 const csrfToken = "{{ csrf_token }}";
 
+ 
 function togglePagamento(cell) {
     const bandeira = cell.dataset.bandeira;
     const mesAno = cell.dataset.mesAno;
@@ -417,7 +443,6 @@ function togglePagamento(cell) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Atualiza todas as células do mesmo grupo
             const allCells = document.querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`);
             allCells.forEach(c => {
                 if (data.pago) {
@@ -435,55 +460,68 @@ function togglePagamento(cell) {
     .catch(() => alert('Erro na comunicação com o servidor'));
 }
 
-window.addEventListener('load', () => {
-  const hoje = new Date();
-  const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // ex: "07"
-  const ano = hoje.getFullYear();                            // ex: "2025"
-  const mesAno = `${mes}/${ano}`;
+// ✅ Função corrigida e funcional
+function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    const mesAno = `${mes}/${ano}`;
 
-  // Função que posiciona scroll numa seção pelo seletor CSS
-  // colunasFixas: quantidade de colunas fixas antes dos meses (ex: 1 ou 2)
-  function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
-    const scrollContainer = document.querySelector(seletorSecao + ' .scroll-container');
+    const scrollContainer = document.querySelector(`${seletorSecao} .scroll-container`);
     if (!scrollContainer) {
-      console.log(`Scroll container não encontrado para a seção: ${seletorSecao}`);
-      return;
+        console.log(`Scroll container não encontrado para: ${seletorSecao}`);
+        return;
     }
 
     const tabela = scrollContainer.querySelector('table');
     if (!tabela) {
-      console.log('Tabela não encontrada dentro do scroll container');
-      return;
+        console.log(`Tabela não encontrada em ${seletorSecao}`);
+        return;
     }
 
     const ths = tabela.querySelectorAll('thead th');
     let indiceColuna = -1;
 
     ths.forEach((th, i) => {
-      if (th.id === `coluna_${mesAno}`) {
-        indiceColuna = i;
-      }
+        if (th.id === `coluna_${mesAno}`) {
+            indiceColuna = i;
+        }
     });
 
     if (indiceColuna === -1) {
-      console.log(`Coluna ${mesAno} não encontrada na seção ${seletorSecao}.`);
-      return;
+        console.log(`Coluna ${mesAno} não encontrada na seção ${seletorSecao}`);
+        return;
     }
 
-    const larguraColuna = 120; // conforme seu CSS
+    const larguraColuna = 120; // largura definida no seu CSS
     const deslocamentoScroll = (indiceColuna - colunasFixas) * larguraColuna - 1;
     scrollContainer.scrollLeft = deslocamentoScroll;
 
-    console.log(`Rolando para a coluna ${mesAno} na seção ${seletorSecao}, índice ${indiceColuna}, scrollLeft ${deslocamentoScroll}`);
-  }
+    console.log(`Rolando para ${mesAno} em ${seletorSecao}, índice: ${indiceColuna}, scrollLeft: ${deslocamentoScroll}`);
+}
 
-  // Aplica o scroll nas duas seções
-  scrollParaMesAtual('.secao-totais', 1);          // Apenas a coluna Bandeira antes dos meses
-  scrollParaMesAtual('.secao-totais-outros', 2);   // Bandeira + Forma de Pagamento antes dos meses
-  scrollParaMesAtual('.secao-totais-compradores', 1); // Apenas 1 coluna antes dos meses
+// ✅ Aplica o scroll nas abas quando visíveis
+document.addEventListener('DOMContentLoaded', () => {
+    const tabTotais = document.querySelector('#totais-tab');
+    const tabOutros = document.querySelector('#outros-tab');
+    const tabCompradores = document.querySelector('#compradores-tab');
+
+    tabTotais?.addEventListener('shown.bs.tab', () => {
+        scrollParaMesAtual('.secao-totais', 1);
+    });
+
+    tabOutros?.addEventListener('shown.bs.tab', () => {
+        scrollParaMesAtual('.secao-totais-outros', 2);
+    });
+
+    tabCompradores?.addEventListener('shown.bs.tab', () => {
+        scrollParaMesAtual('.secao-totais-compradores', 1);
+    });
+
+    // Seção inicial visível ao carregar (ativa por padrão)
+    scrollParaMesAtual('.secao-totais', 1);
 });
-
-
 </script>
+
 
 {% endblock %}
