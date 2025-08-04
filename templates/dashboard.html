@@ -8,7 +8,20 @@
   <div>
     <h2 class="mb-0">Resumo de Despesas</h2>
      <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
+     
+<div class="form-inline">
+  <label for="intervalo-atualizacao" class="mt-2 mb-0" style="font-weight:bold; color:black;" >Atualizar a cada:</label>
+    <span style="font-weight:bold; color:black;"></span>
+  <select id="intervalo-atualizacao" class="form-select form-select-sm w-auto">
+    <option value="0">Nunca</option>
+    <option value="10">10s</option>
+    <option value="30">30s</option>
+    <option value="60">1 min</option>
+    <option value="300">5 min</option>
+  </select>
+</div>
   </div>
+
 
   <!-- COLUNA À DIREITA (Créditos na horizontal + detalhes verticais) -->
   <div class="d-flex flex-column align-items-end text-end gap-2">
@@ -250,7 +263,9 @@
   font-weight: bold;
 }
 
-
+  #intervalo-atualizacao {
+    min-width: 100px;
+  }
 
 </style>
 
@@ -564,6 +579,7 @@ function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
     console.log(`Rolando para ${mesAno} em ${seletorSecao}, índice: ${indiceColuna}, scrollLeft: ${deslocamentoScroll}`);
 }
 
+
 // ✅ Aplica o scroll nas abas quando visíveis
 document.addEventListener('DOMContentLoaded', () => {
     const tabTotais = document.querySelector('#totais-tab');
@@ -588,11 +604,60 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
-  // Recarrega a página a cada 10 segundos
+const tempoAtualizacao = {{ tempo_atualizacao | default(0) }} * 1000;
+
+if (tempoAtualizacao > 0) {
   setInterval(() => {
-    location.reload();
-  }, 10000);
+    // Aqui você coloca a função que atualiza seus dados, por exemplo:
+    atualizarDados();
+  }, tempoAtualizacao);
+} else {
+  console.log("Atualização automática desabilitada (Nunca selecionado)");
+}
+
+function atualizarDados() {
+  // Seu código para atualizar a página (fetch, ajax, etc)
+  console.log("Atualizando dados...");
+  // exemplo:
+  fetch('/rota_de_atualizacao')
+    .then(response => response.json())
+    .then(data => {
+      // atualizar elementos da página com os dados
+    })
+    .catch(console.error);
+}
 </script>
 
+<script>
+  const selectAtualizacao = document.getElementById('intervalo-atualizacao');
+  const valorSalvo = localStorage.getItem('tempoAtualizacao') || "0";
+  selectAtualizacao.value = valorSalvo;
+
+  let intervalo = null;
+
+  function iniciarAtualizacao(tempoSegundos) {
+    if (intervalo) clearInterval(intervalo); // limpa qualquer intervalo anterior
+    if (tempoSegundos > 0) {
+      intervalo = setInterval(() => {
+        location.reload();
+      }, tempoSegundos * 1000);
+    }
+  }
+
+  iniciarAtualizacao(parseInt(valorSalvo));
+
+  selectAtualizacao.addEventListener('change', () => {
+    const novoValor = selectAtualizacao.value;
+    localStorage.setItem('tempoAtualizacao', novoValor);
+    const url = new URL(window.location);
+    url.searchParams.set('tempo_atualizacao', novoValor);
+    window.location.href = url.toString();
+
+
+
+
+   
+  });
+</script>
 
 {% endblock %}

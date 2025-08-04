@@ -172,6 +172,22 @@ def calcular_totais_por_coluna(parcelas_por_mes, colunas_meses):
 
 @app.route('/')
 def dashboard():
+    tempo_atualizacao_segundos = 15 
+  
+# Simulando que você recebeu do frontend (ex: via POST, GET, cookie, etc)
+    tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)  # ou POST
+
+    if tempo_atualizacao_usuario is not None:
+        try:
+            tempo_atualizacao_segundos = int(tempo_atualizacao_usuario)
+            if tempo_atualizacao_segundos == 0:
+            # Desliga atualização automática
+               tempo_atualizacao_segundos = None
+        except ValueError:
+             pass
+
+
+
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
@@ -499,6 +515,7 @@ def dashboard():
     #print('totais_por_mes_comprador:', totais_por_mes_comprador)
     return render_template(
         'dashboard.html',
+        tempo_atualizacao=tempo_atualizacao_segundos,
         parcelas=parcelas_exibidas,
         parcelas_por_mes=parcelas_por_mes,
         parcelas_por_mes_outros=parcelas_por_mes_outros,
