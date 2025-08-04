@@ -68,7 +68,8 @@
 
     <div class="col-md-6">
       <label>Data da Compra</label>
-      <input type="text" name="data_compra" class="form-control" placeholder="dd/mm/aaaa" required>
+        <input type="text" name="data_compra" id="data_do_credito" placeholder="dd/mm/aaaa" class="form-control"  required
+            value="{{ registro.data_do_credito if registro else '' }}">
     </div>
 
     <div class="col-md-6">
@@ -130,4 +131,37 @@
   <br>
   <button type="submit"  class="btn btn-success">Salvar Lançamento</button>
 </form>
+
+<!-- 🔽 Scripts para a máscara de data -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+<script>
+  const input = document.getElementById('data_do_credito');
+
+  input.addEventListener('input', function(e) {
+    let value = input.value;
+
+    // Remove tudo que não for número
+    value = value.replace(/\D/g, '');
+
+    // Limita o tamanho máximo para 8 dígitos (ddmmyyyy)
+    if (value.length > 8) {
+      value = value.slice(0,8);
+    }
+
+    // Insere as barras automaticamente
+    if (value.length > 4) {
+      // dd/mm/yyyy
+      value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    } else if (value.length > 2) {
+      // dd/mm
+      value = value.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    }
+
+    input.value = value;
+  });
+</script>
+
+
+
 {% endblock %}

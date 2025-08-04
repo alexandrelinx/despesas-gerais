@@ -177,24 +177,24 @@ def dashboard():
     
     conn = get_db_connection()
 
-
-    #Totais por comprador e mês (para nova seção)
+    # Obter mês selecionado da query string, padrão mês atual
+    mes_selecionado = request.args.get('mes', datetime.now().strftime("%m/%Y"))
+    # Totais por comprador e mês (para nova seção)
     comprador_mes_raw = conn.execute("""
-     SELECT 
-        COALESCE(C.nome, 'Não especificado') AS comprador,
-        strftime('%m/%Y', 
-            substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
-       ) AS mes_ano,
-       SUM(D.valor_compra) AS total
-     FROM despesas D
-     LEFT JOIN comprador C ON D.comprador_id = C.id
-     WHERE D.data_compra IS NOT NULL
-     AND length(D.data_compra) = 10
-     AND UPPER(COALESCE(C.nome, 'Não especificado')) != 'ALEXANDRE'                               
-     GROUP BY comprador, mes_ano
-     ORDER BY comprador, mes_ano
-
-       """).fetchall()
+        SELECT 
+            COALESCE(C.nome, 'Não especificado') AS comprador,
+            strftime('%m/%Y', 
+                substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
+            ) AS mes_ano,
+            SUM(D.valor_compra) AS total
+        FROM despesas D
+        LEFT JOIN comprador C ON D.comprador_id = C.id
+        WHERE D.data_compra IS NOT NULL
+            AND length(D.data_compra) = 10
+            AND UPPER(COALESCE(C.nome, 'Não especificado')) != 'ALEXANDRE'                               
+        GROUP BY comprador, mes_ano
+        ORDER BY comprador, mes_ano
+    """).fetchall()
 
     # Converter para dicionário: {comprador: {mes: total}}
     from collections import defaultdict
@@ -207,38 +207,37 @@ def dashboard():
         total = float(row['total'])
         totais_por_comprador_mes[comprador][mes] = total
         if mes is not None:
-         meses_compradores.add(mes)
+            meses_compradores.add(mes)
 
-
-     # Ordenar os meses para usar no template
+    # Ordenar os meses para usar no template
     colunas_meses_compradores = sorted(meses_compradores, key=lambda x: datetime.strptime(x, "%m/%Y"))
     
     # Ajuste aqui conforme seu ID real de forma_pagamento que representa cartão de crédito
     CARTAO_CREDITO_ID = 2
 
     despesas = conn.execute("""
-       SELECT 
-        D.id AS despesa_id,
-        D.data_compra,
-        D.valor_compra,
-        D.valor_parcela AS valor_parcela_despesa,
-        D.parcela_alterada,
-        D.pago,
-        QP.quantidade AS quantidade_parcelas,
-        PRD.nome AS produto_nome,
-        B.nome AS bandeira_nome,
-        B.vencimento_dia AS vencimento_bandeira,
-        B.melhor_dia_compra AS melhor_dia_compra,
-        E.nome AS estabelecimento,
-        D.forma_pagamento_id,
-        C.nome AS comprador_nome                     
-    FROM DESPESAS D
-    LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id                        
-    LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
-    LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-    LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-    LEFT JOIN COMPRADOR C ON D.comprador_id = C.id 
-    ORDER BY  B.vencimento_dia  DESC
+        SELECT 
+            D.id AS despesa_id,
+            D.data_compra,
+            D.valor_compra,
+            D.valor_parcela AS valor_parcela_despesa,
+            D.parcela_alterada,
+            D.pago,
+            QP.quantidade AS quantidade_parcelas,
+            PRD.nome AS produto_nome,
+            B.nome AS bandeira_nome,
+            B.vencimento_dia AS vencimento_bandeira,
+            B.melhor_dia_compra AS melhor_dia_compra,
+            E.nome AS estabelecimento,
+            D.forma_pagamento_id,
+            C.nome AS comprador_nome                     
+        FROM DESPESAS D
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id                        
+        LEFT JOIN PRODUTO PRD ON D.produto_id = PRD.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        LEFT JOIN COMPRADOR C ON D.comprador_id = C.id 
+        ORDER BY  B.vencimento_dia  DESC
     """).fetchall()
 
     despesas = [dict(row) for row in despesas]
@@ -262,18 +261,13 @@ def dashboard():
         bandeira_nome = despesa['bandeira_nome']
         vencimento_bandeira = despesa['vencimento_bandeira']
         melhor_dia_compra = despesa['melhor_dia_compra']
-       # Gera a lista de todos os meses para colunas de compradores
+        
+        # Gera a lista de todos os meses para colunas de compradores
         meses_compradores = set()
         for valores in totais_por_comprador_mes.values():
-               meses_compradores.update(valores.keys())
+            meses_compradores.update(valores.keys())
 
         colunas_meses_compradores = sorted(meses_compradores, key=lambda x: datetime.strptime(x, "%m/%Y"))
-
-
-
-
-
-       
 
         chave_bandeira = f"{bandeira_nome} - {vencimento_bandeira}"
 
@@ -301,7 +295,7 @@ def dashboard():
                 mes_ano = dt_vencimento.strftime("%m/%Y")
                 comprador_nome = (despesa.get('comprador_nome') or "Não especificado").strip()
                 if comprador_nome.upper() != 'ALEXANDRE':
-                 totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
+                    totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
                 meses_set.add(mes_ano)
 
                 parcela_db = conn.execute("""
@@ -318,15 +312,12 @@ def dashboard():
                     parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
 
                 else:  # Adiciona ao total filtrado (formas de pagamento diferentes de cartão)
-               
                     parcelas_por_mes_outros[chave_bandeira][mes_ano] += valor_parcela
                     parcelas_status_pagamento_outros[chave_bandeira][mes_ano].append(pago_parcela)
 
-                   # Guardar forma de pagamento
+                    # Guardar forma de pagamento
                     if chave_bandeira not in formas_pagamento_outros:
                         formas_pagamento_outros[chave_bandeira] = nome_forma_pagamento(forma_pagamento_id, conn)
-
-
 
                 parcelas_exibidas.append({
                     "id": despesa['despesa_id'],
@@ -348,22 +339,20 @@ def dashboard():
                 mes_ano = dt_vencimento.strftime("%m/%Y")
                 comprador_nome = (despesa.get('comprador_nome') or "Não especificado").strip()
                 if comprador_nome.upper() != 'ALEXANDRE':
-                  totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
+                    totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
                 meses_set.add(mes_ano)
 
                 pago_parcela = int(parcela['pago'] or 0)
-             
+                
                 if forma_pagamento_id == CARTAO_CREDITO_ID:
-                   parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
-                   parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
+                    parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
+                    parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
                 else:
-                   
                     parcelas_por_mes_outros[chave_bandeira][mes_ano] += valor_parcela
                     parcelas_status_pagamento_outros[chave_bandeira][mes_ano].append(pago_parcela)
                     
                     if chave_bandeira not in formas_pagamento_outros:
                         formas_pagamento_outros[chave_bandeira] = nome_forma_pagamento(forma_pagamento_id, conn)
-
 
                 parcelas_exibidas.append({
                     "id": despesa['despesa_id'],
@@ -379,7 +368,6 @@ def dashboard():
                     "pago": pago_parcela
                 })
 
-   
     pagamento_por_mes_bandeira = {
         bandeira: {
             mes: all(bool(p) for p in pagamentos)
@@ -399,65 +387,116 @@ def dashboard():
     colunas_meses = sorted(meses_set, key=lambda x: datetime.strptime(x, "%m/%Y"))
     totais_por_mes, total_geral = calcular_totais_por_mes(parcelas_por_mes, colunas_meses)
     totais_por_mes_outros, total_geral_outros = calcular_totais_por_mes(parcelas_por_mes_outros, colunas_meses)
- 
-  
+
     # Aí você insere esse novo cálculo para totais por linha
-    totais_por_linha = {}  
+    totais_por_linha = {}
     for bandeira, meses in parcelas_por_mes.items():
-         soma_bandeira = 0.0
-         for mes in colunas_meses:
-             valor = meses.get(mes, 0.0)
-             soma_bandeira += valor
-         totais_por_linha[bandeira] = soma_bandeira
+        soma_bandeira = 0.0
+        for mes in colunas_meses:
+            valor = meses.get(mes, 0.0)
+            soma_bandeira += valor
+        totais_por_linha[bandeira] = soma_bandeira
 
     totais_por_linha = calcular_totais_linhas(parcelas_por_mes, colunas_meses)
     totais_por_linha_outros = calcular_totais_linhas(parcelas_por_mes_outros, colunas_meses)
 
-
     totais_por_coluna, total_geral_colunas = calcular_totais_por_coluna(parcelas_por_mes, colunas_meses)
     totais_por_coluna_outros, total_geral_colunas_outros = calcular_totais_por_coluna(parcelas_por_mes_outros, colunas_meses)
 
-   
-   # Depois de montar totais_por_comprador_mes, antes do return render_template:
-
-   
-
+    # Depois de montar totais_por_comprador_mes, antes do return render_template:
     totais_por_mes_comprador = defaultdict(float)
 
     for comprador, meses in totais_por_comprador_mes.items():
-     for mes, total in meses.items():
-        totais_por_mes_comprador[mes] += total
+        for mes, total in meses.items():
+            totais_por_mes_comprador[mes] += total
 
     total_geral_compradores = sum(totais_por_mes_comprador.values())
 
     mes_atual = datetime.now().strftime("%m/%Y")
 
     cursor = conn.execute("""
-      SELECT SUM(VALOR_SALARIO) as total
-      FROM salario_mes
-       WHERE strftime('%m/%Y', substr(DATA_DO_CREDITO, 7, 4) || '-' || substr(DATA_DO_CREDITO, 4, 2) || '-' || substr(DATA_DO_CREDITO, 1, 2)) = ?
-     """, (mes_atual,))
+        SELECT SUM(VALOR_SALARIO) as total
+        FROM salario_mes
+        WHERE strftime('%m/%Y', substr(DATA_DO_CREDITO, 7, 4) || '-' || substr(DATA_DO_CREDITO, 4, 2) || '-' || substr(DATA_DO_CREDITO, 1, 2)) = ?
+    """, (mes_atual,))
     resultado = cursor.fetchone()
     total_creditos_mes = float(resultado["total"] or 0.0)
- 
 
- # Mês atual no formato MM/YYYY
-    mes_atual = datetime.now().strftime("%m/%Y")
+    # Mês atual no formato MM/YYYY
+    # mes_atual = datetime.now().strftime("%m/%Y")
 
-    valor_cartao = totais_por_mes.get(mes_atual, 0.0)
-    valor_outros = totais_por_mes_outros.get(mes_atual, 0.0)
-    valor_compradores = totais_por_mes_comprador.get(mes_atual, 0.0)
+   # valor_cartao = totais_por_mes.get(mes_atual, 0.0)
+    #valor_outros = totais_por_mes_outros.get(mes_atual, 0.0)
+   # valor_compradores = totais_por_mes_comprador.get(mes_atual, 0.0)
 
-# Fórmula corrigida: total = (cartão + outros) - compradores
-    total_despesas_mes = (valor_cartao + valor_outros) - valor_compradores
+    # Fórmula corrigida: total = (cartão + outros) - compradores
+   # total_despesas_mes = (valor_cartao + valor_outros) - valor_compradores
+    # Somar os totais por mês das duas categorias
 
-   # Cálculo do saldo
-    saldo_mes = total_creditos_mes - total_despesas_mes
+    # Função interna para somar parcelas por mês
+    def somar_parcelas(parcelas1, parcelas2):
+        resultado = defaultdict(float)
 
- 
+        for bandeira, meses in parcelas1.items():
+            for mes, valor in meses.items():
+                resultado[mes] += valor
+
+        for bandeira, meses in parcelas2.items():
+            for mes, valor in meses.items():
+                resultado[mes] += valor
+
+        return dict(resultado)
+
+    totais_por_mes_soma = somar_parcelas(parcelas_por_mes, parcelas_por_mes_outros)
+
+    # Atualizar o total de despesas para o mês selecionado
+    total_despesas_mes = totais_por_mes_soma.get(mes_selecionado, 0.0)
+
+    cursor = conn.execute("""
+        SELECT SUM(VALOR_SALARIO) as total
+        FROM salario_mes
+        WHERE strftime('%m/%Y', substr(DATA_DO_CREDITO, 7, 4) || '-' || substr(DATA_DO_CREDITO, 4, 2) || '-' || substr(DATA_DO_CREDITO, 1, 2)) = ?
+    """, (mes_selecionado,))
+    resultado = cursor.fetchone()
+    total_creditos_mes = float(resultado["total"] or 0.0)
+    credito_compradores = totais_por_mes_comprador.get(mes_selecionado, 0.0)
+
+
+    # saldo_mes = total_creditos_mes - total_despesas_mes
+    saldo_mes = (total_creditos_mes + credito_compradores) - total_despesas_mes
+
+    # Aqui você insere a consulta para o valor pago:
+    valor_pago_mes = conn.execute("""
+        SELECT SUM(P.valor_parcela) as total_pago
+        FROM parcelas P
+        JOIN despesas D ON P.despesa_id = D.id
+        WHERE P.pago = 1
+          AND strftime('%m/%Y', substr(P.data_vencimento, 7, 4) || '-' || substr(P.data_vencimento, 4, 2) || '-' || substr(P.data_vencimento, 1, 2)) = ?
+    """, (mes_selecionado,)).fetchone()
+
+    total_pago_mes = float(valor_pago_mes['total_pago'] or 0.0)
+  
+    # Cálculo do saldo
+    saldo_mes_ajustado = total_despesas_mes  - total_pago_mes
+
     csrf_token = generate_csrf()
     conn.close()
 
+    # Corrige arredondamento de zero
+    if abs(saldo_mes) < 0.01:
+     saldo_mes = 0.0
+    if abs(saldo_mes_ajustado) < 0.01:
+     saldo_mes_ajustado = 0.0
+    if abs(total_pago_mes) < 0.01:
+     total_pago_mes = 0.0
+
+
+   # credito_compradores = valor_compradores  # já existe esse valor
+    credito_compradores = totais_por_mes_comprador.get(mes_selecionado, 0.0)
+
+    creditos_do_mes = total_creditos_mes + credito_compradores
+
+    #print('totais_por_mes_comprador:', totais_por_mes_comprador)
     return render_template(
         'dashboard.html',
         parcelas=parcelas_exibidas,
@@ -466,29 +505,32 @@ def dashboard():
         colunas_meses=colunas_meses,
         totais_por_mes=totais_por_mes,
         totais_por_mes_outros=totais_por_mes_outros,
-        totais_por_linha=totais_por_linha, 
-        totais_por_linha_outros=totais_por_linha_outros, 
+        totais_por_linha=totais_por_linha,
+        totais_por_linha_outros=totais_por_linha_outros,
         totais_por_coluna=totais_por_coluna,
         totais_por_coluna_outros=totais_por_coluna_outros,
         total_geral_colunas=total_geral_colunas,
         total_geral_colunas_outros=total_geral_colunas_outros,
         total_geral=total_geral,
         total_geral_outros=total_geral_outros,
+        credito_compradores=credito_compradores,
+        creditos_do_mes=creditos_do_mes,
         pagamento_por_mes_bandeira=pagamento_por_mes_bandeira,
         pagamento_por_mes_bandeira_outros=pagamento_por_mes_bandeira_outros,
         formas_pagamento_outros=formas_pagamento_outros,
         totais_por_comprador_mes=totais_por_comprador_mes,
-        totais_por_mes_comprador=totais_por_mes_comprador, 
-        total_geral_compradores=total_geral_compradores, 
         colunas_meses_compradores=colunas_meses_compradores,
+        total_geral_compradores=total_geral_compradores,
+        totais_por_mes_comprador=totais_por_mes_comprador,
         total_creditos_mes=total_creditos_mes,
         total_despesas_mes=total_despesas_mes,
-        mes_atual=mes_atual,
         saldo_mes=saldo_mes,
-
-        csrf_token=csrf_token,
-        now=datetime.now()
+        total_pago_mes=total_pago_mes,
+        saldo_mes_ajustado=saldo_mes_ajustado,
+        mes_selecionado=mes_selecionado,
+        csrf_token=csrf_token
     )
+
 
 @app.route('/despesas', methods=['GET', 'POST'])
 def lancar_despesas():
@@ -1662,17 +1704,22 @@ def excluir_comprador(id):
 @app.route('/cadastro/credito/novo', methods=['GET', 'POST'])
 def novo_credito():
     if request.method == 'POST':
-        data_credito = request.form['data_credito']
+        data_do_credito = request.form['data_do_credito']
         valor_salario = request.form['valor_salario']
 
-        if not data_credito or not valor_salario:
+        if not data_do_credito or not valor_salario:
             flash('Data do crédito e valor são obrigatórios.', 'danger')
             return redirect(url_for('novo_credito'))
 
         try:
             valor = float(valor_salario.replace(',', '.'))
             # validação opcional da data
-            datetime.strptime(data_credito, '%Y-%m-%d')
+            datetime.strptime(data_do_credito, '%d/%m/%Y')
+
+             # Aqui você NÃO converte para o formato ISO, salva como dd/mm/yyyy mesmo
+            data_formatada = data_do_credito
+
+
         except ValueError:
             flash('Valor inválido ou data no formato incorreto.', 'danger')
             return redirect(url_for('novo_credito'))
@@ -1680,16 +1727,14 @@ def novo_credito():
         conn = get_db_connection()
         conn.execute(
             "INSERT INTO SALARIO_MES (DATA_DO_CREDITO, VALOR_SALARIO) VALUES (?, ?)",
-            (data_credito, valor)
+            ( data_formatada, valor)
         )
         conn.commit()
         conn.close()
         flash('Crédito salarial inserido com sucesso!', 'success')
         return redirect(url_for('listar_credito'))
 
-    return render_template('editar_credito.html')
-
-
+    return render_template('editar_credito.html',registro=None, tipo='Credito')
 
 @app.route('/cadastro/credito')
 def consultar_credito():
@@ -1715,31 +1760,35 @@ def editar_credito(id):
     conn = get_db_connection()
     credito = conn.execute("SELECT * FROM SALARIO_MES WHERE id = ?", (id,)).fetchone()
 
-    if credito is None:
-        flash('Crédito não encontrado.', 'danger')
-        conn.close()
-        return redirect(url_for('consultar_credito'))
+    if not credito:
+        flash("Credito não encontrado.", "danger")
+        return redirect(url_for('listar_credito'))
+
 
     if request.method == 'POST':
-        data_credito = request.form['data_credito']
+        data_do_credito = request.form['data_do_credito']
         valor_salario = request.form['valor_salario']
 
-        if not data_credito or not valor_salario:
-            flash('Data do crédito e valor são obrigatórios.', 'danger')
+        if not data_do_credito or not valor_salario:
+            flash("Data do crédito e valor do crédito são obrigatórios.", "warning")
             conn.close()
-            return redirect(url_for('editar_credito', id=id))
+            return redirect(request.url)
 
-        try:
-            valor = float(valor_salario.replace(',', '.'))
-            datetime.strptime(data_credito, '%Y-%m-%d')
-        except ValueError:
-            flash('Valor inválido ou data no formato incorreto.', 'danger')
+        # Verifica se há crédito duplicado (ajuste de nome de tabela e parâmetros!)
+        duplicado = conn.execute(
+            "SELECT 1 FROM SALARIO_MES WHERE DATA_DO_CREDITO = ? AND VALOR_SALARIO = ? AND id != ?", 
+            (data_do_credito, valor_salario, id)
+        ).fetchone()
+
+        if duplicado:
+            flash("Já existe outro crédito com esta data e valor.", "danger")
             conn.close()
-            return redirect(url_for('editar_credito', id=id))
+            return redirect(request.url)
 
+        # Atualização
         conn.execute(
             "UPDATE SALARIO_MES SET DATA_DO_CREDITO = ?, VALOR_SALARIO = ? WHERE id = ?",
-            (data_credito, valor, id)
+            (data_do_credito, valor_salario, id)
         )
         conn.commit()
         conn.close()
@@ -1747,7 +1796,7 @@ def editar_credito(id):
         return redirect(url_for('listar_credito'))
 
     conn.close()
-    return render_template('editar_credito.html', credito=credito)
+    return render_template('editar_credito.html',registro=credito, tipo='credito')
 
 @app.route('/cadastro/credito/excluir/<int:id>', methods=['POST'])
 def excluir_credito(id):
@@ -2197,10 +2246,12 @@ def detalhes_comprador_mes():
        "comprador": comprador_nome,
         "total_mes": total_mes,
         "quantidade_parcelas": quantidade_parcelas,
-        "bandeira_mome": bandeira_nome,
+        "bandeira_nome": bandeira_nome,
         "detalhes":resultado
  
     })
+
+
 
 
 

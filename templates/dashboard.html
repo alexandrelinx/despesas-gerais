@@ -2,31 +2,95 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
+<!-- LINHA 1 - Créditos na horizontal, alinhados à direita -->
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <!-- TÍTULO à ESQUERDA -->
+  <div>
+    <h2 class="mb-0">Resumo de Despesas</h2>
+     <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
+  </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-     <div>
-      <h2 class="mb-0">Resumo de Despesas</h2>
-      <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
-     </div>
- 
-    <div class="text-end">
-    <h5><label>Créditos do Mês:</label>
-      <span style="font-weight:bold; color:black;">
-        R$ {{ '%.2f'|format(total_creditos_mes) }}
-      </span>
-    </h5>
-    <h6><label>Despesas do Mês {{ mes_atual }}:</label>
+  <!-- COLUNA À DIREITA (Créditos na horizontal + detalhes verticais) -->
+  <div class="d-flex flex-column align-items-end text-end gap-2">
+
+    <!-- Créditos na horizontal -->
+    <div class="d-flex justify-content-end gap-4 text-nowrap">
+      <h6 class="mb-0">
+        <label>Créditos do Salário:</label>
+        <span style="font-weight:bold; color:black;">
+          R$ {{ '%.2f'|format(total_creditos_mes) }}
+        </span>
+      </h6>
+
+      <h6 class="mb-0">
+        <label>Crédito dos Compradores:</label>
+        <span style="font-weight:bold; color:black;">
+          R$ {{ '%.2f'|format(credito_compradores) }}
+        </span>
+      </h6>
+
+      <h6 class="mb-0">
+        <label>Créditos do Mês:</label>
+        <span style="font-weight:bold; color:black;">
+          R$ {{ '%.2f'|format(creditos_do_mes) }}
+        </span>
+      </h6>
+    </div>
+
+    <!-- Campos verticais -->
+    <h6 class="mb-0">
+      <label>Despesas do Mês:</label>
+      <select id="mes-selecionado" onchange="window.location.href='?mes=' + this.value;">
+        {% for mes in colunas_meses_compradores %}
+          <option value="{{ mes }}" {% if mes == mes_selecionado %}selected{% endif %}>{{ mes }}</option>
+        {% endfor %}
+      </select>
       <span style="font-weight:bold; color:black;">
         R$ {{ '%.2f'|format(total_despesas_mes) }}
       </span>
     </h6>
-    <h6><label>Saldo:</label>
-      <span style="font-weight:bold; color:{{ 'blue' if saldo_mes >= 0 else 'red' }};">
+
+    <h6 class="mb-0">
+      <label>Saldo:</label>
+      <span style="font-weight:bold; color:
+        {% if saldo_mes == 0 %}
+          green
+        {% elif saldo_mes > 0 %}
+          blue
+        {% else %}
+          red
+        {% endif %}
+      ;">
         R$ {{ '%.2f'|format(saldo_mes) }}
       </span>
     </h6>
+
+    <h6 class="mb-0">
+      <label>Valor Pago:</label>
+      <span style="font-weight:bold; color:green;">
+        R$ {{ '%.2f'|format(total_pago_mes) }}
+      </span>
+    </h6>
+
+    <h6 class="mb-0">
+      <label>Saldo Atualizado:</label>
+      <span style="font-weight:bold; color:
+        {% if saldo_mes_ajustado == 0 %}
+          green
+        {% elif saldo_mes_ajustado > 0 %}
+          blue
+        {% else %}
+          red
+        {% endif %}
+      ;">
+        R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
+      </span>
+    </h6>
+
+   
   </div>
 </div>
+
 
 <style>
 .dashboard-container {
