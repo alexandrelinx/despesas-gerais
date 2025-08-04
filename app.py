@@ -477,7 +477,7 @@ def dashboard():
     total_pago_mes = float(valor_pago_mes['total_pago'] or 0.0)
   
     # Cálculo do saldo
-    saldo_mes_ajustado = total_despesas_mes  - total_pago_mes
+    saldo_mes_ajustado = total_pago_mes - total_despesas_mes  
 
     csrf_token = generate_csrf()
     conn.close()
