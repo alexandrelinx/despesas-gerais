@@ -381,6 +381,7 @@ def dashboard():
                     "bandeira_nome": bandeira_nome,
                     "estabelecimento": despesa['estabelecimento'],
                     "data_compra": despesa['data_compra'],
+                    "comprador_nome": despesa['comprador_nome'],
                     "pago": pago_parcela
                 })
 
@@ -509,8 +510,29 @@ def dashboard():
 
    # credito_compradores = valor_compradores  # já existe esse valor
     credito_compradores = totais_por_mes_comprador.get(mes_selecionado, 0.0)
-
+ 
     creditos_do_mes = total_creditos_mes + credito_compradores
+# NOVO: Montar se todas as parcelas de cada comprador em cada mês estão pagas
+    pagamento_por_mes_comprador = {
+       comprador: {
+        mes: all(
+            parcela.get("pago", 0) == 1
+            for parcela in parcelas_exibidas
+            if parcela["data_vencimento"].strftime("%m/%Y") == mes
+            and (parcela.get('comprador_nome') or "Não especificado").strip() == comprador
+        )
+        for mes in colunas_meses_compradores
+    }
+    for comprador in totais_por_comprador_mes
+}
+
+
+
+
+    for comprador, meses in pagamento_por_mes_comprador.items():
+      for mes, pago in meses.items():
+        print(f"Comprador: {comprador} | Mês: {mes} | Pago: {pago} | Valores: {pagamento_por_mes_comprador[comprador][mes]}")
+
 
     #print('totais_por_mes_comprador:', totais_por_mes_comprador)
     return render_template(
@@ -534,6 +556,7 @@ def dashboard():
         creditos_do_mes=creditos_do_mes,
         pagamento_por_mes_bandeira=pagamento_por_mes_bandeira,
         pagamento_por_mes_bandeira_outros=pagamento_por_mes_bandeira_outros,
+        pagamento_por_mes_comprador=pagamento_por_mes_comprador,     
         formas_pagamento_outros=formas_pagamento_outros,
         totais_por_comprador_mes=totais_por_comprador_mes,
         colunas_meses_compradores=colunas_meses_compradores,
@@ -548,6 +571,10 @@ def dashboard():
         csrf_token=csrf_token
     )
 
+@app.route('/rota_de_atualizacao')
+def rota_de_atualizacao():
+    # código para retornar alguma resposta
+    return "Rota de atualização funcionando"
 
 @app.route('/despesas', methods=['GET', 'POST'])
 def lancar_despesas():
@@ -2173,8 +2200,6 @@ def listar_parcelas(despesa_id):
 
     return jsonify({'despesa': dados_despesa, 'parcelas': dados_parcelas})
 
-
-from datetime import datetime
 
 @app.route('/detalhes_comprador_mes', methods=['POST'])
 def detalhes_comprador_mes():

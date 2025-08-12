@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Lançar Despesas{% endblock %}
+{% block content %}
+<h2>Lançar Nova Despesa</h2>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <div class="row">
+    <div class="col-md-6">
+      <label>Estabelecimento</label>
+      <select name="estabelecimento_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for e in estabelecimentos %}
+        <option value="{{ e.id }}">{{ e.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Categoria</label>
+      <select name="categoria_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for c in categorias %}
+        <option value="{{ c.id }}">{{ c.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Local da Compra</label>
+      <select name="local_compra_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for l in locais %}
+        <option value="{{ l.id }}">{{ l.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Comprador</label>
+      <select name="comprador_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for c in compradores %}
+        <option value="{{ c.id }}">{{ c.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Produto</label>
+      <select name="produto_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for p in produtos %}
+        <option value="{{ p.id }}">{{ p.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Data da Compra</label>
+        <input type="text" name="data_compra" id="data_do_credito" placeholder="dd/mm/aaaa" class="form-control"  required
+            value="{{ registro.data_do_credito if registro else '' }}">
+    </div>
+
+    <div class="col-md-6">
+      <label>Valor da Compra</label>
+      <input type="number" step="0.01" name="valor_compra" class="form-control" required>
+    </div>
+
+    <div class="col-md-6">
+      <label>Forma de Pagamento</label>
+      <select name="forma_pagamento_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for f in formas %}
+        <option value="{{ f.id }}">{{ f.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Bandeira</label>
+      <select name="bandeira_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for b in bandeiras %}
+        <option value="{{ b.id }}">{{ b.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Parcelamento</label>
+      <select name="parcelamento_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for p in parcelamentos %}
+        <option value="{{ p.id }}">{{ p.tipo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Qtd Parcelas</label>
+      <select name="quantidade_parcelas_id" class="form-control" required>
+        <option value="" disabled selected>Selecione</option>
+        {% for q in quantidades %}
+        <option value="{{ q.id }}">{{ q.quantidade }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label>Valor da Parcela</label>
+      <input type="number" step="0.01" name="valor_parcela" class="form-control" required>
+    </div>
+
+   <div class="col-md-12">
+      <label>Observação</label>
+      <textarea name="observacao" class="form-control" rows="3" placeholder="Digite aqui alguma observação..." autocorrect="on" autocapitalize="sentences" spellcheck="true">{{ request.form.observacao or '' }}</textarea>
+  </div>
+
+  </div>
+  <br>
+  <button type="submit"  class="btn btn-success">Salvar Lançamento</button>
+</form>
+
+<!-- 🔽 Scripts para a máscara de data -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+<script>
+  const input = document.getElementById('data_do_credito');
+
+  input.addEventListener('input', function(e) {
+    let value = input.value;
+
+    // Remove tudo que não for número
+    value = value.replace(/\D/g, '');
+
+    // Limita o tamanho máximo para 8 dígitos (ddmmyyyy)
+    if (value.length > 8) {
+      value = value.slice(0,8);
+    }
+
+    // Insere as barras automaticamente
+    if (value.length > 4) {
+      // dd/mm/yyyy
+      value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    } else if (value.length > 2) {
+      // dd/mm
+      value = value.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    }
+
+    input.value = value;
+  });
+</script>
+
+
+
+{% endblock %}

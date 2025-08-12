@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Forma de Pagamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Forma de Pagamento</h3>
+    <!-- <a href="/cadastro/forma_pagamento" class="btn btn-primary mb-3">Nova forma de Pagamento</a> -->
+<a href="{{ url_for('nova_forma_pagamento') }}" class="btn btn-primary mb-3">Nova Forma de Pagamento</a>
+    <table class="table table-bordered" id="tabelaFormaPagamento">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fpgto in forma_pagamento %}
+            <tr>
+                <td>{{ fpgto.id }}</td>
+                <td>{{ fpgto.nome }}</td>
+                   <td style="text-align: center;">
+                    <a href="{{ url_for('editar_forma_pagamento', id=fpgto.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('excluir_forma_pagamento', id=fpgto.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                        <button type="submit" name="csrf_token" value="{{ csrf_token() }}" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables -->
+<script>
+    $(document).ready(function() {
+        $('#tabelaFormaPagamento').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            }
+        });
+    });
+</script>
+{% endblock %}

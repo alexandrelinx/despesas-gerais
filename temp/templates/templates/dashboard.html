@@ -1,111 +1,45 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 
-<!-- DEBUG: -->
-<td title="Pago: {{ pago }}">{{ valor }}</td>
 {% block content %}
-<!-- LINHA 1 - Créditos na horizontal, alinhados à direita -->
-<div class="d-flex justify-content-between align-items-start mb-3">
-  <!-- TÍTULO à ESQUERDA -->
-  <div>
-    <h2 class="mb-0">Resumo de Despesas</h2>
-     <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
-     
-<div class="form-inline">
-  <label for="intervalo-atualizacao" class="mt-2 mb-0" style="font-weight:bold; color:black;" >Atualizar a cada:</label>
-    <span style="font-weight:bold; color:black;"></span>
-  <select id="intervalo-atualizacao" class="form-select form-select-sm w-auto">
-    <option value="0">Nunca</option>
-    <option value="10">10s</option>
-    <option value="30">30s</option>
-    <option value="60">1 min</option>
-    <option value="300">5 min</option>
-  </select>
-</div>
-  </div>
 
+    <div class="d-flex justify-content-between align-items-center mb-3">
+     <div>
+      <h2 class="mb-0">Resumo de Despesas</h2>
+      <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
+     </div>
+ 
+    <div class="text-end">
+    <h5><label>Créditos do Mês:</label>
+      <span style="font-weight:bold; color:black;">
+        R$ {{ '%.2f'|format(total_creditos_mes) }}
+      </span>
+    </h5>
 
-  <!-- COLUNA À DIREITA (Créditos na horizontal + detalhes verticais) -->
-  <div class="d-flex flex-column align-items-end text-end gap-2">
-
-    <!-- Créditos na horizontal -->
-    <div class="d-flex justify-content-end gap-4 text-nowrap">
-      <h6 class="mb-0">
-        <label>Créditos do Salário:</label>
-        <span style="font-weight:bold; color:black;">
-          R$ {{ '%.2f'|format(total_creditos_mes) }}
-        </span>
-      </h6>
-
-      <h6 class="mb-0">
-        <label>Crédito dos Compradores:</label>
-        <span style="font-weight:bold; color:black;">
-          R$ {{ '%.2f'|format(credito_compradores) }}
-        </span>
-      </h6>
-
-      <h6 class="mb-0">
-        <label>Créditos do Mês:</label>
-        <span style="font-weight:bold; color:black;">
-          R$ {{ '%.2f'|format(creditos_do_mes) }}
-        </span>
-      </h6>
-    </div>
-
-    <!-- Campos verticais -->
-    <h6 class="mb-0">
-      <label>Despesas do Mês:</label>
+    <h6><label>Despesas do Mês :</label>
       <select id="mes-selecionado" onchange="window.location.href='?mes=' + this.value;">
-        {% for mes in colunas_meses_compradores %}
-          <option value="{{ mes }}" {% if mes == mes_selecionado %}selected{% endif %}>{{ mes }}</option>
-        {% endfor %}
-      </select>
+      {% for mes in colunas_meses_compradores %}
+        <option value="{{ mes }}" {% if mes == mes_atual %}selected{% endif %}>{{ mes }}</option>
+      {% endfor %}
+    </select>
       <span style="font-weight:bold; color:black;">
         R$ {{ '%.2f'|format(total_despesas_mes) }}
       </span>
     </h6>
 
-    <h6 class="mb-0">
-      <label>Saldo:</label>
-      <span style="font-weight:bold; color:
-        {% if saldo_mes == 0 %}
-          green
-        {% elif saldo_mes > 0 %}
-          blue
-        {% else %}
-          red
-        {% endif %}
-      ;">
-        R$ {{ '%.2f'|format(saldo_mes) }}
-      </span>
+    <h6><label>Valor Pago:</label>
+    <span style="font-weight:bold; color:green;">
+      R$ {{ '%.2f'|format(total_pago_mes) }}
+    </span>
     </h6>
-
-    <h6 class="mb-0">
-      <label>Valor Pago:</label>
-      <span style="font-weight:bold; color:green;">
-        R$ {{ '%.2f'|format(total_pago_mes) }}
-      </span>
-    </h6>
-
-    <h6 class="mb-0">
-      <label>Saldo Atualizado:</label>
-      <span style="font-weight:bold; color:
-        {% if saldo_mes_ajustado == 0 %}
-          green
-        {% elif saldo_mes_ajustado > 0 %}
-          blue
-        {% else %}
-          red
-        {% endif %}
-      ;">
-        R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
-      </span>
-    </h6>
-
-   
+    
+    <h6><label>Saldo Atualizado:</label>
+    <span style="font-weight:bold; color:{{ 'blue' if (saldo_mes - total_pago_mes) >= 0 else 'red' }};">
+      R$ {{ '%.2f'|format(saldo_mes - total_pago_mes) }}
+    </span>
+  </h6>
   </div>
 </div>
-
 
 <style>
 .dashboard-container {
@@ -157,22 +91,6 @@
     font-weight: bold !important;
     cursor: pointer;
 }
-
-.pago-azul {
-  background-color: #cce5ff !important;
-  color: #004085 !important;
-  font-weight: bold !important;
-  cursor: pointer;
-}
-
-
-
-
-
-
-
-
-
 
 /* Scroll horizontal para tabelas largas */
 .scroll-container {
@@ -281,20 +199,6 @@
   font-weight: bold;
 }
 
-  #intervalo-atualizacao {
-    min-width: 100px;
-  }
-
-.valor-oculto {
-  color: transparent !important;
-  transition: color 0.3s ease;
-  cursor: pointer;
-}
-
-.valor-oculto:hover {
-  color: black !important;
-}
-
 
 
 </style>
@@ -395,7 +299,7 @@
                                 R$ {{ '%.2f'|format(valor) }}
                             </td>
                         {% endfor %}
-                         <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}</span></strong></td>
+                         <td><strong>R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}</strong></td>
                       <!--   <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
                     </tr>
                     {% endfor %}
@@ -414,9 +318,9 @@
                     <tr>
                         <th>Total Geral</th>
                         {% for mes_ano in colunas_meses %}
-                            <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</span></th>
+                            <th>R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</th>
                         {% endfor %}
-                        <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral) }}</span></strong></th>
+                        <th><strong>R$ {{ '%.2f'|format(total_geral) }}</strong></th>
                     </tr>
                 </tfoot>
             </table>
@@ -464,7 +368,7 @@
                                 R$ {{ '%.2f'|format(valor_float) }}
                             </td>
                         {% endfor %}
-                          <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira]) }}</span></strong></td>
+                          <td><strong>R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira]) }}</strong></td>
                       <!--  <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
                     </tr>
                     {% endfor %}
@@ -474,9 +378,9 @@
                         <th>Total Geral</th>
                         <th></th>
                         {% for mes_ano in colunas_meses %}
-                            <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}</span></th>
+                            <th>R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}</th>
                         {% endfor %}
-                        <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_outros) }}</span></strong></th>
+                        <th><strong>R$ {{ '%.2f'|format(total_geral_outros) }}</strong></th>
                     </tr>
                 </tfoot>
             </table>
@@ -504,19 +408,16 @@
             <td>{{ comprador }}</td>
             {% for mes in colunas_meses_compradores %}
               {% set valor = valores.get(mes, 0) %}
-               {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
-                <td 
-                  class="valor-mes-comprador text-center {% if pago %}pago-azul{% endif %}"
-                  data-comprador="{{ comprador }}"
-                  data-mes="{{ mes }}"
-                  style="cursor:pointer;"
-                  title="{% if pago %}simPago{% else %}Não pago{% endif %}"
+               <td 
+                 class="valor-mes-comprador text-center"
+                 data-comprador="{{ comprador }}"
+                 data-mes="{{ mes }}"
+                 style="cursor:pointer;"
                 >
-                  R$ {{ '%.2f'|format(valor) }}
+                 R$ {{ '%.2f'|format(valor) }}
                 </td>
-
              {% endfor %}
-            <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(valores.values() | sum) }}</span></strong></td>
+            <td><strong>R$ {{ '%.2f'|format(valores.values() | sum) }}</strong></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -524,9 +425,9 @@
         <tr>
          <th>Total Geral</th>
          {% for mes in colunas_meses_compradores %}
-           <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_comprador.get(mes, 0)) }}</span></th>
+           <th>R$ {{ '%.2f'|format(totais_por_mes_comprador.get(mes, 0)) }}</th>
          {% endfor %}
-        <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_compradores) }}</span></strong></th>
+        <th><strong>R$ {{ '%.2f'|format(total_geral_compradores) }}</strong></th>
       </tr>
      </tfoot>
     </table>
@@ -612,7 +513,6 @@ function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
     console.log(`Rolando para ${mesAno} em ${seletorSecao}, índice: ${indiceColuna}, scrollLeft: ${deslocamentoScroll}`);
 }
 
-
 // ✅ Aplica o scroll nas abas quando visíveis
 document.addEventListener('DOMContentLoaded', () => {
     const tabTotais = document.querySelector('#totais-tab');
@@ -636,61 +536,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<script>
-const tempoAtualizacao = {{ tempo_atualizacao | default(0) }} * 1000;
-
-if (tempoAtualizacao > 0) {
-  setInterval(() => {
-    // Aqui você coloca a função que atualiza seus dados, por exemplo:
-    atualizarDados();
-  }, tempoAtualizacao);
-} else {
-  console.log("Atualização automática desabilitada (Nunca selecionado)");
-}
-
-function atualizarDados() {
-  // Seu código para atualizar a página (fetch, ajax, etc)
-  console.log("Atualizando dados...");
-  // exemplo:
-  fetch('/rota_de_atualizacao')
-    .then(response => response.json())
-    .then(data => {
-      // atualizar elementos da página com os dados
-    })
-    .catch(console.error);
-}
-</script>
-
-<script>
-  const selectAtualizacao = document.getElementById('intervalo-atualizacao');
-  const valorSalvo = localStorage.getItem('tempoAtualizacao') || "0";
-  selectAtualizacao.value = valorSalvo;
-
-  let intervalo = null;
-
-  function iniciarAtualizacao(tempoSegundos) {
-    if (intervalo) clearInterval(intervalo); // limpa qualquer intervalo anterior
-    if (tempoSegundos > 0) {
-      intervalo = setInterval(() => {
-        location.reload();
-      }, tempoSegundos * 1000);
-    }
-  }
-
-  iniciarAtualizacao(parseInt(valorSalvo));
-
-  selectAtualizacao.addEventListener('change', () => {
-    const novoValor = selectAtualizacao.value;
-    localStorage.setItem('tempoAtualizacao', novoValor);
-    const url = new URL(window.location);
-    url.searchParams.set('tempo_atualizacao', novoValor);
-    window.location.href = url.toString();
-
-
-
-
-   
-  });
-</script>
 
 {% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Crédito{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Créditos de Salário</h3>
+    <a href="{{ url_for('novo_credito') }}" class="btn btn-primary mb-3">Novo Crédito</a>
+    <table class="table table-bordered" id="tabelaCreditos">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Data do Credito</th>
+                <th>Valor do Credito</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for credito in creditos %}
+            <tr>
+                <td>{{ credito.id }}</td>
+                <td>{{ credito.data_do_credito }}</td>
+                <td>{{ credito.valor_salario }}</td>
+                <td style="text-align: center;">
+                    <a href="{{ url_for('editar_credito', id=credito.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('excluir_credito', id=credito.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                        <button type="submit" name="csrf_token" value="{{ csrf_token() }}" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#tabelaCreditos').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            }
+        });
+    });
+</script>
+{% endblock %}

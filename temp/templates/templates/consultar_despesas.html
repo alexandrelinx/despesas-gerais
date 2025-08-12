@@ -88,6 +88,38 @@
     </table>
   </div>
 </div>
+<!-- Modal Parcelas -->
+<div class="modal fade" id="parcelasModal" tabindex="-1" role="dialog" aria-labelledby="parcelasModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detalhes da Despesa e Parcelas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
 
+      <div class="modal-body">
+
+        <!-- Cabeçalho com dados principais -->
+        <div id="cabecalho-despesa" class="mb-3">
+          <!-- Populado via JS -->
+        </div>
+
+        <!-- Tabela de parcelas -->
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th style="width: 33%;">Data de Vencimento</th>
+              <th style="width: 33%;">Valor da Parcela</th>
+               <th style="width: 34%;">Pago</th>
+            </tr>
+          </thead>
+          <tbody id="parcelas-body">
+            <!-- Populado via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

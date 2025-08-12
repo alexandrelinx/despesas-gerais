@@ -162,22 +162,6 @@
 }
 
 
-#parcelasModal .modal-body {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-#parcelasModal thead th {
-  position: sticky;
-  top: 0;
-  background-color: #fdf5f5;
-  z-index: 10;
-}
-
-.modal-body {
-  overflow-y: auto;
-  max-height: 400px;
-}
 
     </style>
 </head>
@@ -313,7 +297,7 @@
 
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script>
+    <script>
 document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll(".abrir-modal-parcelas").forEach(el => {
     el.addEventListener("click", function (e) {
@@ -333,35 +317,32 @@ document.addEventListener("DOMContentLoaded", function () {
           `;
 
           const tbody = document.getElementById("parcelas-body");
-          tbody.innerHTML = '';
+          tbody.innerHTML = "";
 
           if (!data.parcelas.length) {
-            tbody.innerHTML = "<tr><td colspan='4' class='text-center'>Nenhuma parcela encontrada.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='2' class='text-center'>Nenhuma parcela encontrada.</td></tr>";
             return;
           }
 
-          data.parcelas.forEach(parcela => {
-            console.log('Parcela:', parcela);
-            const bandeira = parcela.bandeira || data.despesa.bandeira || '-';
-            const statusPago = Number(parcela.pago) === 1 ? 'Pago' : 'Aberto';
-            console.log('Status Pago:', statusPago);
+             data.parcelas.forEach(parcela => {
+           console.log('Parcela:', parcela);
+           const statusPago = Number(parcela.pago) === 1 ? 'Pago' : 'Aberto';
+           console.log('Status Pago:', statusPago);
 
-
-           
-            const row = `
-              <tr>
-                <td>${bandeira}</td>
-                <td>${parcela.data_vencimento}</td>
-                <td>${parcela.valor}</td>
-                <td>${statusPago}</td>
-              </tr>
-            `;
-            tbody.insertAdjacentHTML("beforeend", row);
-          });
-
+          const row = `
+           <tr>
+             <td>${bandeira}</td>
+             <td>${parcela.data_vencimento}</td>
+             <td>${parcela.valor}</td>
+             <td>${statusPago}</td>
+           </tr>
+         `;
+         tbody.insertAdjacentHTML("beforeend", row);
+       });
+         
+       
           // Abrir o modal manualmente
-         const modalParcelas = new bootstrap.Modal(document.getElementById('parcelasModal'));
-         modalParcelas.show();
+          $('#parcelasModal').modal('show');
         })
         .catch(err => {
           console.error("Erro ao buscar parcelas:", err);
@@ -369,25 +350,28 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  document.querySelectorAll('.valor-mes-comprador').forEach(td => {
-    td.style.cursor = 'pointer'; // muda o cursor para indicar que é clicável
-    td.addEventListener('click', () => {
-      const comprador = td.dataset.comprador;
-      const mes = td.dataset.mes;
-      const bandeira = td.dataset.bandeira;
+document.querySelectorAll('.valor-mes-comprador').forEach(td => {
+  td.style.cursor = 'pointer'; // muda o cursor para indicar que é clicável
+  td.addEventListener('click', () => {
+    const comprador = td.dataset.comprador;
+    const mes = td.dataset.mes;
+    const bandeira =td.dataset.bandeira;
 
-      fetch('/detalhes_comprador_mes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Se usar CSRF, adicione o token aqui, por exemplo:
-          'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({ comprador, mes, bandeira })
-      })
-      .then(res => res.json())
-      .then(data => {
+    fetch('/detalhes_comprador_mes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Se usar CSRF, adicione o token aqui, por exemplo:
+         'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ comprador, mes,bandeira })
+    })
 
+
+   
+    .then(res => res.json())
+    .then(data => {
+        
         // Preencher cabeçalho do modal
         document.getElementById('modal-comprador').textContent = data.comprador;
         document.getElementById('modal-total-mes').textContent = data.total_mes.toFixed(2);
@@ -398,43 +382,42 @@ document.addEventListener("DOMContentLoaded", function () {
         tbody.innerHTML = '';
 
         if (!data.detalhes.length) {
-          tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum dado encontrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhum dado encontrado.</td></tr>';
         } else {
-          data.detalhes.forEach(item => {
-            const pago = item.pago ? 'Sim' : 'Não';
-            const estabelecimento = item.estabelecimento || '-';
-            const bandeira = item.bandeira || '-';
-
-            tbody.insertAdjacentHTML('beforeend', `
-              <tr>
-                <td>${estabelecimento}</td>
-                <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
-                <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
-                <td>R$ ${item.valor_compra.toFixed(2)}</td>
-                <td>${bandeira}</td>
-                <td class="text-end">R$ ${item.valor_parcela_atual.toFixed(2)}</td>
-                <td>${pago}</td>
-              </tr>
-            `);
-          });
+           data.detalhes.forEach(item => {
+              const pago = item.pago ? 'Sim' : 'Não';
+              const estabelecimento = item.estabelecimento || '-';
+              const bandeira = item.bandeira || '-';
+             
+              tbody.insertAdjacentHTML('beforeend', `
+                <tr>
+                  <td>${estabelecimento}</td>
+                  <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
+                  <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
+                  <td>R$ ${item.valor_compra.toFixed(2)}</td>
+                  <td>${bandeira}</td>
+                  <td class="text-end">R$ ${item.valor_parcela_atual.toFixed(2)}</td>
+                  <td>${pago}</td>
+               </tr>
+          `);
+       });
         }
-
-        const modal = new bootstrap.Modal(document.getElementById('detalhesCompradorModal'));
-        modal.show();
-      })
-      .catch(err => {
-        alert('Erro ao carregar detalhes');
-        console.error(err);
-      });
+            const modal = new bootstrap.Modal(document.getElementById('detalhesCompradorModal'));
+      modal.show();
+    })
+    .catch(err => {
+      alert('Erro ao carregar detalhes');
+      console.error(err);
     });
   });
 });
-</script>
+});
 
+</script>
 
 <!-- Modal Detalhes Comprador/Mês -->
 <div class="modal fade" id="detalhesCompradorModal" tabindex="-1" aria-labelledby="detalhesCompradorModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl" style="max-width: 60%;">
+  <div class="modal-dialog modal-xl" style="max-width: 40%;">
     <div class="modal-content">
 
       <div class="modal-header">
@@ -448,8 +431,8 @@ document.addEventListener("DOMContentLoaded", function () {
         <div id="modal-cabecalho" class="mb-3">
           <p><strong>Comprador:</strong> <span id="modal-comprador"></span></p>
           <p><strong>Total do Mês:</strong> R$ <span id="modal-total-mes"></span></p>
-         <p><strong>Quantidade de Parcelas:</strong> <span id="modal-quantidade-parcelas"></span></p> 
-         <!-- <p><strong>Bandeira:</strong> <span id="modal-bandeira"></span></p> -->
+          <p><strong>Quantidade de Parcelas:</strong> <span id="modal-quantidade-parcelas"></span></p>
+          <p><strong>Bandeira:</strong> <span id="modal-bandeira"></span></p>
         </div>
 
         <!-- Tabela com detalhes -->
@@ -479,38 +462,6 @@ document.addEventListener("DOMContentLoaded", function () {
     </div>
   </div>
 </div>
-
-<!-- Modal Parcelas -->
-<div class="modal fade" id="parcelasModal" tabindex="-1" aria-labelledby="parcelasModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl" style="max-width: 60%;"> <!-- largura grande para mostrar tabelas -->
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="parcelasModalLabel">Detalhes da Despesa</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-
-      <div class="modal-body">
-        <div id="cabecalho-despesa" class="mb-3"></div>
-        <table class="table table-bordered table-sm">
-          <thead>
-            <tr>
-              <th style="width: 25%;">Bandeira</th>
-              <th style="width: 25%;">Data de Vencimento</th>
-              <th style="width: 25%;">Valor da parcela</th>
-              <th style="width: 25%;">Status</th>
-            </tr>
-          </thead>
-          <tbody id="parcelas-body"></tbody>
-        </table>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 
 </body>
 </html>
