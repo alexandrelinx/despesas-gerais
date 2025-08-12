@@ -179,6 +179,12 @@
   max-height: 400px;
 }
 
+.modal-custom-width {
+  max-width: 400px; /* largura que você quiser */
+}
+
+
+
     </style>
 </head>
 
@@ -430,7 +436,15 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+<script>
+document.getElementById('abrirSaldoModalBtn').addEventListener('click', function () {
+  const saldoModal = new bootstrap.Modal(document.getElementById('saldoModal'));
+  saldoModal.show();
+});
 
+
+
+</script>
 
 <!-- Modal Detalhes Comprador/Mês -->
 <div class="modal fade" id="detalhesCompradorModal" tabindex="-1" aria-labelledby="detalhesCompradorModalLabel" aria-hidden="true">
@@ -510,6 +524,64 @@ document.addEventListener("DOMContentLoaded", function () {
     </div>
   </div>
 </div>
+
+<!-- Modal Saldo -->
+<div class="modal fade" id="modalSaldo" tabindex="-1" aria-labelledby="modalSaldoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-custom-width">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSaldoLabel">Detalhes do Saldo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Créditos do Salário:</strong> R$ {{ '%.2f'|format(total_creditos_mes) }}</p>
+        <p><strong>Crédito dos Compradores:</strong> R$ {{ '%.2f'|format(credito_compradores) }}</p>
+        <p><strong>Créditos do Mês:</strong> R$ {{ '%.2f'|format(creditos_do_mes) }}</p>
+        <hr>
+        <p><strong>Despesas do Mês:</strong> R$ {{ '%.2f'|format(total_despesas_mes) }}</p>
+        <p><strong>Saldo:</strong> 
+          <span class="
+            {% if saldo_mes == 0 %}
+              saldo-zero
+            {% elif saldo_mes > 0 %}
+              saldo-positivo
+            {% else %}
+              saldo-negativo
+            {% endif %}
+          " style="font-weight:bold;">
+            R$ {{ '%.2f'|format(saldo_mes) }}
+          </span>
+        </p>
+        <p><strong>Valor Pago:</strong> <span style="font-weight:bold; color:green;">R$ {{ '%.2f'|format(total_pago_mes) }}</span></p>
+        <p><strong>Saldo Atualizado:</strong> 
+          <span class="
+            {% if saldo_mes_ajustado == 0 %}
+              saldo-zero
+            {% elif saldo_mes_ajustado > 0 %}
+              saldo-positivo
+            {% else %}
+              saldo-negativo
+            {% endif %}
+          " style="font-weight:bold;">
+            R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
+          </span>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Seu CSS continua igual, só adaptei o modal */
+.modal-body p {
+  margin-bottom: 0.75rem;
+}
+</style>
+
+
 
 
 </body>

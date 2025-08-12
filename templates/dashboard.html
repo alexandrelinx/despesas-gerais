@@ -10,6 +10,8 @@
   <div>
     <h2 class="mb-0">Resumo de Despesas</h2>
      <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
+
+     
      
 <div class="form-inline">
   <label for="intervalo-atualizacao" class="mt-2 mb-0" style="font-weight:bold; color:black;" >Atualizar a cada:</label>
@@ -21,19 +23,34 @@
     <option value="60">1 min</option>
     <option value="300">5 min</option>
   </select>
+ </div>
 </div>
+
+ <h6 class="mb-0">
+      <label>Despesas do Mês:</label>
+      <select id="mes-selecionado" onchange="window.location.href='?mes=' + this.value;">
+        {% for mes in colunas_meses_compradores %}
+          <option value="{{ mes }}" {% if mes == mes_selecionado %}selected{% endif %}>{{ mes }}</option>
+        {% endfor %}
+      </select>
+ 
+    <!-- Botão Saldo para abrir modal -->
+  <div>
+    <button type="button" class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#modalSaldo">
+      Saldo
+    </button>
   </div>
-
-
+</div>
+</h6> 
   <!-- COLUNA À DIREITA (Créditos na horizontal + detalhes verticais) -->
-  <div class="d-flex flex-column align-items-end text-end gap-2">
+<!--  <div class="d-flex flex-column align-items-end text-end gap-2">
 
-    <!-- Créditos na horizontal -->
+     Créditos na horizontal 
     <div class="d-flex justify-content-end gap-4 text-nowrap">
       <h6 class="mb-0">
         <label>Créditos do Salário:</label>
         <span style="font-weight:bold; color:black;">
-          R$ {{ '%.2f'|format(total_creditos_mes) }}
+        <span class="valor-oculto"> R$ {{ '%.2f'|format(total_creditos_mes) }}</span>
         </span>
       </h6>
 
@@ -51,8 +68,8 @@
         </span>
       </h6>
     </div>
-
-    <!-- Campos verticais -->
+ 
+     Campos verticais  
     <h6 class="mb-0">
       <label>Despesas do Mês:</label>
       <select id="mes-selecionado" onchange="window.location.href='?mes=' + this.value;">
@@ -63,22 +80,24 @@
       <span style="font-weight:bold; color:black;">
         R$ {{ '%.2f'|format(total_despesas_mes) }}
       </span>
-    </h6>
+    </h6> 
 
     <h6 class="mb-0">
-      <label>Saldo:</label>
-      <span style="font-weight:bold; color:
-        {% if saldo_mes == 0 %}
-          green
-        {% elif saldo_mes > 0 %}
-          blue
-        {% else %}
-          red
-        {% endif %}
-      ;">
-        R$ {{ '%.2f'|format(saldo_mes) }}
-      </span>
-    </h6>
+        <label>Saldo:</label>
+  <span class="
+    {% if saldo_mes == 0 %}
+      saldo-zero
+    {% elif saldo_mes > 0 %}
+      saldo-positivo
+    {% else %}
+      saldo-negativo
+    {% endif %}
+    " style="font-weight:bold;">
+    <span class="valor-oculto">
+      R$ {{ '%.2f'|format(saldo_mes) }}
+    </span>
+  </span>
+     </h6>
 
     <h6 class="mb-0">
       <label>Valor Pago:</label>
@@ -89,22 +108,22 @@
 
     <h6 class="mb-0">
       <label>Saldo Atualizado:</label>
-      <span style="font-weight:bold; color:
-        {% if saldo_mes_ajustado == 0 %}
-          green
-        {% elif saldo_mes_ajustado > 0 %}
-          blue
-        {% else %}
-          red
-        {% endif %}
-      ;">
-        R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
+    <span class="
+         {% if saldo_mes_ajustado == 0 %}
+             saldo-zero
+         {% elif saldo_mes_ajustado > 0 %}
+             saldo-positivo
+         {% else %}
+             saldo-negativo
+         {% endif %}
+      " style="font-weight:bold;">
+      R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
       </span>
     </h6>
 
    
   </div>
-</div>
+</div> -->
 
 
 <style>
@@ -286,15 +305,41 @@
   }
 
 .valor-oculto {
-  color: transparent !important;
+  opacity: 0;
+ /* color: transparent !important;*/
   transition: color 0.3s ease;
   cursor: pointer;
 }
 
 .valor-oculto:hover {
-  color: black !important;
+  opacity: 1;
+ /* color: black !important;*/
 }
 
+
+.saldo-zero {
+  color: green !important;
+}
+
+.saldo-zero:hover {
+  color: green !important; /* mantém verde ao passar o mouse */
+}
+
+.saldo-positivo {
+  color: blue !important;
+}
+
+.saldo-positivo:hover {
+  color: blue!important; /* mantém azul no hover */
+}
+
+.saldo-negativo {
+  color: red !important;
+}
+
+.saldo-negativo:hover {
+  color: red!important; /* mantém vermelho no hover */
+}
 
 
 </style>
