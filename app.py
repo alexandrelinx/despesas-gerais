@@ -537,6 +537,7 @@ def dashboard():
     #print('totais_por_mes_comprador:', totais_por_mes_comprador)
     return render_template(
         'dashboard.html',
+       
         tempo_atualizacao=tempo_atualizacao_segundos,
         parcelas=parcelas_exibidas,
         parcelas_por_mes=parcelas_por_mes,
@@ -717,6 +718,7 @@ def lancar_despesas():
             conn.close()
 
         return redirect(url_for('lancar_despesas'))
+    
 
     # Carrega os dados para o formulário (sem vencimento_bandeira e melhor_dia_compra)
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO ORDER BY nome ASC").fetchall()
@@ -739,7 +741,8 @@ def lancar_despesas():
                            formas=formas, 
                            bandeiras=bandeiras, 
                            parcelamentos=parcelamentos, 
-                           quantidades=quantidade_parcelas)
+                           quantidades=quantidade_parcelas,
+                            )
 
 @app.route('/consultar_despesas', methods=['GET', 'POST'])
 def consultar_despesas():
