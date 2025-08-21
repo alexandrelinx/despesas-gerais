@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Abastecimentos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Abastecimentos</h3>
+    <a href="{{ url_for('combustivel') }}" class="btn btn-primary mb-3">Novo Abastecimento</a>
+    <a href="{{ url_for('combustivel') }}" class="btn btn-secondary mb-3">Voltar</a>
+    <table class="table table-bordered" id="tabelaCombustivel">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Data Abastecimento</th>
+                <th>Quantidade (L)</th>
+                <th>Km</th>
+                <th>Preço/L</th>
+                <th>Valor Pago</th>
+                <th>Consumo (Km/L)</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reg in registros %}
+            <tr> <tr {% if reg.id == destaque %} class="table-success destaque" {% endif %}>
+                <td>{{ reg.id }}</td>
+                <td>{{ reg.data_abastecimento }}</td>
+                <td>{{ reg.quantidade }}</td>
+                <td>{{ reg.kilometragem }}</td>
+                <td>R$ {{ '%.2f'|format(reg.preco_litro) }}</td>
+                <td>R$ {{ '%.2f'|format(reg.valor_pago) }}</td>
+                <td>{{ '%.2f'|format(reg.consumo) }}</td>
+                <td style="text-align: center;">
+                    <a href="{{ url_for('editar_combustivel', id=reg.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <a href="{{ url_for('deletar_combustivel', id=reg.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir?');">Excluir</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables -->
+<script>
+    $(document).ready(function() {
+        $('#tabelaCombustivel').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            }
+        });
+    });
+</script>
+{% endblock %}

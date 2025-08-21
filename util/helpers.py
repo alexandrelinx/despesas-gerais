@@ -115,3 +115,26 @@ def calcular_totais_por_mes(parcelas_por_mes, colunas_meses):
         total_geral += total_mes
 
     return totais_por_mes, total_geral
+
+
+# converter data#
+
+
+
+def converter_para_ddmmYYYY(data_str):
+    try:
+        data_obj = datetime.strptime(data_str, '%Y-%m-%d')
+        return data_obj.strftime('%d/%m/%Y')
+    except ValueError:
+        try:
+            data_obj = datetime.strptime(data_str, '%d/%m/%Y')
+            return data_obj.strftime('%d/%m/%Y')
+        except:
+            return data_str
+
+# def converter_para_YYYYmmDD(data_str):
+#     try:
+#         data_obj = datetime.strptime(data_str, '%d/%m/%Y')
+#         return data_obj.strftime('%Y-%m-%d')
+#     except:
+#         return data_str

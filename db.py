@@ -98,7 +98,18 @@ def criar_tabela(conn):
     
      );
 
-    
+     
+     CREATE TABLE IF NOT EXISTS combustivel (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       data_abastecimento TEXT NOT NULL,
+       quantidade REAL NOT NULL,
+       kilometragem REAL NOT NULL,
+       preco_litro REAL NOT NULL,
+       valor_pago REAL,
+       consumo REAL
+    );
+
+
 
     -- Tabela principal
     CREATE TABLE IF NOT EXISTS DESPESAS (
