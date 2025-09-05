@@ -1,46 +1,48 @@
 from db import inicializar_banco
 inicializar_banco()
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import  render_template, request, redirect, url_for, flash
+
+
+# ----------------------------
+# Bibliotecas padrão
+# ----------------------------
+
 import os
-import sqlite3
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-import locale
-from datetime import datetime, timedelta
-import calendar
-from flask import session, redirect, url_for, flash
-from flask import request, redirect, url_for, flash, render_template
-from werkzeug.security import generate_password_hash
-from werkzeug.security import check_password_hash
-from flask import render_template
-from collections import defaultdict
-from util.helpers import calcular_parcelas 
-from util.helpers import calcular_totais_por_mes
-from util.helpers import converter_para_ddmmYYYY
-from flask_wtf.csrf import CSRFProtect
-from flask import request, jsonify
-from flask_wtf.csrf import CSRFProtect, generate_csrf
-from flask_wtf.csrf import CSRFProtect, CSRFError
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-from flask_wtf.csrf import CSRFError
-from util.helpers import calcular_parcelas
-from flask import Flask, render_template, request, redirect, url_for, flash
-from models import CreditoSalarial  # supondo que você tenha esse model
-from flask import make_response, request
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.pdfgen import canvas
-from io import BytesIO
-from reportlab.pdfgen import canvas
 import io
+import calendar
 import csv
-from flask import Response
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+import sqlite3
+import locale
+from datetime import datetime
+from collections import defaultdict
+from dateutil.relativedelta import relativedelta
+from io import BytesIO
+# ----------------------------
+# Flask e extensões
+# ----------------------------
+from flask import(Flask, render_template, request, redirect, url_for, flash, session, jsonify,  make_response, render_template, Response )
+from flask_wtf.csrf import CSRFProtect,  generate_csrf,  CSRFError
+# ----------------------------
+# Segurança
+# ----------------------------
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# ----------------------------
+# ReportLab (PDF)
+# ----------------------------
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak)
+from datetime import datetime, timedelta
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import cm
+# ----------------------------
+# Importações locais
+# ----------------------------
+from models import CreditoSalarial  # supondo que você tenha esse model
+from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float )
 
 
 
@@ -48,6 +50,7 @@ from reportlab.lib.units import cm
 
 
 app = Flask(__name__)
+app.jinja_env.filters['real'] = real
 app.config['SECRET_KEY'] = 'despesas'  
 csrf = CSRFProtect(app)
 
@@ -58,29 +61,6 @@ def handle_csrf_error(e):
     return redirect(request.url)
 
 #DB = 'despesas.db'
-
-DB_PATH = os.path.join(os.path.dirname(__file__), 'banco', 'despesas.db')
-# Função para conexão com o banco de dados
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def real(value):
-    """Formata um número float como moeda brasileira"""
-    try:
-        return f"R$ {float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-    except (ValueError, TypeError):
-        return value
-
-app.jinja_env.filters['real'] = real
-
-# Configuração de localidade para exibir datas em português
-try:
-     locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')  # Linux/Mac
-except:
-     locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
 
 
 @app.route('/toggle_pagamento', methods=['POST'])
@@ -138,50 +118,6 @@ def toggle_pagamento_ajax():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# Função auxiliar para buscar o nome da forma de pagamento
-def nome_forma_pagamento(forma_id, conn):
-    resultado = conn.execute("SELECT nome FROM forma_pagamento WHERE id = ?", (forma_id,)).fetchone()
-    return resultado['nome'] if resultado else 'Desconhecida'
-
-  
-
-    # return totais_por_mes, total_geral
-def calcular_totais_por_mes(parcelas_por_mes, colunas_meses):
-        totais_por_mes = {mes: 0.0 for mes in colunas_meses}
-        total_geral = 0.0
-
-     # Somar valores de todas as bandeiras para cada mês
-        for bandeira, meses in parcelas_por_mes.items():
-            for mes, valor in meses.items():
-                valor = meses.get(mes, 0.0)
-                totais_por_mes[mes] += valor
-                total_geral += valor
-
-        return totais_por_mes, total_geral
-
-def calcular_totais_linhas(parcelas_por_mes, colunas_meses):
-    totais_por_linha = {}
-    for bandeira, meses in parcelas_por_mes.items():
-        soma = 0.0
-        for mes in colunas_meses:
-            valor = meses.get(mes, 0.0)
-            soma += valor
-        totais_por_linha[bandeira] = soma
-    return totais_por_linha
-
-def calcular_totais_por_coluna(parcelas_por_mes, colunas_meses):
-    totais_por_coluna = {mes: 0.0 for mes in colunas_meses}
-    
-    for bandeira, meses in parcelas_por_mes.items():
-        for mes in colunas_meses:
-            valor = meses.get(mes, 0.0)
-            totais_por_coluna[mes] += valor
-            
-    total_geral = sum(totais_por_coluna.values())
-    return totais_por_coluna, total_geral
-
 
 
 
@@ -286,7 +222,7 @@ def dashboard():
 
     for despesa in despesas:
         forma_pagamento_id = despesa['forma_pagamento_id']
-        valor_total = float(despesa['valor_compra'])
+        valor_total = safe_float(despesa['valor_compra'])
         quantidade_parcelas = int(despesa['quantidade_parcelas'])
         data_compra_str = despesa['data_compra']
         bandeira_nome = despesa['bandeira_nome']
@@ -851,6 +787,7 @@ def editar_despesa(id):
         return redirect(url_for('consultar_despesas'))
 
     if request.method == 'POST':
+        print(request.form)
         try:
             # Captura dados do formulário
             estabelecimento_id = request.form['estabelecimento_id']
@@ -868,6 +805,19 @@ def editar_despesa(id):
             observacao = request.form.get('observacao', '')
 
             parcela_alterada = 1
+
+
+            valor_compra_str = request.form['valor_compra']
+            valor_parcela_str = request.form['valor_parcela']
+
+            # Substitui vírgula por ponto para poder converter para float
+            valor_compra = float(valor_compra_str.replace(',', '.'))
+            valor_parcela = float(valor_parcela_str.replace(',', '.'))
+
+
+
+
+
 
             # Atualiza tabela DESPESAS
             conn.execute("""
@@ -1112,7 +1062,6 @@ def excluir_estabelecimento(id):
 
 
 
-
 #Rotas do CRUD de Categoria 
 
 @app.route('/cadastro/categoria/novo', methods=['GET', 'POST'])
@@ -1213,7 +1162,6 @@ def excluir_categoria(id):
     conn.close()
     flash("Categoria excluída com sucesso!", "success")
     return redirect(url_for('listar_categorias'))
-
 
 
 
@@ -1322,7 +1270,6 @@ def excluir_local_compra(id):
 
 
 
-
 #Rotas do CRUD de produtos
 
 @app.route('/cadastro/produto/novo', methods=['GET', 'POST'])
@@ -1422,7 +1369,6 @@ def excluir_produto(id):
     conn.close()
     flash("Produto excluído com sucesso!", "success")
     return redirect(url_for('listar_produtos'))
-
 
 
 
@@ -1549,7 +1495,6 @@ def excluir_bandeira(id):
 
 
 
-
 #Rotas do CRUD de forma de pagamento
 
 @app.route('/cadastro/forma_pagamento/novo', methods=['GET', 'POST'])
@@ -1654,8 +1599,6 @@ def excluir_forma_pagamento(id):
 
 
 
-
-
 # Rotas do CRUD de comprador
 
 @app.route('/cadastro/comprador/novo', methods=['GET', 'POST'])
@@ -1755,10 +1698,6 @@ def excluir_comprador(id):
     conn.close()
     flash("Comprador excluído com sucesso!", "success")
     return redirect(url_for('listar_comprador'))
-
-
-
-
 
 
 
@@ -1963,9 +1902,7 @@ def pagar():
 
 
 # Função para exportar os dados de despesas para CSV
-import csv
-from io import StringIO
-from flask import Response
+
 
 @app.route('/export_csv', methods=['GET'])
 def export_csv():
@@ -2313,13 +2250,13 @@ def detalhes_comprador_mes():
 
 
 
-def calcular_valor_pago(quantidade, preco):
-    return round(quantidade * preco, 2)
+# def calcular_valor_pago(quantidade, preco):
+#     return round(quantidade * preco, 2)
 
-def calcular_consumo(km, quantidade):
-    return round(km / quantidade, 2) if quantidade != 0 else 0
+# def calcular_consumo(km, quantidade):
+#     return round(km / quantidade, 2) if quantidade != 0 else 0
 
-def obter_dados_por_mes(ano, mes):
+# def obter_dados_por_mes(ano, mes):
     conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -2373,9 +2310,6 @@ def combustivel():
                            total_pago=total_pago,
                            media_consumo=media_consumo,
                            total_ano=total_ano)
-
-
-
 
 @app.route('/grafico/consumo')
 def grafico_consumo():
@@ -2432,17 +2366,28 @@ def incluir_abastecimento():
              
      return render_template('incluir_abastecimento.html')
 
-
-
-@app.route('/outros/combustivel/deletar/<int:id>')
-def deletar_combustivel(id):
+@app.route('/outros/combustivel/consultar')
+def consultar_combustivel():
+    destaque = request.args.get('destaque', type=int)
     conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM combustivel WHERE id=?', (id,))
-    conn.commit()
+    cursor.execute('''
+        SELECT * FROM combustivel
+        ORDER BY date(substr(data_abastecimento, 7, 4) || '-' || 
+                      substr(data_abastecimento, 4, 2) || '-' || 
+                      substr(data_abastecimento, 1, 2)) ASC
+    ''')
+    registros = cursor.fetchall()
     conn.close()
-    return redirect(url_for('combustivel'))
 
+
+    registros = [dict(r) for r in registros]
+    for r in registros:
+        r['data_abastecimento'] = converter_para_ddmmYYYY(r['data_abastecimento'])
+
+
+    return render_template('consultar_combustivel.html', registros=registros, destaque=destaque)
 
 @app.route('/outros/combustivel/editar/<int:id>', methods=['GET', 'POST'])
 def editar_combustivel(id):
@@ -2475,29 +2420,16 @@ def editar_combustivel(id):
 
     return render_template('editar_combustivel.html', row=row)
 
-
-@app.route('/outros/combustivel/consultar')
-def consultar_combustivel():
-    destaque = request.args.get('destaque', type=int)
+@app.route('/outros/combustivel/deletar/<int:id>')
+def deletar_combustivel(id):
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT * FROM combustivel
-        ORDER BY date(substr(data_abastecimento, 7, 4) || '-' || 
-                      substr(data_abastecimento, 4, 2) || '-' || 
-                      substr(data_abastecimento, 1, 2)) ASC
-    ''')
-    registros = cursor.fetchall()
+    cursor.execute('DELETE FROM combustivel WHERE id=?', (id,))
+    conn.commit()
     conn.close()
+    return redirect(url_for('combustivel'))
 
 
-    registros = [dict(r) for r in registros]
-    for r in registros:
-        r['data_abastecimento'] = converter_para_ddmmYYYY(r['data_abastecimento'])
-
-
-    return render_template('consultar_combustivel.html', registros=registros, destaque=destaque)
 
 
 
@@ -2523,29 +2455,6 @@ def exportar_csv():
 
     return Response(generate(), mimetype='text/csv',
                     headers={"Content-Disposition": "attachment;filename=combustivel.csv"})
-
-def header_footer(canvas_obj, doc):
-    canvas_obj.saveState()
-    width, height = landscape(letter)
-
-    # Cabeçalho com logo
-    import os
-
-# Localização da imagem do logo (relativo ao app.py)
-    logo_path = os.path.join(os.path.dirname(__file__), 'static', 'imagens', 'logo.png')
-
-    canvas_obj.drawImage(logo_path, cm, height - 3.5*cm, width=4*cm, preserveAspectRatio=True)
-    canvas_obj.setFont('Helvetica-Bold', 14)
-    canvas_obj.drawCentredString(width / 2, height - 2.5*cm, "Relatório de Consumo de Combustível")
-
-    # Rodapé com página
-    canvas_obj.setFont('Helvetica', 9)
-    page_text = f"Página {doc.page}"  # ✅ Correto
-
-    canvas_obj.drawRightString(width - cm, cm / 2, page_text)
-
-    canvas_obj.restoreState()
-
 
 @app.route('/exportar/pdf')
 def exportar_pdf():

@@ -638,9 +638,15 @@
       });
 
       // Seção inicial visível ao carregar (ativa por padrão)
-      scrollParaMesAtual('.secao-totais', 1);
+      // scrollParaMesAtual('.secao-totais', 1);
+   // Dispara manualmente o evento shown.bs.tab para a aba que já está ativa
+     if (tabTotais) {
+        const event = new Event('shown.bs.tab');
+        tabTotais.dispatchEvent(event);
+       }
     });
-  </script>
+
+</script>
 
   <script>
     const tempoAtualizacao = {{ tempo_atualizacao | default (0) }} * 1000;

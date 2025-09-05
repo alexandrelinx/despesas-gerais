@@ -42,6 +42,7 @@
           <th style="min-width: 120px;"class="text-center">Data Compra</th>
           <th style="min-width: 80px;">Bandeira</th>
           <th style="min-width: 80px;"class="text-center">Qdte de parcelas</th>
+          <th class="min-width: 80px;">data_vencimento</th>
           <th class="d-none d-sm-table-cell" style="max-width: 100px;">observacao</th>
           <th class="text-end" style="max-width: 120px;">Valor Parcela</th>
           <th style="min-width: 90px" class="text-center">Ações</th>
@@ -56,28 +57,21 @@
           <td class="text-end">{{ despesa.valor_compra | real  }}</td>
           <td class="text-center">{{ despesa.data_compra }}</td>
           <td>{{ despesa.bandeira_nome }}</td>
-          <!--<td class="text-center">{{ despesa.numero_parcela }}</td>> -->
           <td class="text-center">
           <a href="#" class="abrir-modal-parcelas" data-id="{{ despesa.id }}">
-         {{ despesa.numero_parcela }}
+             {{ despesa.numero_parcela }}
            </a>
           </td>
          <!-- <td class="d-none d-sm-table-cell"  style="white-space: normal; word-wrap: break-word;">{{ (despesa.observacao or '').replace('\n', '<br>') | safe }}</td> -->
         <!--  <td class="text-end">{{ despesa.valor_parcela | real  }}</td>> -->
-         <td class="d-none d-sm-table-cell text-center">
+          <td class="text-center">{{ despesa.data_vencimento }}</td>
+          <td class="d-none d-sm-table-cell text-center">
             {% if despesa.observacao %}
                <a href="#" class="link-observacao" data-observacao="{{ despesa.observacao | e }}">Observação</a>
             {% else %}
                ---
             {% endif %}
           </td>
-                        
-      <!--    <td style="min-width:150px" class="text-end  {% if despesa.parcela_alterada %}text-primary font-weight-bold{% endif %}">
-          {{ despesa.valor_parcela | real }}
-          {% if despesa.parcela_alterada %}
-          <span title="Valor alterado manualmente">🟦</span>
-          {% endif %}
-          </td> -->
           <td style="min-width:150px" class="text-end {% if despesa.parcela_alterada %}text-primary fw-bold{% endif %}">
            {{ despesa.valor_parcela | real }}
           </td>

@@ -129,6 +129,8 @@ def criar_tabela(conn):
         salario_mes_id INTEGER,
         parcela_alterada INTERGER,
         pago INTERGER,
+        parcela_id INTERGER,
+        data_vencimento TEXT,
         observacao TEXT,
 
         FOREIGN KEY (estabelecimento_id) REFERENCES ESTABELECIMENTO(id),
@@ -140,7 +142,8 @@ def criar_tabela(conn):
         FOREIGN KEY (bandeira_id) REFERENCES BANDEIRA(id),
         FOREIGN KEY (parcelamento_id) REFERENCES PARCELAMENTO(id),
         FOREIGN KEY (quantidade_parcelas_id) REFERENCES QUANTIDADE_PARCELAS(id),
-        FOREIGN KEY (salario_mes_id) REFERENCES SALARIO_MES(id)
+        FOREIGN KEY (salario_mes_id) REFERENCES SALARIO_MES(id),
+        FOREIGN KEY (parcelas_id) REFERENCES PARCELAS (id)
     );
     """
 

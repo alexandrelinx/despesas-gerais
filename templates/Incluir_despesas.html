@@ -2,7 +2,7 @@
 {% block title %}Lançar Despesas{% endblock %}
 {% block content %}
 <h2>Lançar Nova Despesa</h2>
-{% with messages = get_flashed_messages(with_categories=true) %}
+<!-- {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for category, message in messages %}
       <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
@@ -11,7 +11,7 @@
       </div>
     {% endfor %}
   {% endif %}
-{% endwith %}
+{% endwith %} -->
 
 <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -74,7 +74,7 @@
 
     <div class="col-md-6">
       <label>Valor da Compra</label>
-      <input type="number" step="0.01" name="valor_compra" class="form-control" required>
+     <input type="text" name="valor_compra" class="form-control" required id="valor_compra">
     </div>
 
     <div class="col-md-6">
@@ -99,7 +99,7 @@
 
     <div class="col-md-6">
       <label>Parcelamento</label>
-      <select name="parcelamento_id" class="form-control" required>
+      <select name="parcelamento_id"  id="parcelamento" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for p in parcelamentos %}
         <option value="{{ p.id }}">{{ p.tipo }}</option>
@@ -109,17 +109,17 @@
 
     <div class="col-md-6">
       <label>Qtd Parcelas</label>
-      <select name="quantidade_parcelas_id" class="form-control" required>
+      <select name="quantidade_parcelas_id" id="quantidade_parcelas" class="form-control" required>
         <option value="" disabled selected>Selecione</option>
         {% for q in quantidades %}
-        <option value="{{ q.id }}">{{ q.quantidade }}</option>
+        <option value="{{ q.id }}" {% if q.quantidade == 1 %}selected{% endif %}>{{ q.quantidade }}</option>
         {% endfor %}
       </select>
     </div>
 
     <div class="col-md-6">
       <label>Valor da Parcela</label>
-      <input type="number" step="0.01" name="valor_parcela" class="form-control" required>
+      <input type="number" step="0.01" name="valor_parcela" class="form-control" id="valor_parcela" required>
     </div>
 
    <div class="col-md-12">
@@ -160,6 +160,97 @@
 
     input.value = value;
   });
+
+   $(document).ready(function () {
+    const inputData = document.getElementById('data_do_credito');
+    const valorCompraInput = $('input[name="valor_compra"]');
+    const parcelaInput = $('input[name="valor_parcela"]');
+    const qtdParcelasSelect = $('#quantidade_parcelas');
+    const parcelamentoSelect = $('#parcelamento');
+
+    // 🔹 Máscara e formatação da data
+    inputData.addEventListener('input', function () {
+      let value = inputData.value.replace(/\D/g, '');
+
+      if (value.length > 8) {
+        value = value.slice(0, 8);
+      }
+
+      if (value.length > 4) {
+        value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+      } else if (value.length > 2) {
+        value = value.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+      }
+
+      inputData.value = value;
+    });
+
+    // 🔹 Função para obter quantidade de parcelas (a partir do texto da opção)
+    function getQtdParcelas() {
+      const texto = qtdParcelasSelect.find('option:selected').text();
+      return parseInt(texto) || 1;
+    }
+
+    // 🔹 Função principal para calcular o valor da parcela
+    function calcularParcela() {
+      const valorCompra = parseFloat(valorCompraInput.val().replace(',', '.')) || 0;
+      const qtdParcelas = getQtdParcelas();
+
+      if (valorCompra > 0) {
+        const valorParcela = (valorCompra / qtdParcelas).toFixed(2);
+        parcelaInput.val(valorParcela);
+      } else {
+        parcelaInput.val('');
+      }
+    }
+
+    // 🔹 Evento ao mudar o campo de parcelamento
+    parcelamentoSelect.on('change', function () {
+      const tipo = parcelamentoSelect.find('option:selected').text().trim();
+
+      if (tipo === 'Sim') {
+        qtdParcelasSelect.prop('disabled', false);
+        parcelaInput.val(''); // Zera o valor da parcela
+      } else {
+        qtdParcelasSelect.prop('disabled', true);
+        const valorUm = qtdParcelasSelect.find('option').filter(function () {
+          return $(this).text().trim() === '1';
+        }).val();
+        qtdParcelasSelect.val(valorUm);
+        calcularParcela();
+      }
+    });
+
+    // 🔹 Eventos para recalcular valor da parcela
+    valorCompraInput.on('input', calcularParcela);
+    qtdParcelasSelect.on('change', calcularParcela);
+
+// 🔹 Formatar valor da compra para exibir com 2 casas decimais ao sair do campo
+    valorCompraInput.on('blur', function() {
+      let val = $(this).val();
+      if (val) {
+        val = val.replace(',', '.');
+        let num = parseFloat(val);
+        if (!isNaN(num)) {
+          $(this).val(num.toFixed(2).replace('.', ','));
+        }
+      }
+    });
+
+
+
+    // 🔹 Estado inicial: define "Parcelamento" como "Não", e "Qtd Parcelas" como 1 e desabilitado
+    setTimeout(function () {
+      const valorNao = parcelamentoSelect.find('option').filter(function () {
+        return $(this).text().trim() === 'Não';
+      }).val();
+
+      if (valorNao) {
+        parcelamentoSelect.val(valorNao).trigger('change');
+      }
+    }, 100);
+  });
+
 </script>
 
 
