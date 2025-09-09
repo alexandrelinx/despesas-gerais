@@ -110,7 +110,7 @@
     <div class="col-md-6">
       <label>Qtd Parcelas</label>
       <select name="quantidade_parcelas_id" id="quantidade_parcelas" class="form-control" required>
-        <option value="" disabled selected>Selecione</option>
+         <option value="" disabled selected>Selecione</option>
         {% for q in quantidades %}
         <option value="{{ q.id }}" {% if q.quantidade == 1 %}selected{% endif %}>{{ q.quantidade }}</option>
         {% endfor %}
@@ -209,16 +209,20 @@
       const tipo = parcelamentoSelect.find('option:selected').text().trim();
 
       if (tipo === 'Sim') {
-        qtdParcelasSelect.prop('disabled', false);
-        parcelaInput.val(''); // Zera o valor da parcela
-      } else {
-        qtdParcelasSelect.prop('disabled', true);
-        const valorUm = qtdParcelasSelect.find('option').filter(function () {
-          return $(this).text().trim() === '1';
-        }).val();
-        qtdParcelasSelect.val(valorUm);
-        calcularParcela();
-      }
+       qtdParcelasSelect.css('pointer-events', 'auto'); // Permite interação
+       qtdParcelasSelect.css('background-color', '');   // Reseta estilo
+       parcelaInput.val('');
+     } else {
+       qtdParcelasSelect.css('pointer-events', 'none'); // Bloqueia interação
+       qtdParcelasSelect.css('background-color', '#e9ecef'); // Cinza claro, estilo de campo desativado
+
+    // Define como 1 parcela automaticamente
+      const valorUm = qtdParcelasSelect.find('option').filter(function () {
+        return $(this).text().trim() === '1';
+      }).val();
+      qtdParcelasSelect.val(valorUm);
+      calcularParcela();
+     }
     });
 
     // 🔹 Eventos para recalcular valor da parcela

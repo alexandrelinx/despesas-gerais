@@ -1,50 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-
 <!-- DEBUG: -->
 <td title="Pago: {{ pago }}">{{ valor }}</td>
 {% block content %}
 <!-- LINHA 1 - Créditos na horizontal, alinhados à direita -->
 <div class="d-flex justify-content-between align-items-start mb-3">
-  <!-- TÍTULO à ESQUERDA -->
-  <div>
-    <h2 class="mb-0">Resumo de Despesas</h2>
-    <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
-
-    <div class="form-inline">
-      <label for="intervalo-atualizacao" class="mt-2 mb-0" style="font-weight:bold; color:black;">Atualizar a
-        cada:</label>
-      <span style="font-weight:bold; color:black;"></span>
-      <select id="intervalo-atualizacao" class="form-select form-select-sm w-auto">
-        <option value="0">Nunca</option>
-        <option value="10">10s</option>
-        <option value="30">30s</option>
-        <option value="60">1 min</option>
-        <option value="300">5 min</option>
-      </select>
-    </div>
-  </div>
-
-  <h6 class="mb-0">
-    <label>Despesas do Mês:</label>
-    <select id="mes-selecionado" onchange="window.location.href='?mes=' + this.value;">
+   <!-- TÍTULO à ESQUERDA -->
+   <div>
+      <h2 class="mb-0">Resumo de Despesas</h2>
+      <a href="/despesas" class="btn btn-primary mt-2">+ Nova Despesa</a>
+      <div class="form-inline">
+         <label for="intervalo-atualizacao" class="mt-2 mb-0" style="font-weight:bold; color:black;">Atualizar a
+         cada:</label>
+         <span style="font-weight:bold; color:black;"></span>
+         <select id="intervalo-atualizacao" class="form-select form-select-sm w-auto">
+            <option value="0">Nunca</option>
+            <option value="10">10s</option>
+            <option value="30">30s</option>
+            <option value="60">1 min</option>
+            <option value="300">5 min</option>
+         </select>
+      </div>
+   </div>
+   <h6 class="mb-0">
+      <label>Despesas do Mês:</label>
+      <select id="mes-selecionado" onchange="window.location.href='?mes=' + this.value;">
       {% for mes in colunas_meses_compradores %}
       <option value="{{ mes }}" {% if mes==mes_selecionado %}selected{% endif %}>{{ mes }}</option>
       {% endfor %}
-    </select>
-
-    <!-- Botão Saldo para abrir modal -->
-    <div>
-      <button type="button" class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#modalSaldo">
-        Saldo
-      </button>
-    </div>
+      </select>
+      <!-- Botão Saldo para abrir modal -->
+      <div>
+         <button type="button" class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#modalSaldo">
+         Saldo
+         </button>
+      </div>
 </div>
 </h6>
-
-
 {% block dashboard_saldo %}
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
@@ -52,658 +45,712 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <!-- Modal Saldo -->
 <div class="modal fade" id="modalSaldo" tabindex="-1" aria-labelledby="modalSaldoLabel" aria-hidden="true">
-  <div class="modal-dialog modal-custom-width">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalSaldoLabel">Detalhes do Saldo</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+   <div class="modal-dialog modal-custom-width">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h5 class="modal-title" id="modalSaldoLabel">Detalhes do Saldo</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+         </div>
+         <div class="modal-body">
+            <p><strong>Créditos do Salário:</strong> R$ {{ '%.2f'|format(total_creditos_mes|default(0)) }}</p>
+            <p><strong>Crédito dos Compradores:</strong> R$ {{ '%.2f'|format(credito_compradores|default(0)) }}</p>
+            <p><strong>Créditos do Mês:</strong> R$ {{ '%.2f'|format(creditos_do_mes|default(0)) }}</p>
+            <hr>
+            <p><strong>Despesas do Mês:</strong> R$ {{ '%.2f'|format(total_despesas_mes|default(0)) }}</p>
+            <p><strong>Saldo:</strong>
+               <span class="
+                  {% if saldo_mes == 0 %}
+                  saldo-zero
+                  {% elif saldo_mes > 0 %}
+                  saldo-positivo
+                  {% else %}
+                  saldo-negativo
+                  {% endif %}
+                  " style="font-weight:bold;">
+               R$ {{ '%.2f'|format(saldo_mes) }}
+               </span>
+            </p>
+            <p><strong>Valor Pago:</strong> <span style="font-weight:bold; color:green;">R$ {{ '%.2f'|format(total_pago_mes)
+               }}</span>
+            </p>
+            <p><strong>Saldo Atualizado:</strong>
+               <span class="
+                  {% if saldo_mes_ajustado == 0 %}
+                  saldo-zero
+                  {% elif saldo_mes_ajustado > 0 %}
+                  saldo-positivo
+                  {% else %}
+                  saldo-negativo
+                  {% endif %}
+                  " style="font-weight:bold;">
+               R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
+               </span>
+            </p>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+         </div>
       </div>
-      <div class="modal-body">
-        <p><strong>Créditos do Salário:</strong> R$ {{ '%.2f'|format(total_creditos_mes|default(0)) }}</p>
-        <p><strong>Crédito dos Compradores:</strong> R$ {{ '%.2f'|format(credito_compradores|default(0)) }}</p>
-        <p><strong>Créditos do Mês:</strong> R$ {{ '%.2f'|format(creditos_do_mes|default(0)) }}</p>
-        <hr>
-        <p><strong>Despesas do Mês:</strong> R$ {{ '%.2f'|format(total_despesas_mes|default(0)) }}</p>
-        <p><strong>Saldo:</strong>
-          <span class="
-            {% if saldo_mes == 0 %}
-              saldo-zero
-            {% elif saldo_mes > 0 %}
-              saldo-positivo
-            {% else %}
-              saldo-negativo
-            {% endif %}
-          " style="font-weight:bold;">
-            R$ {{ '%.2f'|format(saldo_mes) }}
-          </span>
-        </p>
-        <p><strong>Valor Pago:</strong> <span style="font-weight:bold; color:green;">R$ {{ '%.2f'|format(total_pago_mes)
-            }}</span></p>
-        <p><strong>Saldo Atualizado:</strong>
-          <span class="
-            {% if saldo_mes_ajustado == 0 %}
-              saldo-zero
-            {% elif saldo_mes_ajustado > 0 %}
-              saldo-positivo
-            {% else %}
-              saldo-negativo
-            {% endif %}
-          " style="font-weight:bold;">
-            R$ {{ '%.2f'|format(saldo_mes_ajustado) }}
-          </span>
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div>
-    </div>
-  </div>
+   </div>
 </div>
-
-
 <style>
-  /* Seu CSS continua igual, só adaptei o modal */
-  .modal-body p {
-    margin-bottom: 0.75rem;
-  }
+   /* Seu CSS continua igual, só adaptei o modal */
+   .modal-body p {
+   margin-bottom: 0.75rem;
+   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
 {% endblock %}
-
 <style>
-  .dashboard-container {
-    display: flex;
-    flex-direction: column;
-    height: 85vh;
-    gap: 10px;
-  }
-
-  .secao {
-    overflow: auto;
-    padding: 10px;
-    border: 1px solid #ddd;
-    background-color: #fdfdfd;
-  }
-
-
-  .secao:not(.secao-parcelas):not(.secao-totais):not(.secao-totais-compradores):not(.secao-totais-outros) {
-    flex: 1;
-  }
-
-  /* Altura fixa e scroll vertical para parcelas */
-  .secao-parcelas {
-    height: 850px;
-    /* altura fixa menor, ajuste conforme quiser */
-    overflow-y: auto;
-    /* mantém o scroll vertical */
-    flex: none;
-  }
-
-  .secao-totais,
-  .secao-totais-compradores,
-  .secao-totais-outros {
-    /* flex-grow: 2; /* ocupa o dobro do espaço em relação às outras com flex-grow 1 */
-    height: 450px;
-    /* aqui você coloca a altura que quiser */
-    overflow: auto;
-    padding: 10px;
-    border: 1px solid #ddd;
-    background-color: #fdfdfd;
-  }
-
-  /* Classe para célula marcada como paga */
-  .pago {
-    background-color: #d4edda !important;
-    color: #155724 !important;
-    font-weight: bold !important;
-    cursor: pointer;
-  }
-
-  .pago-azul {
-    background-color: #cce5ff !important;
-    color: #004085 !important;
-    font-weight: bold !important;
-    cursor: pointer;
-  }
-
-  /* Scroll horizontal para tabelas largas */
-  .scroll-container {
-    overflow-x: auto;
-    width: 100%;
-    position: relative;
-    /* importante para sticky funcionar dentro */
-  }
-
-  .scroll-container table {
-    min-width: max-content;
-    border-collapse: collapse;
-    /* força a tabela a ser "scrollável" */
-
-  }
-
-  .scroll-container th,
-  .scroll-container td {
-    min-width: 120px;
-    text-align: center;
-  }
-
-  /* Fixar a primeira coluna */
-  .secao-totais .scroll-container th:first-child,
-  .secao-totais .scroll-container td:first-child {
-    position: sticky;
-    left: 0;
-    background-color: white;
-    z-index: 5;
-    border-right: 1px solid #dee2e6;
-  }
-
-  /* Fixar a segunda coluna */
-  .secao-totais .scroll-container th:nth-child(2),
-  .secao-totais .scroll-container td:nth-child(2) {
-    position: static;
-    left: auto;
-    z-index: auto;
-  }
-
-  /* Sticky primeira coluna na seção totais outros */
-  .secao-totais-outros .scroll-container th:first-child,
-  .secao-totais-outros .scroll-container td:first-child {
-    position: sticky !important;
-    left: 0 !important;
-    background-color: white;
-    z-index: 5 !important;
-    min-width: 180px;
-    border-right: 1px solid #dee2e6;
-  }
-
-  /* Segunda coluna sticky na totais outros (se necessário, ajuste o left aqui) */
-  .secao-totais-outros .scroll-container th:nth-child(2),
-  .secao-totais-outros .scroll-container td:nth-child(2) {
-    position: sticky !important;
-    left: 320px !important;
-    background-color: white;
-    z-index: 4 !important;
-    border-right: 1px solid #dee2e6;
-    min-width: 120px;
-  }
-
-
-  /* Fixar a primeira coluna na seção de compradores */
-  .secao-totais-compradores .scroll-container th:first-child,
-  .secao-totais-compradores .scroll-container td:first-child {
-    position: sticky;
-    left: 0;
-    background-color: white;
-    z-index: 5;
-    border-right: 1px solid #dee2e6;
-  }
-
-
-  /* Segunda coluna desativada (posição estática) em compradores */
-  .secao-totais-compradores .scroll-container th:nth-child(2),
-  .secao-totais-compradores .scroll-container td:nth-child(2) {
-    position: static !important;
-    left: auto !important;
-    z-index: auto !important;
-  }
-
-
-  /* Para o cabeçalho da primeira coluna ficar acima das células */
-  .table-sticky thead th:first-child {
-    background-color: #343a40;
-    color: white;
-    z-index: 6;
-  }
-
-  /* Cabeçalho da segunda coluna sobreposta corretamente */
-  .table-sticky thead th:nth-child(2) {
-    background-color: #343a40;
-    color: white;
-    z-index: 5;
-  }
-
-
-  .nav-tabs .nav-link.active {
-    background-color: #f8f9fa;
-    font-weight: bold;
-  }
-
-  #intervalo-atualizacao {
-    min-width: 100px;
-  }
-
-  .valor-oculto {
-    opacity: 0;
-    /* color: transparent !important;*/
-    transition: color 0.3s ease;
-    cursor: pointer;
-  }
-
-  .valor-oculto:hover {
-    opacity: 1;
-    /* color: black !important;*/
-  }
-
-
-  .saldo-zero {
-    color: green !important;
-  }
-
-  .saldo-zero:hover {
-    color: green !important;
-    /* mantém verde ao passar o mouse */
-  }
-
-  .saldo-positivo {
-    color: blue !important;
-  }
-
-  .saldo-positivo:hover {
-    color: blue !important;
-    /* mantém azul no hover */
-  }
-
-  .saldo-negativo {
-    color: red !important;
-  }
-
-  .saldo-negativo:hover {
-    color: red !important;
-    /* mantém vermelho no hover */
-  }
+   .dashboard-container {
+   display: flex;
+   flex-direction: column;
+   height: 85vh;
+   gap: 10px;
+   }
+   .secao {
+   overflow: auto;
+   padding: 10px;
+   border: 1px solid #ddd;
+   background-color: #fdfdfd;
+   }
+   .secao:not(.secao-parcelas):not(.secao-totais):not(.secao-totais-compradores):not(.secao-totais-outros) {
+   flex: 1;
+   }
+   /* Altura fixa e scroll vertical para parcelas */
+   .secao-parcelas {
+   height: 850px;
+   /* altura fixa menor, ajuste conforme quiser */
+   overflow-y: auto;
+   /* mantém o scroll vertical */
+   flex: none;
+   }
+   .secao-totais,
+   .secao-totais-compradores,
+   .secao-totais-outros {
+   /* flex-grow: 2; /* ocupa o dobro do espaço em relação às outras com flex-grow 1 */
+   height: 450px;
+   /* aqui você coloca a altura que quiser */
+   overflow: auto;
+   padding: 10px;
+   border: 1px solid #ddd;
+   background-color: #fdfdfd;
+   }
+   /* Classe para célula marcada como paga */
+   .pago {
+   background-color: #d4edda !important;
+   color: #155724 !important;
+   font-weight: bold !important;
+   cursor: pointer;
+   }
+   .pago-azul {
+   background-color: #cce5ff !important;
+   color: #004085 !important;
+   font-weight: bold !important;
+   cursor: pointer;
+   }
+   /* Scroll horizontal para tabelas largas */
+   .scroll-container {
+   overflow-x: auto;
+   width: 100%;
+   position: relative;
+   /* importante para sticky funcionar dentro */
+   }
+   .scroll-container table {
+   min-width: max-content;
+   border-collapse: collapse;
+   /* força a tabela a ser "scrollável" */
+   }
+   .scroll-container th,
+   .scroll-container td {
+   min-width: 120px;
+   text-align: center;
+   }
+   /* Fixar a primeira coluna */
+   .secao-totais .scroll-container th:first-child,
+   .secao-totais .scroll-container td:first-child {
+   position: sticky;
+   left: 0;
+   background-color: white;
+   z-index: 5;
+   border-right: 1px solid #dee2e6;
+   }
+   /* Fixar a segunda coluna */
+   .secao-totais .scroll-container th:nth-child(2),
+   .secao-totais .scroll-container td:nth-child(2) {
+   position: static;
+   left: auto;
+   z-index: auto;
+   }
+   /* Sticky primeira coluna na seção totais outros */
+   .secao-totais-outros .scroll-container th:first-child,
+   .secao-totais-outros .scroll-container td:first-child {
+   position: sticky !important;
+   left: 0 !important;
+   background-color: white;
+   z-index: 5 !important;
+   min-width: 180px;
+   border-right: 1px solid #dee2e6;
+   }
+   /* Segunda coluna sticky na totais outros (se necessário, ajuste o left aqui) */
+   .secao-totais-outros .scroll-container th:nth-child(2),
+   .secao-totais-outros .scroll-container td:nth-child(2) {
+   position: sticky !important;
+   left: 320px !important;
+   background-color: white;
+   z-index: 4 !important;
+   border-right: 1px solid #dee2e6;
+   min-width: 120px;
+   }
+   /* Fixar a primeira coluna na seção de compradores */
+   .secao-totais-compradores .scroll-container th:first-child,
+   .secao-totais-compradores .scroll-container td:first-child {
+   position: sticky;
+   left: 0;
+   background-color: white;
+   z-index: 5;
+   border-right: 1px solid #dee2e6;
+   }
+   /* Segunda coluna desativada (posição estática) em compradores */
+   .secao-totais-compradores .scroll-container th:nth-child(2),
+   .secao-totais-compradores .scroll-container td:nth-child(2) {
+   position: static !important;
+   left: auto !important;
+   z-index: auto !important;
+   }
+   /* Para o cabeçalho da primeira coluna ficar acima das células */
+   .table-sticky thead th:first-child {
+   background-color: #343a40;
+   color: white;
+   z-index: 6;
+   }
+   /* Cabeçalho da segunda coluna sobreposta corretamente */
+   .table-sticky thead th:nth-child(2) {
+   background-color: #343a40;
+   color: white;
+   z-index: 5;
+   }
+   .nav-tabs .nav-link.active {
+   background-color: #f8f9fa;
+   font-weight: bold;
+   }
+   #intervalo-atualizacao {
+   min-width: 100px;
+   }
+   .valor-oculto {
+   opacity: 0;
+   /* color: transparent !important;*/
+   transition: color 0.3s ease;
+   cursor: pointer;
+   }
+   .valor-oculto:hover {
+   opacity: 1;
+   /* color: black !important;*/
+   }
+   .saldo-zero {
+   color: green !important;
+   }
+   .saldo-zero:hover {
+   color: green !important;
+   /* mantém verde ao passar o mouse */
+   }
+   .saldo-positivo {
+   color: blue !important;
+   }
+   .saldo-positivo:hover {
+   color: blue !important;
+   /* mantém azul no hover */
+   }
+   .saldo-negativo {
+   color: red !important;
+   }
+   .saldo-negativo:hover {
+   color: red !important;
+   /* mantém vermelho no hover */
+   }
 </style>
-
 <!-- Abas para navegação -->
 <ul class="nav nav-tabs mb-3" id="dashboardTabs" role="tablist">
-
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="totais-tab" data-bs-toggle="tab" data-bs-target="#totais" type="button"
-      role="tab">Totais por Bandeira</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="outros-tab" data-bs-toggle="tab" data-bs-target="#outros" type="button"
-      role="tab">Totais Outros</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="compradores-tab" data-bs-toggle="tab" data-bs-target="#compradores" type="button"
-      role="tab">Por Comprador</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="parcelas-tab" data-bs-toggle="tab" data-bs-target="#parcelas" type="button"
-      role="tab">Parcelas</button>
-  </li>
+   <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="totais-tab" data-bs-toggle="tab" data-bs-target="#totais" type="button"
+         role="tab">Totais por Bandeira</button>
+   </li>
+   <li class="nav-item" role="presentation">
+      <button class="nav-link" id="outros-tab" data-bs-toggle="tab" data-bs-target="#outros" type="button"
+         role="tab">Totais Outros</button>
+   </li>
+   <li class="nav-item" role="presentation">
+      <button class="nav-link" id="compradores-tab" data-bs-toggle="tab" data-bs-target="#compradores" type="button"
+         role="tab">Por Comprador</button>
+   </li>
+   <li class="nav-item" role="presentation">
+      <button class="nav-link" id="parcelas-tab" data-bs-toggle="tab" data-bs-target="#parcelas" type="button"
+         role="tab">Parcelas</button>
+   </li>
 </ul>
-
 <div class="tab-content dashboard-container">
-
-
-  <!-- ... demais seções ... -->
-  <!-- Seção 1: Parcelas Detalhadas -->
-  <div class="tab-pane fade " id="parcelas" role="tabpanel" aria-labelledby="parcelas-tab">
-    <div class="secao secao-parcelas">
+<!-- ... demais seções ... -->
+<!-- Seção 1: Parcelas Detalhadas -->
+<div class="tab-pane fade " id="parcelas" role="tabpanel" aria-labelledby="parcelas-tab">
+   <div class="secao secao-parcelas">
       <h5>Parcelas Detalhadas</h5>
       <table class="table table-bordered table-sm table-hover parcelas-detalhadas">
-        <thead class="table-light">
-          <tr>
-            <th>Compra</th>
-            <th>Estabelecimento</th>
-            <th>Produto</th>
-            <th>Bandeira</th>
-            <th>Parcela</th>
-            <th>Vencimento</th>
-            <th>Valor da Parcela</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in parcelas %}
-          <tr>
-            <td>{{ p['data_compra'] }}</td>
-            <td>{{ p['estabelecimento'] }}</td>
-            <td>{{ p['produto_nome'] }}</td>
-            <td>{{ p['bandeira_nome'] }}</td>
-            <td>{{ p['numero_parcela'] }}/{{ p['total_parcelas'] }}</td>
-            <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
-            <td class="{% if p['parcela_alterada'] %}text-primary font-weight-bold{% endif %}">
-              R$ {{ '%.2f'|format(p['valor_parcela']) }}
-              {% if p['parcela_alterada'] %}
-              <span title="Valor de parcela alterado">🟦</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
+         <thead class="table-light">
+            <tr>
+               <th>Compra</th>
+               <th>Estabelecimento</th>
+               <th>Produto</th>
+               <th>Bandeira</th>
+               <th>Parcela</th>
+               <th>Vencimento</th>
+               <th>Valor da Parcela</th>
+            </tr>
+         </thead>
+         <tbody>
+            {% for p in parcelas %}
+            <tr>
+               <td>{{ p['data_compra'] }}</td>
+               <td>{{ p['estabelecimento'] }}</td>
+               <td>{{ p['produto_nome'] }}</td>
+               <td>{{ p['bandeira_nome'] }}</td>
+               <td>{{ p['numero_parcela'] }}/{{ p['total_parcelas'] }}</td>
+               <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
+               <td class="{% if p['parcela_alterada'] %}text-primary font-weight-bold{% endif %}">
+                  R$ {{ '%.2f'|format(p['valor_parcela']) }}
+                  {% if p['parcela_alterada'] %}
+                  <span title="Valor de parcela alterado">🟦</span>
+                  {% endif %}
+               </td>
+            </tr>
+            {% endfor %}
+         </tbody>
       </table>
-    </div>
-  </div>
-
-  <!-- Seção 2: Totais por Mês e Bandeira -->
-  <div class="tab-pane fade show active" id="totais" role="tabpanel" aria-labelledby="totais-tab">
-    <div class="secao secao-totais">
+   </div>
+</div>
+<!-- Seção 2: Totais por Mês e Bandeira -->
+<div class="tab-pane fade show active" id="totais" role="tabpanel" aria-labelledby="totais-tab">
+   <div class="secao secao-totais">
       <h5>Totais por Mês e Bandeira</h5>
       <div class="scroll-container">
-        <table class="table table-striped table-bordered table-sm table-sticky ">
-          <thead class="table-dark">
-            <tr>
-              <th>Bandeira</th>
-              {% for mes_ano in colunas_meses %}
-              <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for bandeira, valores in parcelas_por_mes.items() %}
-            <tr>
-              <td>{{ bandeira }}</td>
-              <!--     {% set total_bandeira = 0 %} -->
-              {% for mes_ano in colunas_meses %}
-              {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
-              <!-- {% set total_bandeira = total_bandeira + valor %}-->
-              {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
-              <td role="button" tabindex="0" class="text-center total-cell {% if pago %}pago{% endif %}"
-                data-bandeira="{{ bandeira }}" data-mes-ano="{{ mes_ano }}" onclick="togglePagamento(this)"
-                title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
-                style="cursor:pointer;">
-                R$ {{ '%.2f'|format(valor) }}
-              </td>
-              {% endfor %}
-              <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}</span></strong>
-              </td>
-              <!--   <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
-            </tr>
-            {% endfor %}
-            <script>
-              window.addEventListener('load', () => {
-                const scrollContainer = document.querySelector('.secao-totais .scroll-container');
-                if (scrollContainer) {
-                  scrollContainer.scrollLeft = 480; // posição fixa que você quer
-                  console.log('Scroll setado manualmente em 480');
-                }
-              });
-            </script>
-
-          </tbody>
-          <tfoot class="table-light">
-            <tr>
-              <th>Total Geral</th>
-              {% for mes_ano in colunas_meses %}
-              <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</span></th>
-              {% endfor %}
-              <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral) }}</span></strong></th>
-            </tr>
-          </tfoot>
-        </table>
+         <table class="table table-striped table-bordered table-sm table-sticky ">
+            <thead class="table-dark">
+               <tr>
+                  <th>Bandeira</th>
+                  {% for mes_ano in colunas_meses %}
+                  <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
+                  {% endfor %}
+                  <th>Total</th>
+               </tr>
+            </thead>
+            <tbody>
+               {% for bandeira, valores in parcelas_por_mes.items() %}
+               <tr>
+                  <td>{{ bandeira }}</td>
+                  <!--     {% set total_bandeira = 0 %} -->
+                  {% for mes_ano in colunas_meses %}
+                  {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+                  <!-- {% set total_bandeira = total_bandeira + valor %}-->
+                  {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+                  <td role="button" tabindex="0" class="text-center total-cell {% if pago %}pago{% endif %}"
+                     data-bandeira="{{ bandeira }}" data-mes-ano="{{ mes_ano }}" 
+                     onclick="handleClick(this)"
+                     ondblclick="handleDoubleClick(this)"
+                     onkeypress="if(event.key === 'Enter' || event.key === ' ') {event.preventDefault();handleClick(this);}"
+                     title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+                     style="cursor:pointer;">
+                     R$ {{ '%.2f'|format(valor) }}
+                  </td>
+                  {% endfor %}
+                  <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}</span></strong>
+                  </td>
+                  <!--   <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
+               </tr>
+               {% endfor %}
+               <script>
+                  window.addEventListener('load', () => {
+                    const scrollContainer = document.querySelector('.secao-totais .scroll-container');
+                    if (scrollContainer) {
+                      scrollContainer.scrollLeft = 480; // posição fixa que você quer
+                      console.log('Scroll setado manualmente em 480');
+                    }
+                  });
+               </script>
+            </tbody>
+            <tfoot class="table-light">
+               <tr>
+                  <th>Total Geral</th>
+                  {% for mes_ano in colunas_meses %}
+                  <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</span></th>
+                  {% endfor %}
+                  <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral) }}</span></strong></th>
+               </tr>
+            </tfoot>
+         </table>
       </div>
-    </div>
-  </div>
-  <!-- Seção 3: Totais por Mês e Bandeira (Sem Cartão de Crédito) -->
-  <div class="tab-pane fade" id="outros" role="tabpanel" aria-labelledby="outros-tab">
-    <div class="secao secao-totais-outros">
+   </div>
+</div>
+<!-- Seção 3: Totais por Mês e Bandeira (Sem Cartão de Crédito) -->
+<div class="tab-pane fade" id="outros" role="tabpanel" aria-labelledby="outros-tab">
+   <div class="secao secao-totais-outros">
       <h5>Totais por Mês e Bandeira (Outras Formas de Pagamento)</h5>
       <div class="scroll-container">
-        <table class="table table-striped table-bordered table-sm table-sticky">
-          <thead class="table-dark">
-            <tr>
-              <th>Despesas</th>
-              <th>Pgto</th>
-              {% for mes_ano in colunas_meses %}
-              <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for bandeira, valores in parcelas_por_mes_outros.items() %}
-            <tr>
-              <td>{{ bandeira }}</td>
-              <td>{{ formas_pagamento_outros.get(bandeira, 'N/A') }}</td>
-              <!-- {% set total_bandeira = 0 %} -->
-              {% for mes_ano in colunas_meses %}
-              {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
-              {% set valor_float = valor | float %}
-              <!--  {% set total_bandeira = total_bandeira + valor_float %}-->
-              {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
-              <td role="button" tabindex="0" class="text-center total-cell {% if pago %}pago{% endif %}"
-                data-bandeira="{{ bandeira }}" data-mes-ano="{{ mes_ano }}" onclick="togglePagamento(this)"
-                onkeypress="if(event.key === 'Enter' || event.key === ' ') togglePagamento(this)"
-                title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
-                style="cursor:pointer;">
-                R$ {{ '%.2f'|format(valor_float) }}
-              </td>
-              {% endfor %}
-              <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira])
-                    }}</span></strong></td>
-              <!--  <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
-            </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot class="table-light">
-            <tr>
-              <th>Total Geral</th>
-              <th></th>
-              {% for mes_ano in colunas_meses %}
-              <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}</span></th>
-              {% endfor %}
-              <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_outros) }}</span></strong></th>
-            </tr>
-          </tfoot>
-        </table>
+         <table class="table table-striped table-bordered table-sm table-sticky">
+            <thead class="table-dark">
+               <tr>
+                  <th>Despesas</th>
+                  <th>Pgto</th>
+                  {% for mes_ano in colunas_meses %}
+                  <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
+                  {% endfor %}
+                  <th>Total</th>
+               </tr>
+            </thead>
+            <tbody>
+               {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+               <tr>
+                  <td>{{ bandeira }}</td>
+                  <td>{{ formas_pagamento_outros.get(bandeira, 'N/A') }}</td>
+                  <!-- {% set total_bandeira = 0 %} -->
+                  {% for mes_ano in colunas_meses %}
+                  {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
+                  {% set valor_float = valor | float %}
+                  <!--  {% set total_bandeira = total_bandeira + valor_float %}-->
+                  {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+                  <td role="button" tabindex="0" class="text-center total-cell {% if pago %}pago{% endif %}"
+                     data-bandeira="{{ bandeira }}" data-mes-ano="{{ mes_ano }}" onclick="togglePagamento(this)"
+                     onkeypress="if(event.key === 'Enter' || event.key === ' ') togglePagamento(this)"
+                     title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+                     style="cursor:pointer;">
+                     R$ {{ '%.2f'|format(valor_float) }}
+                  </td>
+                  {% endfor %}
+                  <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira])
+                     }}</span></strong>
+                  </td>
+                  <!--  <td><strong>R$ {{ '%.2f'|format(total_bandeira) }}</strong></td> -->
+               </tr>
+               {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+               <tr>
+                  <th>Total Geral</th>
+                  <th></th>
+                  {% for mes_ano in colunas_meses %}
+                  <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}</span></th>
+                  {% endfor %}
+                  <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_outros) }}</span></strong></th>
+               </tr>
+            </tfoot>
+         </table>
       </div>
-    </div>
-  </div>
-  <!-- Seção 4: Totais por Comprador por Mês -->
-  <div class="tab-pane fade" id="compradores" role="tabpanel" aria-labelledby="compradores-tab">
-    <div class="secao secao-totais-compradores">
+   </div>
+</div>
+<!-- Seção 4: Totais por Comprador por Mês -->
+<div class="tab-pane fade" id="compradores" role="tabpanel" aria-labelledby="compradores-tab">
+   <div class="secao secao-totais-compradores">
       <h5>Totais por Comprador por Mês</h5>
       <div class="scroll-container">
-        <table class="table table-striped table-bordered table-sm table-sticky">
-          <thead class="table-dark">
-            <tr>
-              <th>Comprador</th>
-              {% for mes in colunas_meses_compradores %}
-              <th id="coluna_{{ mes }}">{{ mes }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for comprador, valores in totais_por_comprador_mes.items() %}
-            <tr>
-              <td>{{ comprador }}</td>
-              {% for mes in colunas_meses_compradores %}
-              {% set valor = valores.get(mes, 0) %}
-              {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
-              <td class="valor-mes-comprador text-center {% if pago %}pago-azul{% endif %}"
-                data-comprador="{{ comprador }}" data-mes="{{ mes }}" style="cursor:pointer;"
-                title="{% if pago %}simPago{% else %}Não pago{% endif %}">
-                R$ {{ '%.2f'|format(valor) }}
-              </td>
-
-              {% endfor %}
-              <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(valores.values() | sum) }}</span></strong></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot class="table-light">
-            <tr>
-              <th>Total Geral</th>
-              {% for mes in colunas_meses_compradores %}
-              <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_comprador.get(mes, 0)) }}</span></th>
-              {% endfor %}
-              <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_compradores) }}</span></strong>
-              </th>
-            </tr>
-          </tfoot>
-        </table>
+         <table class="table table-striped table-bordered table-sm table-sticky">
+            <thead class="table-dark">
+               <tr>
+                  <th>Comprador</th>
+                  {% for mes in colunas_meses_compradores %}
+                  <th id="coluna_{{ mes }}">{{ mes }}</th>
+                  {% endfor %}
+                  <th>Total</th>
+               </tr>
+            </thead>
+            <tbody>
+               {% for comprador, valores in totais_por_comprador_mes.items() %}
+               <tr>
+                  <td>{{ comprador }}</td>
+                  {% for mes in colunas_meses_compradores %}
+                  {% set valor = valores.get(mes, 0) %}
+                  {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
+                  <td class="valor-mes-comprador text-center {% if pago %}pago-azul{% endif %}"
+                     data-comprador="{{ comprador }}" data-mes="{{ mes }}" style="cursor:pointer;"
+                     title="{% if pago %}simPago{% else %}Não pago{% endif %}">
+                     R$ {{ '%.2f'|format(valor) }}
+                  </td>
+                  {% endfor %}
+                  <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(valores.values() | sum) }}</span></strong></td>
+               </tr>
+               {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+               <tr>
+                  <th>Total Geral</th>
+                  {% for mes in colunas_meses_compradores %}
+                  <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_comprador.get(mes, 0)) }}</span></th>
+                  {% endfor %}
+                  <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_compradores) }}</span></strong>
+                  </th>
+               </tr>
+            </tfoot>
+         </table>
       </div>
-    </div>
-  </div>
-  <script>
-
-    const csrfToken = "{{ csrf_token }}";
-
-
-    function togglePagamento(cell) {
-      const bandeira = cell.dataset.bandeira;
-      const mesAno = cell.dataset.mesAno;
-
-      console.log("Toggle clicado: bandeira =", bandeira, ", mesAno =", mesAno);
-
-      fetch('/toggle_pagamento', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({ bandeira: bandeira, mes_ano: mesAno })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            const allCells = document.querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`);
-            allCells.forEach(c => {
-              if (data.pago) {
-                c.classList.add('pago');
-                c.title = 'Marcado como pago';
-              } else {
-                c.classList.remove('pago');
-                c.title = 'Clique para marcar como pago';
-              }
-            });
-          } else {
-            alert('Erro ao atualizar pagamento: ' + (data.error || ''));
-          }
-        })
-        .catch(() => alert('Erro na comunicação com o servidor'));
-    }
-
-    // ✅ Função corrigida e funcional
-    function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
-      const hoje = new Date();
-      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-      const ano = hoje.getFullYear();
-      const mesAno = `${mes}/${ano}`;
-
-      const scrollContainer = document.querySelector(`${seletorSecao} .scroll-container`);
-      if (!scrollContainer) {
-        console.log(`Scroll container não encontrado para: ${seletorSecao}`);
-        return;
-      }
-
-      const tabela = scrollContainer.querySelector('table');
-      if (!tabela) {
-        console.log(`Tabela não encontrada em ${seletorSecao}`);
-        return;
-      }
-
-      const ths = tabela.querySelectorAll('thead th');
-      let indiceColuna = -1;
-
-      ths.forEach((th, i) => {
-        if (th.id === `coluna_${mesAno}`) {
-          indiceColuna = i;
-        }
-      });
-
-      if (indiceColuna === -1) {
-        console.log(`Coluna ${mesAno} não encontrada na seção ${seletorSecao}`);
-        return;
-      }
-
-      const larguraColuna = 120; // largura definida no seu CSS
-      const deslocamentoScroll = (indiceColuna - colunasFixas) * larguraColuna - 1;
-      scrollContainer.scrollLeft = deslocamentoScroll;
-
-      console.log(`Rolando para ${mesAno} em ${seletorSecao}, índice: ${indiceColuna}, scrollLeft: ${deslocamentoScroll}`);
-    }
-
-
-    // ✅ Aplica o scroll nas abas quando visíveis
-    document.addEventListener('DOMContentLoaded', () => {
-      const tabTotais = document.querySelector('#totais-tab');
-      const tabOutros = document.querySelector('#outros-tab');
-      const tabCompradores = document.querySelector('#compradores-tab');
-
-      tabTotais?.addEventListener('shown.bs.tab', () => {
-        scrollParaMesAtual('.secao-totais', 1);
-      });
-
-      tabOutros?.addEventListener('shown.bs.tab', () => {
-        scrollParaMesAtual('.secao-totais-outros', 2);
-      });
-
-      tabCompradores?.addEventListener('shown.bs.tab', () => {
-        scrollParaMesAtual('.secao-totais-compradores', 1);
-      });
-
-      // Seção inicial visível ao carregar (ativa por padrão)
-      // scrollParaMesAtual('.secao-totais', 1);
-   // Dispara manualmente o evento shown.bs.tab para a aba que já está ativa
-     if (tabTotais) {
-        const event = new Event('shown.bs.tab');
-        tabTotais.dispatchEvent(event);
+   </div>
+</div>
+<script>
+   const csrfToken = "{{ csrf_token }}";
+   
+   
+   function togglePagamento(cell) {
+     const bandeira = cell.dataset.bandeira;
+     const mesAno = cell.dataset.mesAno;
+   
+     console.log("Toggle clicado: bandeira =", bandeira, ", mesAno =", mesAno);
+   
+     fetch('/toggle_pagamento', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'X-CSRFToken': csrfToken
+       },
+       body: JSON.stringify({ bandeira: bandeira, mes_ano: mesAno })
+     })
+       .then(response => response.json())
+       .then(data => {
+         if (data.success) {
+           const allCells = document.querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`);
+           allCells.forEach(c => {
+             if (data.pago) {
+               c.classList.add('pago');
+               c.title = 'Marcado como pago';
+             } else {
+               c.classList.remove('pago');
+               c.title = 'Clique para marcar como pago';
+             }
+           });
+         } else {
+           alert('Erro ao atualizar pagamento: ' + (data.error || ''));
+         }
+       })
+       .catch(() => alert('Erro na comunicação com o servidor'));
+   }
+   
+   function mostrarDetalhesCompras(cell) {
+   const bandeira = cell.dataset.bandeira;
+   const mesAno = cell.dataset.mesAno;
+   
+   if (!bandeira || !mesAno) return;
+   
+   fetch('/detalhes_compras', {
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/json',
+     'X-CSRFToken': csrfToken  // se usar CSRF, caso contrário remova esta linha
+   },
+   body: JSON.stringify({
+     bandeira: bandeira,
+     mes_ano: mesAno
+   })
+   })
+   .then(response => {
+     if (!response.ok) {
+       throw new Error("Erro ao buscar detalhes.");
+     }
+     return response.json();
+   })
+   .then(data => {
+     // Atualiza título do modal
+     document.getElementById('modalDetalhesComprasLabel').textContent = `Detalhes da bandeira "${bandeira}" - ${mesAno}`;
+   
+     // Total do mês
+     document.getElementById('totalMes').textContent = `Total do mês: R$ ${data.total_mes.toFixed(2)}`;
+   
+     // Preenche a tabela
+     const tbody = document.getElementById('tbodyDetalhesCompras');
+     tbody.innerHTML = ''; // limpa tabela
+   
+     data.detalhes.forEach(item => {
+       const tr = document.createElement('tr');
+       tr.innerHTML = `
+         <td>${item.estabelecimento || '-'}</td>
+         <td>${item.data_compra}</td>
+         <td>R$ ${item.valor_compra.toFixed(2)}</td>
+         <td>${item.quantidade_parcelas}</td>
+         <td>${item.forma_pagamento || '-'}</td>
+         <td>${item.bandeira || '-'}</td>
+         <td>R$ ${item.valor_parcela_atual.toFixed(2)}</td>
+         <td>${item.data_vencimento}</td>
+         <td>${item.pago ? 'Sim' : 'Não'}</td>
+       `;
+       tbody.appendChild(tr);
+     });
+   
+     // Exibe o modal usando Bootstrap 5
+     const modalElement = document.getElementById('modalDetalhesCompras');
+     const modal = new bootstrap.Modal(modalElement);
+     modal.show();
+   
+   })
+   .catch(error => {
+     alert("Erro ao buscar detalhes da compra.");
+     console.error(error);
+   });
+   }
+   function confirmarPagamento(cell) {
+   const bandeira = cell.dataset.bandeira;
+   const mesAno = cell.dataset.mesAno;
+   
+   const confirmacao = confirm(`Deseja realizar o pagamento da bandeira "${bandeira}" do mês ${mesAno}?`);
+   
+   if (confirmacao) {
+     togglePagamento(cell);
+   }
+   }
+   
+   
+   
+   
+   
+   
+   // ✅ Função corrigida e funcional
+   function scrollParaMesAtual(seletorSecao, colunasFixas = 1) {
+     const hoje = new Date();
+     const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+     const ano = hoje.getFullYear();
+     const mesAno = `${mes}/${ano}`;
+   
+     const scrollContainer = document.querySelector(`${seletorSecao} .scroll-container`);
+     if (!scrollContainer) {
+       console.log(`Scroll container não encontrado para: ${seletorSecao}`);
+       return;
+     }
+   
+     const tabela = scrollContainer.querySelector('table');
+     if (!tabela) {
+       console.log(`Tabela não encontrada em ${seletorSecao}`);
+       return;
+     }
+   
+     const ths = tabela.querySelectorAll('thead th');
+     let indiceColuna = -1;
+   
+     ths.forEach((th, i) => {
+       if (th.id === `coluna_${mesAno}`) {
+         indiceColuna = i;
        }
-    });
-
-</script>
-
-  <script>
-    const tempoAtualizacao = {{ tempo_atualizacao | default (0) }} * 1000;
-
-    if (tempoAtualizacao > 0) {
-      setInterval(() => {
-        // Aqui você coloca a função que atualiza seus dados, por exemplo:
-        atualizarDados();
-      }, tempoAtualizacao);
-    } else {
-      console.log("Atualização automática desabilitada (Nunca selecionado)");
-    }
-
-    function atualizarDados() {
-      // Seu código para atualizar a página (fetch, ajax, etc)
-      console.log("Atualizando dados...");
-      // exemplo:
-      fetch('/rota_de_atualizacao')
-        .then(response => response.json())
-        .then(data => {
-          // atualizar elementos da página com os dados
-        })
-        .catch(console.error);
-    }
-  </script>
-
-  <script>
-    const selectAtualizacao = document.getElementById('intervalo-atualizacao');
-    const valorSalvo = localStorage.getItem('tempoAtualizacao') || "0";
-    selectAtualizacao.value = valorSalvo;
-
-    let intervalo = null;
-
-    function iniciarAtualizacao(tempoSegundos) {
-      if (intervalo) clearInterval(intervalo); // limpa qualquer intervalo anterior
-      if (tempoSegundos > 0) {
-        intervalo = setInterval(() => {
-          location.reload();
-        }, tempoSegundos * 1000);
+     });
+   
+     if (indiceColuna === -1) {
+       console.log(`Coluna ${mesAno} não encontrada na seção ${seletorSecao}`);
+       return;
+     }
+   
+     const larguraColuna = 120; // largura definida no seu CSS
+     const deslocamentoScroll = (indiceColuna - colunasFixas) * larguraColuna - 1;
+     scrollContainer.scrollLeft = deslocamentoScroll;
+   
+     console.log(`Rolando para ${mesAno} em ${seletorSecao}, índice: ${indiceColuna}, scrollLeft: ${deslocamentoScroll}`);
+   }
+   
+   
+   // ✅ Aplica o scroll nas abas quando visíveis
+   document.addEventListener('DOMContentLoaded', () => {
+     const tabTotais = document.querySelector('#totais-tab');
+     const tabOutros = document.querySelector('#outros-tab');
+     const tabCompradores = document.querySelector('#compradores-tab');
+   
+     tabTotais?.addEventListener('shown.bs.tab', () => {
+       scrollParaMesAtual('.secao-totais', 1);
+     });
+   
+     tabOutros?.addEventListener('shown.bs.tab', () => {
+       scrollParaMesAtual('.secao-totais-outros', 2);
+     });
+   
+     tabCompradores?.addEventListener('shown.bs.tab', () => {
+       scrollParaMesAtual('.secao-totais-compradores', 1);
+     });
+   
+     // Seção inicial visível ao carregar (ativa por padrão)
+     // scrollParaMesAtual('.secao-totais', 1);
+   // Dispara manualmente o evento shown.bs.tab para a aba que já está ativa
+    if (tabTotais) {
+       const event = new Event('shown.bs.tab');
+       tabTotais.dispatchEvent(event);
       }
-    }
-
-    iniciarAtualizacao(parseInt(valorSalvo));
-
-    selectAtualizacao.addEventListener('change', () => {
-      const novoValor = selectAtualizacao.value;
-      localStorage.setItem('tempoAtualizacao', novoValor);
-      const url = new URL(window.location);
-      url.searchParams.set('tempo_atualizacao', novoValor);
-      window.location.href = url.toString();
-
-    });
-  </script>
-  {% block scripts %}
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  {% endblock %}
-
-  {% endblock %}
+   });
+   
+</script>
+<script>
+   const tempoAtualizacao = {{ tempo_atualizacao | default (0) }} * 1000;
+   
+   if (tempoAtualizacao > 0) {
+     setInterval(() => {
+       // Aqui você coloca a função que atualiza seus dados, por exemplo:
+       atualizarDados();
+     }, tempoAtualizacao);
+   } else {
+     console.log("Atualização automática desabilitada (Nunca selecionado)");
+   }
+   
+   function atualizarDados() {
+     // Seu código para atualizar a página (fetch, ajax, etc)
+     console.log("Atualizando dados...");
+     // exemplo:
+     fetch('/rota_de_atualizacao')
+       .then(response => response.json())
+       .then(data => {
+         // atualizar elementos da página com os dados
+       })
+       .catch(console.error);
+   }
+</script>
+<script>
+   const selectAtualizacao = document.getElementById('intervalo-atualizacao');
+   const valorSalvo = localStorage.getItem('tempoAtualizacao') || "0";
+   selectAtualizacao.value = valorSalvo;
+   
+   let intervalo = null;
+   
+   function iniciarAtualizacao(tempoSegundos) {
+     if (intervalo) clearInterval(intervalo); // limpa qualquer intervalo anterior
+     if (tempoSegundos > 0) {
+       intervalo = setInterval(() => {
+         location.reload();
+       }, tempoSegundos * 1000);
+     }
+   }
+   
+   iniciarAtualizacao(parseInt(valorSalvo));
+   
+   selectAtualizacao.addEventListener('change', () => {
+     const novoValor = selectAtualizacao.value;
+     localStorage.setItem('tempoAtualizacao', novoValor);
+     const url = new URL(window.location);
+     url.searchParams.set('tempo_atualizacao', novoValor);
+     window.location.href = url.toString();
+   
+   });
+</script>
+<script>
+   let clickTimeout;
+   
+   function handleClick(element) {
+     if (clickTimeout) {
+       clearTimeout(clickTimeout);
+       clickTimeout = null;
+     }
+     clickTimeout = setTimeout(() => {
+       clickTimeout = null;
+       mostrarDetalhesCompras(element);
+     }, 300);
+   }
+   
+   function handleDoubleClick(element) {
+     if (clickTimeout) {
+       clearTimeout(clickTimeout);
+       clickTimeout = null;
+     }
+     confirmarPagamento(element);
+   }
+</script>
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+{% endblock %}
