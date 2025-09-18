@@ -42,7 +42,7 @@ from reportlab.lib.units import cm
 # Importações locais
 # ----------------------------
 from models import CreditoSalarial  # supondo que você tenha esse model
-from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float )
+from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float, calcular_valor_pago,calcular_consumo )
 
 
 
@@ -2297,6 +2297,8 @@ def detalhes_compras():
       LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
       WHERE UPPER(B.nome) LIKE UPPER(?) || '%'
       AND substr(P.data_vencimento, 4, 7) = ?
+      ORDER BY 
+         substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
       """
 # Ajusta o parâmetro bandeira para só o texto principal, sem o "- 6"
       bandeira_principal = bandeira.split(' - ')[0]  # Pega só 'TORRA TORRA'
@@ -2364,20 +2366,20 @@ def detalhes_compras():
 # def calcular_consumo(km, quantidade):
 #     return round(km / quantidade, 2) if quantidade != 0 else 0
 
-# def obter_dados_por_mes(ano, mes):
-    conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    mes_ano = f'/{mes}/{ano}'  # Exemplo: /08/2025
-    cursor.execute('''
-        SELECT * FROM combustivel
-        WHERE data_abastecimento LIKE ?
-    ''', (f'%{mes_ano}',))
+#  def obter_dados_por_mes(ano, mes):
+#     conn = get_db_connection()
+#     conn.row_factory = sqlite3.Row
+#     cursor = conn.cursor()
+#     mes_ano = f'/{mes}/{ano}'  # Exemplo: /08/2025
+#     cursor.execute('''
+#         SELECT * FROM combustivel
+#         WHERE data_abastecimento LIKE ?
+#     ''', (f'%{mes_ano}',))
 
  
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+#     rows = cursor.fetchall()
+#     conn.close()
+#     return rows
 
 @app.route('/outros/combustivel', methods=['GET', 'POST'])
 def combustivel():
