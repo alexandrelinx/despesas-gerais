@@ -263,3 +263,11 @@ def safe_float(valor):
         except ValueError:
             return 0.0
     return 0.0
+
+def parse_float_br(value):
+    if isinstance(value, float):
+        return value
+    try:
+        return float(value.replace(',', '.'))
+    except (ValueError, AttributeError):
+        return 0.0  # ou outro valor padrão

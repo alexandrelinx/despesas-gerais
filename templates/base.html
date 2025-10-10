@@ -1,398 +1,437 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-   <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>{% block title %}Despesas{% endblock %}</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-      <!-- DataTables CSS -->
-      <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-      <!-- Font Awesome CDN para ícones -->
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-      <style>
-         body {
-         display: flex;
-         min-height: 100vh;
-         overflow-x: hidden;
-         flex-direction: column;
-         }
-         nav.navbar.static-top {
-         height: 56px;
-         line-height: 56px;
-         padding: 0 1rem;
-         }
-         .sidebar {
-         width: 260px;
-         height: calc(100vh - 56px);
-         background: #343a40;
-         color: white;
-         padding: 15px;
-         position: fixed;
-         top: 56px;
-         left: 0;
-         z-index: 1000;
-         transition: all 0.3s ease;
-         overflow-y: auto;
-         text-align: left;
-         /* Alinha o texto à esquerda */
-         padding-right: 20px;
-         }
-         .sidebar.collapsed {
-         width: 0;
-         padding: 0;
-         overflow: hidden;
-         }
-         .sidebar a,
-         .sidebar h5 {
-         margin-top: 15px;
-         }
-         .sidebar h6 {
-         margin-top: 15px;
-         /* espaço maior acima dos títulos */
-         margin-bottom: 5px;
-         /* espaço maior abaixo dos títulos */
-         }
-         .sidebar a:first-of-type {
-         margin-bottom: 15px;
-         /* aumenta espaço depois do primeiro link Dashboard */
-         }
-         .sidebar a {
-         color: white;
-         display: block;
-         padding: 2px;
-         text-decoration: none;
-         white-space: nowrap;
-         overflow: hidden;
-         text-overflow: ellipsis;
-         text-align: left;
-         }
-         .sidebar a:hover {
-         background: #495057;
-         }
-         /* Espaçamento entre ícones e texto */
-         .sidebar a i,
-         .sidebar h6 i {
-         margin-right: 8px;
-         }
-         .content {
-         margin-left: 260px;
-         padding: 0px 20px 20px;
-         flex: 1;
-         transition: margin-left 0.3s;
-         position: relative;
-         margin-top: 36px;
-         }
-         .content.expanded {
-         margin-left: 0 !important;
-         }
-         .submenu {
-         display: none;
-         margin-left: 15px;
-         }
-         .submenu a {
-         padding-right: 20px;
-         padding-left: 0;
-         }
-         @media (max-width: 992px) {
-         .sidebar {
-         position: fixed;
-         left: -260px;
-         width: 260px;
-         top: 56px;
-         height: calc(100vh - 56px);
-         transition: left 0.3s ease;
-         }
-         .sidebar.active {
-         left: 0;
-         }
-         .content {
-         margin-left: 0 !important;
-         margin-top: 56px;
-         }
-         }
-         .sidebar a.active {
-         background-color: #0d6efd;
-         color: white;
-         font-weight: bold;
-         }
-         /* Botão toggle fixo no topo, à esquerda */
-         #sidebarToggle {
-         position: fixed;
-         top: 6px;
-         left: 250px;
-         z-index: 1100;
-         /* acima da sidebar */
-         border: none;
-         background: transparent;
-         color: white;
-         font-size: 1.5rem;
-         }
-         #sidebarToggle:hover {
-         color: #0d6efd;
-         cursor: pointer;
-         }
-         td.pre-wrap {
-         white-space: pre-wrap;
-         word-break: break-word;
-         }
-         /* Faz o modal crescer com o conteúdo sem rolagem */
-         .modal-dialog {
-         max-width: 100%;
-         margin: 1.75rem auto;
-         }
-         .modal-content {
-         width: auto; 
-         min-width: 300px;  
-         max-height: none !important;
-         }
-         .modal-body {
-         max-height: none !important;
-         overflow-y: visible !important;
-         }
-         /* Alinha o valor da parcela à direita */
-         #detalhesCompradorCorpo td:nth-child(5) {
-         text-align: right;
-         }
-         #parcelasModal .modal-body {
-         max-height: 400px;
-         overflow-y: auto;
-         }
-         #parcelasModal thead th {
-         position: sticky;
-         top: 0;
-         background-color: #fdf5f5;
-         z-index: 10;
-         }
-         .modal-body {
-         overflow-y: auto;
-         max-height: 400px;
-         }
-         .modal-custom-width {
-         max-width: 400px;
-         /* largura que você quiser */
-         }
-         .table-responsive {
-         overflow-x: auto;
-         -webkit-overflow-scrolling: touch;
-         }
-         table td {
-         white-space: nowrap;
-         }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Despesas{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <!-- Font Awesome CDN para ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body {
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+      flex-direction: column;
+    }
+
+    nav.navbar.static-top {
+      height: 56px;
+      line-height: 56px;
+      padding: 0 1rem;
+    }
+
+    .sidebar {
+      width: 260px;
+      height: calc(100vh - 56px);
+      background: #343a40;
+      color: white;
+      padding: 15px;
+      position: fixed;
+      top: 56px;
+      left: 0;
+      z-index: 1000;
+      transition: all 0.3s ease;
+      overflow-y: auto;
+      text-align: left;
+      /* Alinha o texto à esquerda */
+      padding-right: 20px;
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .sidebar a,
+    .sidebar h5 {
+      margin-top: 15px;
+    }
+
+    .sidebar h6 {
+      margin-top: 15px;
+      /* espaço maior acima dos títulos */
+      margin-bottom: 5px;
+      /* espaço maior abaixo dos títulos */
+    }
+
+    .sidebar a:first-of-type {
+      margin-bottom: 15px;
+      /* aumenta espaço depois do primeiro link Dashboard */
+    }
+
+    .sidebar a {
+      color: white;
+      display: block;
+      padding: 2px;
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+
+    .sidebar a:hover {
+      background: #495057;
+    }
+
+    /* Espaçamento entre ícones e texto */
+    .sidebar a i,
+    .sidebar h6 i {
+      margin-right: 8px;
+    }
+
+    .content {
+      margin-left: 260px;
+      padding: 0px 20px 20px;
+      flex: 1;
+      transition: margin-left 0.3s;
+      position: relative;
+      margin-top: 36px;
+    }
+
+    .content.expanded {
+      margin-left: 0 !important;
+    }
+
+    .submenu {
+      display: none;
+      margin-left: 15px;
+    }
+
+    .submenu a {
+      padding-right: 20px;
+      padding-left: 0;
+    }
+
+    @media (max-width: 992px) {
+      .sidebar {
+        position: fixed;
+        left: -260px;
+        width: 260px;
+        top: 56px;
+        height: calc(100vh - 56px);
+        transition: left 0.3s ease;
+      }
+
+      .sidebar.active {
+        left: 0;
+      }
+
+      .content {
+        margin-left: 0 !important;
+        margin-top: 56px;
+      }
+    }
+
+    .sidebar a.active {
+      background-color: #0d6efd;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* Botão toggle fixo no topo, à esquerda */
+    #sidebarToggle {
+      position: fixed;
+      top: 6px;
+      left: 250px;
+      z-index: 1100;
+      /* acima da sidebar */
+      border: none;
+      background: transparent;
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    #sidebarToggle:hover {
+      color: #0d6efd;
+      cursor: pointer;
+    }
+
+    td.pre-wrap {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Faz o modal crescer com o conteúdo sem rolagem */
+    .modal-dialog {
+      max-width: 100%;
+      margin: 1.75rem auto;
+    }
+
+    .modal-content {
+      width: auto;
+      min-width: 300px;
+      max-height: none !important;
+    }
+
+    .modal-body {
+      max-height: none !important;
+      overflow-y: visible !important;
+    }
+
+    /* Alinha o valor da parcela à direita */
+    #detalhesCompradorCorpo td:nth-child(5) {
+      text-align: right;
+    }
+
+    #parcelasModal .modal-body {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    #parcelasModal thead th {
+      position: sticky;
+      top: 0;
+      background-color: #fdf5f5;
+      z-index: 10;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      max-height: 400px;
+    }
+
+    .modal-custom-width {
+      max-width: 400px;
+      /* largura que você quiser */
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table td {
+      white-space: nowrap;
+    }
 
 
+    table td.status-todas-pagas {
+      background-color: #0fd83e !important;  /* verde claro */
+   }
 
+   table td.status-uma-pendente {
+     background-color: #faf60b !important;  /* amarelo claro */
+   }
 
+   table td.status-varias-pendentes {
+     background-color: #ffc403 !important;  /* laranja claro */
+   }
 
+  </style>
+</head>
 
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
+    <div class="container-fluid d-flex align-items-center">
+      <button id="sidebarToggle" class="btn btn-dark me-3" title="Expandir/Ocultar Sidebar">☰</button>
+      <a class="navbar-brand mb-0 h1" href="#">Lançamento de Despesas</a>
+    </div>
+  </nav>
+  <div class="sidebar">
+    <h5>Menu</h5>
+    <a href="/"><i class="fas fa-tachometer-alt"></i>Dashboard</a>
+    <a href="/dashboard_analytics"><i class="fas fa-chart-bar"></i>Analytics</a>
+    <h6 class="menu-toggle"><i class="fas fa-tools"></i>Parametros</h6>
+    <div class="submenu">
+      <a href="/cadastro/estabelecimento"><i class="fas fa-store"></i>Estabelecimento</a>
+      <a href="/cadastro/categoria"><i class="fas fa-th-large"></i>Categorias</a>
+      <a href="/cadastro/local_compra"><i class="fas fa-map-marker-alt"></i>Local da Compra</a>
+      <a href="/cadastro/produto"><i class="fas fa-box"></i>Produto</a>
+      <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i>Comprador</a>
+      <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i>Forma de Pagamento</a>
+      <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i>Bandeira</a>
+      <a href="/cadastro/credito"><i class="fas fa-hand-holding-usd"></i>Crédito Financeiro</a>
+    </div>
+    <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i>Segurança</h6>
+    <div class="submenu">
+      <a href="/cadastro/usuarios"><i class="fas fa-user-plus"></i>Cadastrar Usuário</a>
+      <a href="/usuarios"><i class="fas fa-users"></i>Consultar Usuários</a>
+    </div>
+    <h6 class="menu-toggle"><i class="fas fa-wallet"></i>Lançamentos de Despesas</h6>
+    <div class="submenu">
+      <a href="/despesas"><i class="fas fa-file-invoice-dollar"></i>Cadastrar Despesas</a>
+      <a href="/consultar_despesas"><i class="fas fa-clipboard-list"></i>Consultar Despesas</a>
+      <a href="/totais-despesas-mensais"><i class="fas fa-chart-line"></i>Totais de Despesas Mensais</a>
+    </div>
+    <h6 class="menu-toggle"><i class="fas fa-gas-pump"></i>Consumo de Combustível</h6>
+    <div class="submenu">
+      <a href="/outros/combustivel"><i class="fas fa-plus"></i> <i class="fas fa-gas-pump"></i> Lançar Abastecimento</a>
+      <a href="/outros/combustivel/consultar"><i class="fas fa-search"></i><i class="fas fa-gas-pump"></i> Consultar
+        Abastecimento</a>
+    </div>
+    <a href="/logout" class="sair"><i class="fas fa-sign-out-alt"></i>Sair</a>
+  </div>
+  <div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Toggle submenu
+    document.querySelectorAll('.menu-toggle').forEach(item => {
+      item.addEventListener('click', function () {
+        let submenu = this.nextElementSibling;
+        submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
+      });
+    });
 
-         
-      </style>
-   </head>
-   <body>
-      <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
-         <div class="container-fluid d-flex align-items-center">
-            <button id="sidebarToggle" class="btn btn-dark me-3" title="Expandir/Ocultar Sidebar">☰</button>
-            <a class="navbar-brand mb-0 h1" href="#">Lançamento de Despesas</a>
-         </div>
-      </nav>
-      <div class="sidebar">
-         <h5>Menu</h5>
-         <a href="/"><i class="fas fa-tachometer-alt"></i>Dashboard</a>
-         <h6 class="menu-toggle"><i class="fas fa-tools"></i>Parametros</h6>
-         <div class="submenu">
-            <a href="/cadastro/estabelecimento"><i class="fas fa-store"></i>Estabelecimento</a>
-            <a href="/cadastro/categoria"><i class="fas fa-th-large"></i>Categorias</a>
-            <a href="/cadastro/local_compra"><i class="fas fa-map-marker-alt"></i>Local da Compra</a>
-            <a href="/cadastro/produto"><i class="fas fa-box"></i>Produto</a>
-            <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i>Comprador</a>
-            <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i>Forma de Pagamento</a>
-            <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i>Bandeira</a>
-            <a href="/cadastro/credito"><i class="fas fa-hand-holding-usd"></i>Crédito Financeiro</a>
-         </div>
-         <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i>Segurança</h6>
-         <div class="submenu">
-            <a href="/cadastro/usuarios"><i class="fas fa-user-plus"></i>Cadastrar Usuário</a>
-            <a href="/usuarios"><i class="fas fa-users"></i>Consultar Usuários</a>
-         </div>
-         <h6 class="menu-toggle"><i class="fas fa-wallet"></i>Lançamentos de Despesas</h6>
-         <div class="submenu">
-            <a href="/despesas"><i class="fas fa-file-invoice-dollar"></i>Cadastrar Despesas</a>
-            <a href="/consultar_despesas"><i class="fas fa-clipboard-list"></i>Consultar Despesas</a>
-            <a href="/totais-despesas-mensais"><i class="fas fa-chart-line"></i>Totais de Despesas Mensais</a>
-         </div>
-         <h6 class="menu-toggle"><i class="fas fa-gas-pump"></i>Consumo de Combustível</h6>
-         <div class="submenu">
-            <a href="/outros/combustivel"><i class="fas fa-plus"></i> <i class="fas fa-gas-pump"></i> Lançar Abastecimento</a>
-            <a href="/outros/combustivel/consultar"><i class="fas fa-search"></i><i class="fas fa-gas-pump"></i> Consultar
-            Abastecimento</a>
-         </div>
-         <a href="/logout" class="sair"><i class="fas fa-sign-out-alt"></i>Sair</a>
-      </div>
-      <div class="content">
-         {% with messages = get_flashed_messages(with_categories=true) %}
-         {% if messages %}
-         {% for category, message in messages %}
-         <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-         </div>
-         {% endfor %}
-         {% endif %}
-         {% endwith %}
-         {% block content %}{% endblock %}
-      </div>
-      <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-      <script>
-         // Toggle submenu
-         document.querySelectorAll('.menu-toggle').forEach(item => {
-           item.addEventListener('click', function () {
-             let submenu = this.nextElementSibling;
-             submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
-           });
-         });
-         
-         const sidebar = document.querySelector('.sidebar');
-         const content = document.querySelector('.content');
-         const toggleBtn = document.getElementById('sidebarToggle');
-         
-         // Aplica estado salvo no localStorage (desktop)
-         function aplicarEstadoSidebar() {
-           const estado = localStorage.getItem('sidebarCollapsed');
-           if (estado === 'true') {
-             sidebar.classList.add('collapsed');
-             content.classList.add('expanded');
-           } else {
-             sidebar.classList.remove('collapsed');
-             content.classList.remove('expanded');
-           }
-         }
-         
-         // Só aplica estado salvo se for desktop
-         if (window.innerWidth > 992) {
-           aplicarEstadoSidebar();
-         }
-         
-         // Função para fechar sidebar mobile (remover classe active)
-         function fecharSidebarMobile() {
-           sidebar.classList.remove('active');
-         }
-         
-         // Toggle sidebar no clique do botão
-         toggleBtn.addEventListener('click', () => {
-           const isMobile = window.innerWidth <= 992;
-         
-           if (isMobile) {
-             // No mobile toggle a classe 'active' que faz sidebar aparecer/desaparecer
-             sidebar.classList.toggle('active');
-           } else {
-             // No desktop toggle a classe collapsed e ajusta o content, e salva estado
-             sidebar.classList.toggle('collapsed');
-             content.classList.toggle('expanded');
-             const estaColapsado = sidebar.classList.contains('collapsed');
-             localStorage.setItem('sidebarCollapsed', estaColapsado);
-           }
-         });
-         
-         // Fecha sidebar mobile ao clicar em algum link dentro dela (melhora UX)
-         sidebar.querySelectorAll('a').forEach(link => {
-           link.addEventListener('click', () => {
-             if (window.innerWidth <= 992) {
-               fecharSidebarMobile();
-             }
-           });
-         });
-         
-         // Fecha sidebar mobile ao clicar fora dela (no content)
-         content.addEventListener('click', () => {
-           if (window.innerWidth <= 992 && sidebar.classList.contains('active')) {
-             fecharSidebarMobile();
-           }
-         });
-         
-         // Opcional: Fecha sidebar mobile ao redimensionar a janela
-         window.addEventListener('resize', () => {
-           if (window.innerWidth > 992) {
-             // Se passou para desktop, remove a classe active (mobile)
-             sidebar.classList.remove('active');
-             aplicarEstadoSidebar();
-           } else {
-             // Se for mobile, remove collapsed e expanded para resetar estilos
-             sidebar.classList.remove('collapsed');
-             content.classList.remove('expanded');
-           }
-         });
-         
-         // Código das células valor-mes (deixe como está)
-         document.querySelectorAll('.valor-mes').forEach(td => {
-           td.addEventListener('click', () => {
-             const valorText = td.innerText;
-             const valor = parseFloat(valorText.replace('R$ ', '').replace(',', '.'));
-             const mes = td.getAttribute('data-mes');
-             const bandeira = td.getAttribute('data-bandeira');
-         
-             if (td.dataset.pago === 'true') {
-               alert('Este valor já foi pago.');
-               return;
-             }
-         
-             if (confirm(`Deseja pagar o valor de ${valorText} para ${bandeira} no mês ${mes}?`)) {
-               td.style.backgroundColor = 'lightgreen';
-         
-               fetch('/pagar', {
-                 method: 'POST',
-                 headers: {
-                   'Content-Type': 'application/json',
-                 },
-                 body: JSON.stringify({ mes: mes, bandeira: bandeira }),
-               }).then(response => response.json())
-                 .then(data => {
-                   if (data.success) {
-                     td.dataset.pago = 'true';
-                   } else {
-                     alert('Erro ao marcar como pago.');
-                   }
-                 });
-             }
-           });
-         });
-      </script>
-      <!-- DataTables JS -->
-      <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-      <script>
-         document.addEventListener("DOMContentLoaded", function () {
-           document.querySelectorAll(".abrir-modal-parcelas").forEach(el => {
-             el.addEventListener("click", function (e) {
-               e.preventDefault();
-               console.log('Clique detectado no link da parcela', this.dataset.id);
-               const despesaId = this.dataset.id;
-         
-               fetch(`/parcelas/${despesaId}`)
-                 .then(res => res.json())
-                 .then(data => {
-                   const cabecalho = document.getElementById("cabecalho-despesa");
-                   cabecalho.innerHTML = `
+    const sidebar = document.querySelector('.sidebar');
+    const content = document.querySelector('.content');
+    const toggleBtn = document.getElementById('sidebarToggle');
+
+    // Aplica estado salvo no localStorage (desktop)
+    function aplicarEstadoSidebar() {
+      const estado = localStorage.getItem('sidebarCollapsed');
+      if (estado === 'true') {
+        sidebar.classList.add('collapsed');
+        content.classList.add('expanded');
+      } else {
+        sidebar.classList.remove('collapsed');
+        content.classList.remove('expanded');
+      }
+    }
+
+    // Só aplica estado salvo se for desktop
+    if (window.innerWidth > 992) {
+      aplicarEstadoSidebar();
+    }
+
+    // Função para fechar sidebar mobile (remover classe active)
+    function fecharSidebarMobile() {
+      sidebar.classList.remove('active');
+    }
+
+    // Toggle sidebar no clique do botão
+    toggleBtn.addEventListener('click', () => {
+      const isMobile = window.innerWidth <= 992;
+
+      if (isMobile) {
+        // No mobile toggle a classe 'active' que faz sidebar aparecer/desaparecer
+        sidebar.classList.toggle('active');
+      } else {
+        // No desktop toggle a classe collapsed e ajusta o content, e salva estado
+        sidebar.classList.toggle('collapsed');
+        content.classList.toggle('expanded');
+        const estaColapsado = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', estaColapsado);
+      }
+    });
+
+    // Fecha sidebar mobile ao clicar em algum link dentro dela (melhora UX)
+    sidebar.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 992) {
+          fecharSidebarMobile();
+        }
+      });
+    });
+
+    // Fecha sidebar mobile ao clicar fora dela (no content)
+    content.addEventListener('click', () => {
+      if (window.innerWidth <= 992 && sidebar.classList.contains('active')) {
+        fecharSidebarMobile();
+      }
+    });
+
+    // Opcional: Fecha sidebar mobile ao redimensionar a janela
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 992) {
+        // Se passou para desktop, remove a classe active (mobile)
+        sidebar.classList.remove('active');
+        aplicarEstadoSidebar();
+      } else {
+        // Se for mobile, remove collapsed e expanded para resetar estilos
+        sidebar.classList.remove('collapsed');
+        content.classList.remove('expanded');
+      }
+    });
+
+    // Código das células valor-mes (deixe como está)
+    document.querySelectorAll('.valor-mes').forEach(td => {
+      td.addEventListener('click', () => {
+        const valorText = td.innerText;
+        const valor = parseFloat(valorText.replace('R$ ', '').replace(',', '.'));
+        const mes = td.getAttribute('data-mes');
+        const bandeira = td.getAttribute('data-bandeira');
+
+        if (td.dataset.pago === 'true') {
+          alert('Este valor já foi pago.');
+          return;
+        }
+
+        if (confirm(`Deseja pagar o valor de ${valorText} para ${bandeira} no mês ${mes}?`)) {
+          td.style.backgroundColor = 'lightgreen';
+
+          fetch('/pagar', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mes: mes, bandeira: bandeira }),
+          }).then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                td.dataset.pago = 'true';
+              } else {
+                alert('Erro ao marcar como pago.');
+              }
+            });
+        }
+      });
+    });
+  </script>
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll(".abrir-modal-parcelas").forEach(el => {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          console.log('Clique detectado no link da parcela', this.dataset.id);
+          const despesaId = this.dataset.id;
+
+          fetch(`/parcelas/${despesaId}`)
+            .then(res => res.json())
+            .then(data => {
+              const cabecalho = document.getElementById("cabecalho-despesa");
+              cabecalho.innerHTML = `
                  <strong>ID:</strong> ${data.despesa.id} <br>
                  <strong>Produto:</strong> ${data.despesa.produto} <br>
                  <strong>Data da Compra:</strong> ${data.despesa.data_compra} <br>
                  <strong>Quantidade de Parcelas:</strong> ${data.despesa.qtd_parcelas}
                `;
-         
-                   const tbody = document.getElementById("parcelas-body");
-                   tbody.innerHTML = '';
-         
-                   if (!data.parcelas.length) {
-                     tbody.innerHTML = "<tr><td colspan='4' class='text-center'>Nenhuma parcela encontrada.</td></tr>";
-                     return;
-                   }
-         
-                   data.parcelas.forEach(parcela => {
-                     console.log('Parcela:', parcela);
-                     const bandeira = parcela.bandeira || data.despesa.bandeira || '-';
-                     const statusPago = Number(parcela.pago) === 1 ? 'Pago' : 'Aberto';
-                     console.log('Status Pago:', statusPago);
-                          
-                     const row = `
+
+              const tbody = document.getElementById("parcelas-body");
+              tbody.innerHTML = '';
+
+              if (!data.parcelas.length) {
+                tbody.innerHTML = "<tr><td colspan='4' class='text-center'>Nenhuma parcela encontrada.</td></tr>";
+                return;
+              }
+
+              data.parcelas.forEach(parcela => {
+                console.log('Parcela:', parcela);
+                const bandeira = parcela.bandeira || data.despesa.bandeira || '-';
+                const statusPago = Number(parcela.pago) === 1 ? 'Pago' : 'Aberto';
+                console.log('Status Pago:', statusPago);
+
+                const row = `
                    <tr>
                      <td>${bandeira}</td>
                      <td>${parcela.data_vencimento}</td>
@@ -400,107 +439,112 @@
                      <td>${statusPago}</td>
                    </tr>
                  `;
-                     tbody.insertAdjacentHTML("beforeend", row);
-                   });
-         
-                   // Abrir o modal manualmente
-                   const modalParcelas = new bootstrap.Modal(document.getElementById('parcelasModal'));
-                   modalParcelas.show();
-                 })
-                 .catch(err => {
-                   console.error("Erro ao buscar parcelas:", err);
-                 });
-             });
-           });
-         
-           document.querySelectorAll('.valor-mes-comprador').forEach(td => {
-             td.style.cursor = 'pointer'; // muda o cursor para indicar que é clicável
-             td.addEventListener('click', () => {
-               const comprador = td.dataset.comprador;
-               const mes = td.dataset.mes;
-               const bandeira = td.dataset.bandeira;
-         
-               fetch('/detalhes_comprador_mes', {
-                 method: 'POST',
-                 headers: {
-                   'Content-Type': 'application/json',
-                   // Se usar CSRF, adicione o token aqui, por exemplo:
-                   'X-CSRFToken': '{{ csrf_token }}'
-                 },
-                 body: JSON.stringify({ comprador, mes, bandeira })
-               })
-                 .then(res => res.json())
-                 .then(data => {
-         
-                   // Preencher cabeçalho do modal
-                   document.getElementById('modal-comprador').textContent = data.comprador;
-                   document.getElementById('modal-total-mes').textContent = data.total_mes.toFixed(2);
-                   document.getElementById('modal-quantidade-parcelas').textContent = data.quantidade_parcelas;
-         
-                   // Preencher tabela de detalhes
-                   const tbody = document.getElementById('detalhesCompradorCorpo');
-                   tbody.innerHTML = '';
-         
-                   if (!data.detalhes.length) {
-                     tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum dado encontrado.</td></tr>';
-                   } else {
-                     data.detalhes.forEach(item => {
-                       const pago = item.pago ? 'Sim' : 'Não';
-                       const estabelecimento = item.estabelecimento || '-';
-                       const bandeira = item.bandeira || '-';
-         
-                       tbody.insertAdjacentHTML('beforeend', `
-                   <tr>
-                     <td>${estabelecimento}</td>
-                     <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
-                     <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
-                     <td>R$ ${item.valor_compra.toFixed(2)}</td>
-                     <td>${bandeira}</td>
-                     <td class="text-end">R$ ${item.valor_parcela_atual.toFixed(2)}</td>
-                     <td>${pago}</td>
-                   </tr>
+                tbody.insertAdjacentHTML("beforeend", row);
+              });
+
+              // Abrir o modal manualmente
+              const modalParcelas = new bootstrap.Modal(document.getElementById('parcelasModal'));
+              modalParcelas.show();
+            })
+            .catch(err => {
+              console.error("Erro ao buscar parcelas:", err);
+            });
+        });
+      });
+
+      document.querySelectorAll('.valor-mes-comprador').forEach(td => {
+        td.style.cursor = 'pointer'; // muda o cursor para indicar que é clicável
+        td.addEventListener('click', () => {
+          const comprador = td.dataset.comprador;
+          const mes = td.dataset.mes;
+          const bandeira = td.dataset.bandeira;
+
+          fetch('/detalhes_comprador_mes', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // Se usar CSRF, adicione o token aqui, por exemplo:
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ comprador, mes, bandeira })
+          })
+            .then(res => res.json())
+            .then(data => {
+
+              // Preencher cabeçalho do modal
+              document.getElementById('modal-comprador').textContent = data.comprador;
+              document.getElementById('modal-total-mes').textContent = data.total_mes.toFixed(2);
+              document.getElementById('modal-quantidade-parcelas').textContent = data.quantidade_parcelas;
+
+              // Preencher tabela de detalhes
+              const tbody = document.getElementById('detalhesCompradorCorpo');
+              tbody.innerHTML = '';
+
+              if (!data.detalhes.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum dado encontrado.</td></tr>';
+              } else {
+                data.detalhes.forEach(item => {
+                  const pago = item.pago ? 'Sim' : 'Não';
+                  const estabelecimento = item.estabelecimento || '-';
+                  const bandeira = item.bandeira || '-';
+
+
+                 const parcelasStr = item.parcelas || '1/1';
+                  //const parcelasPagasStr = `${item.parcelas_pagas}/${item.total_parcelas}`;
+
+                  tbody.insertAdjacentHTML('beforeend', `
+                  <tr>
+                   <td>${estabelecimento}</td>
+                   <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
+                   <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
+                   <td>R$ ${item.valor_compra.toFixed(2)}</td>
+                   <td>${bandeira}</td>
+                   <td class="text-end">R$ ${item.valor_parcela_atual.toFixed(2)}</td>
+                   <td>${pago}</td>
+                   <td>${parcelasStr} (${item.parcelas_pagas} pagas)</td>
+                  </tr>
                  `);
-                     });
-                   }
-         
-                   const modal = new bootstrap.Modal(document.getElementById('detalhesCompradorModal'));
-                   modal.show();
-                 })
-                 .catch(err => {
-                   alert('Erro ao carregar detalhes');
-                   console.error(err);
-                 });
-             });
-           });
-         });
-      </script>
-      <script>
-         document.getElementById('abrirSaldoModalBtn').addEventListener('click', function () {
-           const saldoModal = new bootstrap.Modal(document.getElementById('saldoModal'));
-           saldoModal.show();
-         });
-         
-         document.addEventListener("DOMContentLoaded", function () {
-           // Listener para abrir o modal detalhes compras
-           document.querySelectorAll(".abrir-modal-detalhes-compras").forEach(el => {
-             el.addEventListener("click", function (e) {
-               e.preventDefault();
-               const compraId = this.dataset.id; // pegar o id da compra
-         
-               fetch(`/detalhes_compras/${compraId}`) // seu endpoint para buscar detalhes da compra
-                 .then(res => res.json())
-                 .then(data => {
-                   // Limpar corpo da tabela do modal
-                   const tbody = document.getElementById("tbodyDetalhesCompras");
-                   tbody.innerHTML = "";
-         
-                   if (!data.detalhes || data.detalhes.length === 0) {
-                     tbody.innerHTML = `<tr><td colspan="9" class="text-center">Nenhum dado encontrado.</td></tr>`;
-                   } else {
-                     // Popular tabela
-                     data.detalhes.forEach(item => {
-                       const pago = item.pago ? 'Sim' : 'Não';
-                       const row = `
+                });
+              }
+
+              const modal = new bootstrap.Modal(document.getElementById('detalhesCompradorModal'));
+              modal.show();
+            })
+            .catch(err => {
+              alert('Erro ao carregar detalhes');
+              console.error(err);
+            });
+        });
+      });
+    });
+  </script>
+  <script>
+    document.getElementById('abrirSaldoModalBtn').addEventListener('click', function () {
+      const saldoModal = new bootstrap.Modal(document.getElementById('saldoModal'));
+      saldoModal.show();
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // Listener para abrir o modal detalhes compras
+      document.querySelectorAll(".abrir-modal-detalhes-compras").forEach(el => {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          const compraId = this.dataset.id; // pegar o id da compra
+
+          fetch(`/detalhes_compras/${compraId}`) // seu endpoint para buscar detalhes da compra
+            .then(res => res.json())
+            .then(data => {
+              // Limpar corpo da tabela do modal
+              const tbody = document.getElementById("tbodyDetalhesCompras");
+              tbody.innerHTML = "";
+
+              if (!data.detalhes || data.detalhes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center">Nenhum dado encontrado.</td></tr>`;
+              } else {
+                // Popular tabela
+                data.detalhes.forEach(item => {
+                  const pago = item.pago ? 'Sim' : 'Não';
+                  const row = `
                      <tr>
                        <td>${item.estabelecimento || '-'}</td>
                        <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
@@ -513,157 +557,134 @@
                        <td>${pago}</td>
                      </tr>
                    `;
-                       tbody.insertAdjacentHTML("beforeend", row);
-                     });
-                   }
-         
-                   // Abrir modal
-                   const modal = new bootstrap.Modal(document.getElementById('modalDetalhesCompras'));
-                   modal.show();
-                 })
-                 .catch(err => {
-                   console.error("Erro ao buscar detalhes da compra:", err);
-                   alert("Erro ao carregar detalhes da compra.");
-                 });
-             });
-           });
-         });
-         
-         
-         
-      </script>
-      <!-- Modal Detalhes Comprador/Mês -->
-      <div class="modal fade" id="detalhesCompradorModal" tabindex="-1" aria-labelledby="detalhesCompradorModalLabel"
-         aria-hidden="true">
-         <div class="modal-dialog modal-xl" style="max-width: 60%;">
-            <div class="modal-content">
-               <div class="modal-header">
-                  <h5 class="modal-title" id="detalhesCompradorModalLabel">Detalhes do Comprador e Mês</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-               </div>
-               <div class="modal-body">
-                  <!-- Cabeçalho com resumo -->
-                  <div id="modal-cabecalho" class="mb-3">
-                     <p><strong>Comprador:</strong> <span id="modal-comprador"></span></p>
-                     <p><strong>Total do Mês:</strong> R$ <span id="modal-total-mes"></span></p>
-                     <p><strong>Quantidade de Parcelas:</strong> <span id="modal-quantidade-parcelas"></span></p>
-                     <!-- <p><strong>Bandeira:</strong> <span id="modal-bandeira"></span></p> -->
-                  </div>
-                  <!-- Tabela com detalhes -->
-                  <table class="table table-bordered table-sm">
-                     <thead>
-                        <tr>
-                           <th>Estabelecimento</th>
-                           <th>Data da Compra</th>
-                           <th>Vencimento</th>
-                           <th>Valor da Compra</th>
-                           <th>Bandeira</th>
-                           <th>Valor da Parcela (Mês)</th>
-                           <th>Pago</th>
-                        </tr>
-                     </thead>
-                     <tbody id="detalhesCompradorCorpo">
-                     </tbody>
-                  </table>
-               </div>
-            </div>
-            <div class="modal-footer">
-               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-            </div>
-         </div>
-      </div>
-      </div>
-      <!-- Conteúdo será inserido aqui via JS -->
-      <!-- Modal Detalhes Compras -->
-      <div class="modal fade" id="modalDetalhesCompras" tabindex="-1" aria-labelledby="modalDetalhesComprasLabel"
-         aria-hidden="true">
-         <div class="modal-dialog modal-xl " style="max-width: 70%;">
-            <div class="modal-content">
-               <div class="modal-header">
-                  <h5 class="modal-title" id="modalDetalhesComprasLabel">Detalhes da Compra</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-               </div>
-               <div class="modal-body">
-                  <!-- Conteúdo vai aqui -->
-                  <p id="totalMes"></p>
-                 <table class="table table-striped table-bordered"> 
-                    <thead>
-                        <tr>
-                           <th>Estabelecimento</th>
-                           <th>Data Compra</th>
-                           <th>Valor Compra</th>
-                           <th>Qtd. Parcelas</th>
-                           <th>Forma de Pagamento</th>
-                           <th>Bandeira</th>
-                           <th>Parcela Atual</th>
-                           <th>Vencimento</th>
-                           <th>Pago</th>
-                        </tr>
-                     </thead>
-                     <tbody id="tbodyDetalhesCompras">
-                     </tbody>
-                  </table>
-               </div>
-               <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-               </div>
-            </div>
-         </div>
-       </div>
-      <!-- Tabela com detalhes -->
-      <!-- <div class="table-responsive">
-         <table class="table table-bordered table-sm">
+                  tbody.insertAdjacentHTML("beforeend", row);
+                });
+              }
+
+              // Abrir modal
+              const modal = new bootstrap.Modal(document.getElementById('modalDetalhesCompras'));
+              modal.show();
+            })
+            .catch(err => {
+              console.error("Erro ao buscar detalhes da compra:", err);
+              alert("Erro ao carregar detalhes da compra.");
+            });
+        });
+      });
+    });
+
+
+
+  </script>
+  <!-- Modal Detalhes Comprador/Mês -->
+  <div class="modal fade" id="detalhesCompradorModal" tabindex="-1" aria-labelledby="detalhesCompradorModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl" style="max-width: 60%;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="detalhesCompradorModalLabel">Detalhes do Comprador e Mês</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Cabeçalho com resumo -->
+          <div id="modal-cabecalho" class="mb-3">
+            <p><strong>Comprador:</strong> <span id="modal-comprador"></span></p>
+            <p><strong>Total do Mês:</strong> R$ <span id="modal-total-mes"></span></p>
+           <p><strong></strong> <span id="modal-quantidade-parcelas"></span></p> 
+            <!-- <p><strong>Bandeira:</strong> <span id="modal-bandeira"></span></p> -->
+          </div>
+          <!-- Tabela com detalhes -->
+          <table class="table table-bordered table-sm">
             <thead>
-               <tr>
-                  <th>Estabelecimento</th>
-                  <th>Data da Compra</th>
-                  <th>Vencimento</th>
-                  <th>Valor da Compra</th>
-                  <th>Forma de Pagamento</th>
-                  <th>Valor da Parcela</th>
-                  <th>Pago</th>
-               </tr>
+              <tr>
+                <th>Estabelecimento</th>
+                <th>Data da Compra</th>
+                <th>Vencimento</th>
+                <th>Valor da Compra</th>
+                <th>Bandeira</th>
+                <th>Valor da Parcela (Mês)</th>
+                <th>Status Pagamento</th>
+                <th>Parcelas Pagas</th>
+              </tr>
             </thead>
-            <tbody id="detalhesBandeiraCorpo">
-               Conteúdo via JS 
+            <tbody id="detalhesCompradorCorpo">
             </tbody>
-         </table>
-         </div> 
+          </table>
+        </div>
       </div>
-      <div class="modal-footer">
-         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+    <!--  <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div> -->
+    </div>
+  </div>
+  </div>
+  <!-- Conteúdo será inserido aqui via JS -->
+  <!-- Modal Detalhes Compras -->
+  <div class="modal fade" id="modalDetalhesCompras" tabindex="-1" aria-labelledby="modalDetalhesComprasLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl " style="max-width: 70%;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalDetalhesComprasLabel">Detalhes da Compra</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Conteúdo vai aqui -->
+          <p id="totalMes"></p>
+          <table class="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th>Estabelecimento</th>
+                <th>Data Compra</th>
+                <th>Valor Compra</th>
+                <th>Qtd. Parcelas</th>
+                <th>Forma de Pagamento</th>
+                <th>Bandeira</th>
+                <th>Parcela Atual</th>
+                <th>Vencimento</th>
+                <th>Pago</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDetalhesCompras">
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
       </div>
+    </div>
+  </div>
+  
+  <!-- Modal Parcelas -->
+  <div class="modal fade" id="parcelasModal" tabindex="-1" aria-labelledby="parcelasModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" style="max-width: 60%;">
+      <!-- largura grande para mostrar tabelas -->
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="parcelasModalLabel">Detalhes da Despesa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="cabecalho-despesa" class="mb-3"></div>
+          <table class="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Bandeira</th>
+                <th style="width: 25%;">Data de Vencimento</th>
+                <th style="width: 25%;">Valor da parcela</th>
+                <th style="width: 25%;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="parcelas-body"></tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
       </div>
-      </div>
-      </div>  -->
-      <!-- Modal Parcelas -->
-      <div class="modal fade" id="parcelasModal" tabindex="-1" aria-labelledby="parcelasModalLabel" aria-hidden="true">
-         <div class="modal-dialog modal-xl" style="max-width: 60%;">
-            <!-- largura grande para mostrar tabelas -->
-            <div class="modal-content">
-               <div class="modal-header">
-                  <h5 class="modal-title" id="parcelasModalLabel">Detalhes da Despesa</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-               </div>
-               <div class="modal-body">
-                  <div id="cabecalho-despesa" class="mb-3"></div>
-                  <table class="table table-bordered table-sm">
-                     <thead>
-                        <tr>
-                           <th style="width: 25%;">Bandeira</th>
-                           <th style="width: 25%;">Data de Vencimento</th>
-                           <th style="width: 25%;">Valor da parcela</th>
-                           <th style="width: 25%;">Status</th>
-                        </tr>
-                     </thead>
-                     <tbody id="parcelas-body"></tbody>
-                  </table>
-               </div>
-               <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-               </div>
-            </div>
-         </div>
-      </div>
-   </body>
+    </div>
+  </div>
+</body>
+
 </html>

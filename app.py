@@ -42,7 +42,7 @@ from reportlab.lib.units import cm
 # Importações locais
 # ----------------------------
 from models import CreditoSalarial  # supondo que você tenha esse model
-from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float, calcular_valor_pago,calcular_consumo )
+from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float, calcular_valor_pago,calcular_consumo,parse_float_br )
 
 
 
@@ -119,7 +119,7 @@ def toggle_pagamento_ajax():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
+#-------------------Rota para Dashboard ---------------------
 
 @app.route('/')
 def dashboard():
@@ -228,6 +228,7 @@ def dashboard():
         bandeira_nome = despesa['bandeira_nome']
         vencimento_bandeira = despesa['vencimento_bandeira']
         melhor_dia_compra = despesa['melhor_dia_compra']
+           
         
         # Gera a lista de todos os meses para colunas de compradores
         meses_compradores = set()
@@ -390,17 +391,6 @@ def dashboard():
     resultado = cursor.fetchone()
     total_creditos_mes = float(resultado["total"] or 0.0)
 
-    # Mês atual no formato MM/YYYY
-    # mes_atual = datetime.now().strftime("%m/%Y")
-
-   # valor_cartao = totais_por_mes.get(mes_atual, 0.0)
-    #valor_outros = totais_por_mes_outros.get(mes_atual, 0.0)
-   # valor_compradores = totais_por_mes_comprador.get(mes_atual, 0.0)
-
-    # Fórmula corrigida: total = (cartão + outros) - compradores
-   # total_despesas_mes = (valor_cartao + valor_outros) - valor_compradores
-    # Somar os totais por mês das duas categorias
-
     # Função interna para somar parcelas por mês
     def somar_parcelas(parcelas1, parcelas2):
         resultado = defaultdict(float)
@@ -527,6 +517,236 @@ def dashboard():
 def rota_de_atualizacao():
     # código para retornar alguma resposta
     return "Rota de atualização funcionando"
+
+
+@app.route('/dashboard_analytics')
+def dashboard_analytics():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+
+    # Parâmetro para tempo de atualização (em segundos), default 15
+    tempo_atualizacao_segundos = 15
+    tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)
+    if tempo_atualizacao_usuario is not None:
+        try:
+            tempo_atualizacao_segundos = int(tempo_atualizacao_usuario)
+            if tempo_atualizacao_segundos == 0:
+                tempo_atualizacao_segundos = None  # desliga atualização automática
+        except ValueError:
+            pass
+
+    # Buscar estabelecimentos para o filtro, com id e nome
+    estabelecimentos = conn.execute("""
+        SELECT id, COALESCE(nome, 'Não especificado') AS nome
+        FROM estabelecimento
+        ORDER BY nome
+    """).fetchall()
+
+    # Consultas agregadas (totais por Estabelecimento, Produto, Bandeira, Comprador e Mês)
+
+    # Totais por Estabelecimento
+    totais_estab = conn.execute("""
+        SELECT
+            E.id AS estabelecimento_id,
+            COALESCE(E.nome, 'Não especificado') AS estabelecimento,
+            SUM(D.valor_compra) AS total
+        FROM despesas D
+        LEFT JOIN estabelecimento E ON D.estabelecimento_id = E.id
+        GROUP BY E.id, estabelecimento
+        ORDER BY total DESC
+    """).fetchall()
+
+    # Totais por Produto
+    produtos = conn.execute("""
+        SELECT
+            P.id AS produto_id,
+            COALESCE(P.nome, 'Não especificado') AS produto,
+            SUM(D.valor_compra) AS total
+        FROM despesas D
+        LEFT JOIN produto P ON D.produto_id = P.id
+        GROUP BY P.id, produto
+        ORDER BY total DESC
+    """).fetchall()
+
+    # Totais por Bandeira
+    bandeiras = conn.execute("""
+        SELECT
+            B.id AS bandeira_id,
+            COALESCE(B.nome, 'Não especificado') AS bandeira,
+            SUM(D.valor_compra) AS total
+        FROM despesas D
+        LEFT JOIN bandeira B ON D.bandeira_id = B.id
+        GROUP BY B.id, bandeira
+        ORDER BY total DESC
+    """).fetchall()
+
+    # Totais por Comprador
+    compradores = conn.execute("""
+        SELECT
+            C.id AS comprador_id,
+            COALESCE(C.nome, 'Não especificado') AS comprador,
+            SUM(D.valor_compra) AS total
+        FROM despesas D
+        LEFT JOIN comprador C ON D.comprador_id = C.id
+        GROUP BY C.id, comprador
+        ORDER BY total DESC
+    """).fetchall()
+
+    # Totais por Mês (formatado MM/YYYY)
+    meses = conn.execute("""
+        SELECT
+            strftime('%m/%Y', substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)) AS mes_ano,
+            SUM(D.valor_compra) AS total
+        FROM despesas D
+        WHERE D.data_compra IS NOT NULL AND length(D.data_compra) = 10
+        GROUP BY mes_ano
+        ORDER BY mes_ano
+    """).fetchall()
+
+    conn.close()
+
+    # Preparar dados para o template (convertendo rows em listas de dicts)
+    def to_dict_list_with_id(rows, id_key, name_key):
+        # id_key: coluna de id (ex: 'estabelecimento_id'), name_key: coluna de nome (ex: 'estabelecimento' ou 'nome')
+        return [
+            { id_key: row[id_key], name_key: row[name_key], 'total': float(row['total'] or 0) }
+            for row in rows
+        ]
+
+    estabelecimentos_lista = [
+        {'id': row['id'], 'nome': row['nome']}
+        for row in estabelecimentos
+    ]
+
+    totais_estab_data = to_dict_list_with_id(totais_estab, 'estabelecimento_id', 'estabelecimento')
+    produtos_data = to_dict_list_with_id(produtos, 'produto_id', 'produto')
+    bandeiras_data = to_dict_list_with_id(bandeiras, 'bandeira_id', 'bandeira')
+    compradores_data = to_dict_list_with_id(compradores, 'comprador_id', 'comprador')
+    meses_data = [
+        {'mes_ano': row['mes_ano'], 'total': float(row['total'] or 0)}
+        for row in meses
+    ]
+
+    return render_template(
+        'dashboard_analytics.html',
+        tempo_atualizacao=tempo_atualizacao_segundos,
+        estabelecimentos=estabelecimentos_lista,
+        totais_estab=totais_estab_data,
+        produtos=produtos_data,
+        bandeiras=bandeiras_data,
+        compradores=compradores_data,
+        meses=meses_data,
+    )
+
+@app.route('/analytics/despesas_por_estabelecimento', methods=['GET'])
+def despesas_por_estabelecimento():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+
+    estabelecimento_id = request.args.get('estabelecimento_id', type=int)
+    mes_ano = request.args.get('mes_ano', default=None, type=str)  # esperado no formato "MM/YYYY"
+
+    if estabelecimento_id is None or mes_ano is None:
+        return jsonify({'error': 'Parâmetros inválidos'}), 400
+
+    conn = get_db_connection()
+
+    # Buscar todas as despesas desse estabelecimento no mês/ano
+    despesas = conn.execute("""
+      SELECT
+        D.data_compra,
+        B.nome as bandeira_nome,
+        D.valor_compra,
+        D.valor_parcela AS valor_parcela_despesa,
+        QP.quantidade AS quantidade_parcelas
+    FROM despesas D
+    LEFT JOIN bandeira B ON D.bandeira_id = B.id
+    LEFT JOIN quantidade_parcelas QP ON D.quantidade_parcelas_id = QP.id
+    WHERE D.estabelecimento_id = ?
+      AND strftime('%m/%Y',
+          substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
+      ) = ?
+    ORDER BY D.data_compra
+""", (estabelecimento_id, mes_ano)).fetchall()
+
+
+    # Calcular valor total para esse estabelecimento nesse mês
+    total = conn.execute("""
+        SELECT SUM(D.valor_compra) as total
+        FROM despesas D
+        WHERE D.estabelecimento_id = ?
+          AND strftime('%m/%Y',
+              substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
+          ) = ?
+    """, (estabelecimento_id, mes_ano)).fetchone()
+
+    conn.close()
+
+    lista = []
+    for d in despesas:
+     lista.append({
+        'data_compra': d['data_compra'],
+        'bandeira': d['bandeira_nome'],
+        'valor_compra': float(d['valor_compra'] or 0),
+        'quantidade_parcelas': d['quantidade_parcelas']or 0,
+        'valor_parcela': float(d['valor_parcela_despesa'] or 0)
+    })
+
+    retorno = {
+        'despesas': lista,
+        'total': float(total['total'] or 0)
+    }
+    return jsonify(retorno)
+
+@app.route('/analytics/despesas_detalhadas', methods=['GET'])
+def despesas_detalhadas():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+
+    estabelecimento_id = request.args.get('estabelecimento_id', type=int)
+    mes_ano = request.args.get('mes_ano', type=str)  # formato esperado: "MM/YYYY"
+
+    if not estabelecimento_id or not mes_ano:
+        return jsonify({'error': 'Parâmetros inválidos'}), 400
+
+    conn = get_db_connection()
+
+    despesas = conn.execute("""
+        SELECT
+            D.data_compra,
+            B.nome AS bandeira_nome,
+            D.valor_compra,
+            D.quantidade_parcelas,
+            D.valor_parcela
+        FROM despesas D
+        LEFT JOIN bandeira B ON D.bandeira_id = B.id
+        WHERE D.estabelecimento_id = ?
+          AND strftime('%m/%Y',
+              substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
+          ) = ?
+        ORDER BY D.data_compra
+    """, (estabelecimento_id, mes_ano)).fetchall()
+
+    conn.close()
+
+    lista_despesas = []
+    for d in despesas:
+        lista_despesas.append({
+            'data_compra': d['data_compra'],
+            'bandeira': d['bandeira_nome'],
+            'valor_compra': float(d['valor_compra'] or 0),
+            'quantidade_parcelas': d['quantidade_parcelas'] or 0,
+            'valor_parcela': float(d['valor_parcela'] or 0),
+        })
+
+    return jsonify({'despesas': lista_despesas})
+
+#----------------Rotas para Despesas ---------------------------
+
+
+
 
 @app.route('/despesas', methods=['GET', 'POST'])
 def lancar_despesas():
@@ -699,35 +919,39 @@ def lancar_despesas():
 def consultar_despesas():
     conn = get_db_connection()
 
-    # Filtros da URL
+    # Filtros recebidos via GET
     bandeira_filtro = request.args.get('bandeira', '').strip()
     data_inicio = request.args.get('data_inicio', '').strip()
     data_fim = request.args.get('data_fim', '').strip()
+    estabelecimento_filtro = request.args.get('estabelecimento', '').strip()
+    produto_filtro = request.args.get('produto', '').strip()
 
-    # Buscar todas as bandeiras para popular o filtro
+    # Buscar dados para os filtros (selects)
     bandeiras = conn.execute("SELECT id, nome FROM BANDEIRA").fetchall()
+    estabelecimentos = conn.execute("SELECT id, nome FROM ESTABELECIMENTO").fetchall()
+    produtos = conn.execute("SELECT id, nome FROM PRODUTO").fetchall()
 
     # Monta a query base
     query = """
         SELECT
-    D.id,
-    E.nome AS estabelecimento,
-    P.nome AS produto_nome,
-    D.valor_compra,
-    D.data_compra,
-    FP.nome AS forma_pagamento,
-    B.nome AS bandeira_nome,
-    QP.quantidade AS numero_parcela,
-    D.valor_parcela,
-    D.observacao, 
-    D.parcela_alterada
-FROM DESPESAS D
-LEFT JOIN PRODUTO P ON D.produto_id = P.id
-LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
-LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
-LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-WHERE 1=1
+            D.id,
+            E.nome AS estabelecimento,
+            P.nome AS produto_nome,
+            D.valor_compra,
+            D.data_compra,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira_nome,
+            QP.quantidade AS numero_parcela,
+            D.valor_parcela,
+            D.observacao, 
+            D.parcela_alterada
+            FROM DESPESAS D
+        LEFT JOIN PRODUTO P ON D.produto_id = P.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        WHERE 1=1
     """
 
     params = []
@@ -737,15 +961,16 @@ WHERE 1=1
         query += " AND B.id = ?"
         params.append(bandeira_filtro)
 
-    # Filtro por data (formato dd/mm/yyyy como string)
+    # Filtro por data de início
     if data_inicio:
         query += """
             AND (
                 substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2)
             ) >= ?
         """
-        params.append(data_inicio.replace("-", ""))  # yyyy-mm-dd → yyyymmdd
+        params.append(data_inicio.replace("-", ""))
 
+    # Filtro por data de fim
     if data_fim:
         query += """
             AND (
@@ -754,25 +979,40 @@ WHERE 1=1
         """
         params.append(data_fim.replace("-", ""))
 
-    # Ordenação decrescente por data
+    # Filtro por estabelecimento
+    if estabelecimento_filtro:
+        query += " AND E.id = ?"
+        params.append(estabelecimento_filtro)
+
+    # Filtro por produto
+    if produto_filtro:
+        query += " AND P.id = ?"
+        params.append(produto_filtro)
+
+    # Ordenação decrescente por data_compra
     query += """
         ORDER BY substr(D.data_compra, 7, 4) || substr(D.data_compra, 4, 2) || substr(D.data_compra, 1, 2) DESC
     """
 
-    # Debug
+    # Debug opcional
     print("Query SQL:", query)
     print("Parâmetros:", params)
 
-    # Executa a consulta
+    # Executa a consulta com os filtros aplicados
     despesas = conn.execute(query, params).fetchall()
     conn.close()
 
-    # Renderiza o template
+    # Renderiza o template com os dados
     return render_template(
         'consultar_despesas.html',
         despesas=despesas,
         bandeiras=bandeiras,
-        bandeira_selecionada=bandeira_filtro
+        estabelecimentos=estabelecimentos,
+        produtos=produtos,
+        bandeira_selecionada=bandeira_filtro,
+        estabelecimento_selecionado=estabelecimento_filtro,
+        produto_selecionado=produto_filtro,
+        request=request
     )
 
 @app.route('/editar_despesa/<int:id>', methods=['GET', 'POST'])
@@ -958,7 +1198,7 @@ def excluir_despesa(id):
     return redirect(url_for('consultar_despesas'))
 
 
-# Rotas do CRUD de estabelecimento
+# ------------------ Rotas do CRUD de estabelecimento -------------------------
 
 @app.route('/cadastro/estabelecimento/novo', methods=['GET', 'POST'])
 def novo_estabelecimento():
@@ -1062,7 +1302,7 @@ def excluir_estabelecimento(id):
 
 
 
-#Rotas do CRUD de Categoria 
+#-----------------------------Rotas do CRUD de Categoria -------------------------
 
 @app.route('/cadastro/categoria/novo', methods=['GET', 'POST'])
 def nova_categoria():
@@ -1166,7 +1406,7 @@ def excluir_categoria(id):
 
 
 
-#Rotas do CRUD de local da compra
+#--------------------------------Rotas do CRUD de local da compra------------------------
 
 @app.route('/cadastro/local_compra/novo', methods=['GET', 'POST'])
 def novo_local_compra():
@@ -1270,7 +1510,7 @@ def excluir_local_compra(id):
 
 
 
-#Rotas do CRUD de produtos
+#----------------------------Rotas do CRUD de produtos----------------------------------
 
 @app.route('/cadastro/produto/novo', methods=['GET', 'POST'])
 def novo_produto():
@@ -1373,7 +1613,7 @@ def excluir_produto(id):
 
 
 
-#Rotas do CRUD de bandeira
+#-------------------------------Rotas do CRUD de bandeira ------------------------------
 
 @app.route('/cadastro/bandeira/novo', methods=['GET', 'POST'])
 def nova_bandeira():
@@ -1495,7 +1735,7 @@ def excluir_bandeira(id):
 
 
 
-#Rotas do CRUD de forma de pagamento
+#------------------------------Rotas do CRUD de forma de pagamento--------------------------------
 
 @app.route('/cadastro/forma_pagamento/novo', methods=['GET', 'POST'])
 def nova_forma_pagamento():
@@ -1599,7 +1839,7 @@ def excluir_forma_pagamento(id):
 
 
 
-# Rotas do CRUD de comprador
+#------------------------------- Rotas do CRUD de comprador ---------------------------------
 
 @app.route('/cadastro/comprador/novo', methods=['GET', 'POST'])
 def novo_comprador():
@@ -1700,7 +1940,7 @@ def excluir_comprador(id):
     return redirect(url_for('listar_comprador'))
 
 
-
+#------------------------------- Rotas do CRUD de creditos ---------------------------------
 
 @app.route('/cadastro/credito/novo', methods=['GET', 'POST'])
 def novo_credito():
@@ -1815,197 +2055,9 @@ def excluir_credito(id):
     flash('Crédito salarial excluído com sucesso!', 'success')
     return redirect(url_for('listar_credito'))
 
-@app.route('/totais-despesas-mensais')
-def totais_despesas_mensais():
-    conn = get_db_connection()
-    resultados = conn.execute("""
-        SELECT 
-            strftime('%m/%Y', P.data_vencimento) AS mes_ano,
-            B.nome AS bandeira,
-            P.pago,
-            SUM(P.valor_parcela) AS total_parcela
-        FROM PARCELAS P
-        LEFT JOIN DESPESAS D ON P.despesa_id = D.id
-        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-        GROUP BY mes_ano, bandeira, pago
-        ORDER BY mes_ano DESC
-    """).fetchall()
-
-    totais_nao_pagos = {}
-    totais_pagos = {}
-    bandeiras_set = set()
-    
-    for row in resultados:
-        mes_ano = row['mes_ano']
-        bandeira = row['bandeira']
-        pago = row['pago']
-        total = float(row['total_parcela'])
-        bandeiras_set.add(bandeira)
-
-        if pago == 0 or pago is None:  # não pagos
-            if mes_ano not in totais_nao_pagos:
-                totais_nao_pagos[mes_ano] = {}
-            totais_nao_pagos[mes_ano][bandeira] = total
-        else:  # pagos
-            if mes_ano not in totais_pagos:
-                totais_pagos[mes_ano] = {}
-            totais_pagos[mes_ano][bandeira] = total
-
-    # Ordenar os meses no formato MM/YYYY
-    meses_ordenados = sorted(
-        [m for m in set(list(totais_nao_pagos.keys()) + list(totais_pagos.keys())) if m is not None],
-        key=lambda x: datetime.strptime(x, "%m/%Y"),
-        reverse=True
-    )
-    
-    conn.close()
-
-    return render_template(
-        'totais_despesas_mensais.html',
-        totais_nao_pagos=totais_nao_pagos,
-        totais_pagos=totais_pagos,
-        meses=meses_ordenados,
-        bandeiras=sorted(bandeiras_set)
-    )
-
-#from flask import jsonify
-
-@app.route('/pagar', methods=['POST'])
-def pagar():
-    data = request.get_json()
-    mes = data.get('mes')
-    bandeira = data.get('bandeira')
-
-    # Aqui você deve implementar a lógica para marcar as parcelas como pagas.
-    # Como exemplo, vamos supor que há uma coluna 'pago' na tabela DESPESAS.
-    # Você pode adaptar para a sua estrutura real.
-
-    try:
-        conn = get_db_connection()
-        # Exemplo: Atualizar parcelas relacionadas ao mês e bandeira
-        # Aqui você deve ajustar para sua lógica de pagamento
-        conn.execute("""
-            UPDATE PARCELAS
-            SET pago = 1
-            WHERE strftime('%m/%Y', data_vencimento) = ? AND despesa_id IN (
-                SELECT D.id FROM DESPESAS D
-                LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-                WHERE B.nome = ?
-            )
-        """, (mes, bandeira))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Erro ao marcar como pago: {e}")
-        return jsonify({'success': False})
 
 
-# Função para exportar os dados de despesas para CSV
-
-
-@app.route('/export_csv', methods=['GET'])
-def export_csv():
-    conn = get_db_connection()
-
-    # Filtros de período (para exportação)
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    categoria_id = request.args.get('categoria_id')
-
-    # Base da consulta
-    query = """
-        SELECT 
-            D.data_compra,
-            P.nome AS produto_nome,
-            D.valor_parcela,
-            D.quantidade_parcelas,
-            C.nome AS comprador_nome,
-            FP.nome AS forma_pagamento,
-            B.nome AS bandeira_nome
-            QP.quantidade AS quantidade_parcelas
-        FROM DESPESAS D
-        LEFT JOIN PRODUTO P ON D.produto_id = P.id
-        LEFT JOIN COMPRADOR C ON D.comprador_id = C.id
-        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
-        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-         WHERE 1=1
-    """
-
-    if data_inicio:
-        query += f" AND D.data_compra >= '{data_inicio}'"
-    if data_fim:
-        query += f" AND D.data_compra <= '{data_fim}'"
-    if categoria_id:
-        query += f" AND D.categoria_id = {categoria_id}"
-
-    # Executar consulta
-    despesas = conn.execute(query).fetchall()
-    conn.close()
-
-    # Criar o CSV
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Escrever cabeçalho
-    writer.writerow(['Data Compra', 'Produto', 'Valor Parcela', 'Quantidade Parcelas', 'Comprador', 'Forma Pagamento', 'Bandeira'])
-
-    # Escrever os dados das despesas
-    for despesa in despesas:
-        writer.writerow([
-            despesa['data_compra'],
-            despesa['produto_nome'],
-            despesa['valor_parcela'],
-            despesa['quantidade_parcelas'],
-            despesa['comprador_nome'],
-            despesa['forma_pagamento'],
-            despesa['bandeira_nome']
-        ])
-
-    # Preparar a resposta
-    output.seek(0)
-    return Response(output, 
-                    mimetype='text/csv', 
-                    headers={"Content-Disposition": "attachment;filename=despesas.csv"})
-
-
-#Rotas para login e logout
-
-@app.before_request
-def verificar_login():
-    rotas_livres = ['login', 'logout', 'static']
-    if request.endpoint not in rotas_livres and 'user_id' not in session:
-        flash('Você precisa estar logado para acessar esta página.', 'warning')
-        return redirect(url_for('login'))
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        usuario = request.form['usuario'].strip()
-        senha = request.form['senha'].strip()
-
-        conn = get_db_connection()
-        user = conn.execute("SELECT * FROM usuario WHERE usuario = ?", (usuario,)).fetchone()
-        conn.close()
-
-        if user and check_password_hash(user['senha_hash'], senha):
-            session['user_id'] = user['usuario']
-            print("Sessão após login:", dict(session))  # Debug: imprime sessão no console
-            flash('Login realizado com sucesso!', 'success')
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Usuário ou senha incorretos.', 'danger')
-
-    print("Sessão ao exibir login GET:", dict(session))  # Debug para sessão no GET
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()  # limpa toda a sessão do usuário (remove login)
-    flash('Você saiu do sistema com sucesso.', 'success')
-    return redirect(url_for('login'))  # redireciona para a página de login
-
+# --------------------Rotas para CRUD de Usuarios -----------------------------------
 @app.route('/cadastro/usuarios', methods=['GET', 'POST'])
 def cadastro_usuario():
     
@@ -2101,6 +2153,132 @@ def excluir_usuario(id):
 
 
 
+#-------------------Rotas de acesso  ao ususarios do sistema  login e logout
+
+@app.before_request
+def verificar_login():
+    rotas_livres = ['login', 'logout', 'static']
+    if request.endpoint not in rotas_livres and 'user_id' not in session:
+        flash('Você precisa estar logado para acessar esta página.', 'warning')
+        return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        usuario = request.form['usuario'].strip()
+        senha = request.form['senha'].strip()
+
+        conn = get_db_connection()
+        user = conn.execute("SELECT * FROM usuario WHERE usuario = ?", (usuario,)).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user['senha_hash'], senha):
+            session['user_id'] = user['usuario']
+            print("Sessão após login:", dict(session))  # Debug: imprime sessão no console
+            flash('Login realizado com sucesso!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Usuário ou senha incorretos.', 'danger')
+
+    print("Sessão ao exibir login GET:", dict(session))  # Debug para sessão no GET
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()  # limpa toda a sessão do usuário (remove login)
+    flash('Você saiu do sistema com sucesso.', 'success')
+    return redirect(url_for('login'))  # redireciona para a página de login
+
+
+
+#------------------------ rotas complementares---------------------------------------- 
+
+
+
+
+@app.route('/totais-despesas-mensais')
+def totais_despesas_mensais():
+    conn = get_db_connection()
+    resultados = conn.execute("""
+        SELECT 
+            strftime('%m/%Y', P.data_vencimento) AS mes_ano,
+            B.nome AS bandeira,
+            P.pago,
+            SUM(P.valor_parcela) AS total_parcela
+        FROM PARCELAS P
+        LEFT JOIN DESPESAS D ON P.despesa_id = D.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        GROUP BY mes_ano, bandeira, pago
+        ORDER BY mes_ano DESC
+    """).fetchall()
+
+    totais_nao_pagos = {}
+    totais_pagos = {}
+    bandeiras_set = set()
+    
+    for row in resultados:
+        mes_ano = row['mes_ano']
+        bandeira = row['bandeira']
+        pago = row['pago']
+        total = float(row['total_parcela'])
+        bandeiras_set.add(bandeira)
+
+        if pago == 0 or pago is None:  # não pagos
+            if mes_ano not in totais_nao_pagos:
+                totais_nao_pagos[mes_ano] = {}
+            totais_nao_pagos[mes_ano][bandeira] = total
+        else:  # pagos
+            if mes_ano not in totais_pagos:
+                totais_pagos[mes_ano] = {}
+            totais_pagos[mes_ano][bandeira] = total
+
+    # Ordenar os meses no formato MM/YYYY
+    meses_ordenados = sorted(
+        [m for m in set(list(totais_nao_pagos.keys()) + list(totais_pagos.keys())) if m is not None],
+        key=lambda x: datetime.strptime(x, "%m/%Y"),
+        reverse=True
+    )
+    
+    conn.close()
+
+    return render_template(
+        'totais_despesas_mensais.html',
+        totais_nao_pagos=totais_nao_pagos,
+        totais_pagos=totais_pagos,
+        meses=meses_ordenados,
+        bandeiras=sorted(bandeiras_set)
+    )
+
+
+@app.route('/pagar', methods=['POST'])
+def pagar():
+    data = request.get_json()
+    mes = data.get('mes')
+    bandeira = data.get('bandeira')
+
+    # Aqui você deve implementar a lógica para marcar as parcelas como pagas.
+    # Como exemplo, vamos supor que há uma coluna 'pago' na tabela DESPESAS.
+    # Você pode adaptar para a sua estrutura real.
+
+    try:
+        conn = get_db_connection()
+        # Exemplo: Atualizar parcelas relacionadas ao mês e bandeira
+        # Aqui você deve ajustar para sua lógica de pagamento
+        conn.execute("""
+            UPDATE PARCELAS
+            SET pago = 1
+            WHERE strftime('%m/%Y', data_vencimento) = ? AND despesa_id IN (
+                SELECT D.id FROM DESPESAS D
+                LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+                WHERE B.nome = ?
+            )
+        """, (mes, bandeira))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Erro ao marcar como pago: {e}")
+        return jsonify({'success': False})
 
 
 @app.route('/parcelas/<int:despesa_id>')
@@ -2155,19 +2333,17 @@ def listar_parcelas(despesa_id):
 
     return jsonify({'despesa': dados_despesa, 'parcelas': dados_parcelas})
 
-
 @app.route('/detalhes_comprador_mes', methods=['POST'])
 def detalhes_comprador_mes():
     data = request.get_json()
     comprador_nome = data.get('comprador')
-    mes_ano = data.get('mes')
-    bandeira_nome= data.get('bandeira') 
+    mes_ano = data.get('mes')  # Exemplo: '07/2025'
+    bandeira_nome = data.get('bandeira')  # Você pode usar se quiser filtrar bandeira depois
 
-     # DEBUG: imprime os parâmetros recebidos
+    # DEBUG
     print("Recebido comprador:", comprador_nome)
     print("Recebido mes_ano:", mes_ano)
-    print("Recebido bandeira_nome:",bandeira_nome)
-
+    print("Recebido bandeira_nome:", bandeira_nome)
 
     if not comprador_nome or not mes_ano:
         return jsonify({'error': 'Parâmetros inválidos'}), 400
@@ -2179,22 +2355,20 @@ def detalhes_comprador_mes():
 
     conn = get_db_connection()
 
-    mes_ano = data.get('mes')  # Ex: '07/2025'
-    mes, ano = mes_ano.split('/')
-
-
+    # Query para pegar todas as parcelas do comprador, SEM filtrar o mês
     query = """
     SELECT 
-     C.nome AS comprador,
-     E.nome AS estabelecimento,
-     D.data_compra,
-     D.valor_compra,
-     FP.nome AS forma_pagamento,
-     B.nome AS bandeira,
-     QP.quantidade AS quantidade_parcelas,
-     P.data_vencimento,
-     P.valor_parcela AS valor_parcela,
-     P.pago
+        C.nome AS comprador,
+        E.nome AS estabelecimento,
+        D.data_compra,
+        D.valor_compra,
+        FP.nome AS forma_pagamento,
+        B.nome AS bandeira,
+        QP.quantidade AS quantidade_parcelas,
+        P.data_vencimento,
+        P.valor_parcela AS valor_parcela,
+        P.pago,
+        D.id AS despesa_id
     FROM PARCELAS P
     JOIN DESPESAS D ON P.despesa_id = D.id
     JOIN COMPRADOR C ON D.comprador_id = C.id
@@ -2203,52 +2377,75 @@ def detalhes_comprador_mes():
     LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
     LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
     WHERE UPPER(C.nome) = UPPER(?)
-    AND substr(P.data_vencimento, 4, 7) = ?
     """
 
-    despesas = conn.execute(query, [comprador_nome, mes_ano]).fetchall()
-
-      # DEBUG: quantas despesas foram retornadas
-    print(f"Despesas encontradas: {len(despesas)}")
-
+    despesas = conn.execute(query, [comprador_nome]).fetchall()
     conn.close()
 
     if not despesas:
-          return jsonify({'error': 'Nenhuma despesa encontrada para esse comprador e mês.'}), 404
+        return jsonify({'error': 'Nenhuma despesa encontrada para esse comprador.'}), 404
 
-    # Calcular total do mês (somatório de valor_compra)
-    total_mes = sum(float(d["valor_parcela"]) for d in despesas)
-   # Quantidade de parcelas - assumindo que é igual para todas as despesas do mês (pode pegar da primeira)
-    quantidade_parcelas = sum(d["quantidade_parcelas"] for d in despesas if d["quantidade_parcelas"])
+    mes, ano = mes_ano.split('/')
+
+    # Filtrar parcelas que vencem no mês/ano solicitado (substr da data no formato DD/MM/YYYY)
+    parcelas_do_mes = [p for p in despesas if p["data_vencimento"][3:] == mes_ano]
+
+    if not parcelas_do_mes:
+        return jsonify({'error': 'Nenhuma parcela encontrada para esse comprador e mês.'}), 404
+
+    from collections import defaultdict
+
+    # Agrupa todas as parcelas da mesma despesa para calcular totais e quantas foram pagas
+    parcelas_por_despesa = defaultdict(list)
+    for p in despesas:
+        parcelas_por_despesa[p["despesa_id"]].append(p)
 
     resultado = []
-    for d in despesas:
-     data_vencimento_iso = datetime.strptime(d["data_vencimento"], "%d/%m/%Y").strftime("%Y-%m-%d")
-     resultado.append({
-        "comprador": d["comprador"],
-        "estabelecimento": d["estabelecimento"],
-        "data_compra": datetime.strptime(d["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d"),
-        "valor_compra": float(d["valor_compra"]),
-        "quantidade_parcelas": d["quantidade_parcelas"],
-        "forma_pagamento": d["forma_pagamento"],
-        "bandeira": d["bandeira"],
-        "valor_parcela_atual": float(d["valor_parcela"]),
-        "data_vencimento": data_vencimento_iso,
-        "pago": d["pago"]
-    })
 
-    
+    for p in parcelas_do_mes:
+        todas_parcelas = parcelas_por_despesa[p["despesa_id"]]
+        todas_parcelas_ordenadas = sorted(todas_parcelas, key=lambda x: datetime.strptime(x["data_vencimento"], "%d/%m/%Y"))
+        total_parcelas = len(todas_parcelas_ordenadas)
+        parcelas_pagas = sum(1 for par in todas_parcelas_ordenadas if par["pago"])
+
+        data_vencimento_atual = datetime.strptime(p["data_vencimento"], "%d/%m/%Y")
+        parcela_atual = next(
+           (i + 1 for i, par in enumerate(todas_parcelas_ordenadas)
+           if datetime.strptime(par["data_vencimento"], "%d/%m/%Y") == data_vencimento_atual),
+           None
+        )
+
+        if parcela_atual is None:
+            parcela_atual = 1
+
+        resultado.append({
+            "comprador": p["comprador"],
+            "estabelecimento": p["estabelecimento"],
+            "data_compra": datetime.strptime(p["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d"),
+            "valor_compra": parse_float_br(p["valor_compra"]),
+            "quantidade_parcelas": total_parcelas,
+            "forma_pagamento": p["forma_pagamento"],
+            "bandeira": p["bandeira"],
+            "valor_parcela_atual": float(p["valor_parcela"]),
+            "data_vencimento": datetime.strptime(p["data_vencimento"], "%d/%m/%Y").strftime("%Y-%m-%d"),
+            "pago": p["pago"],
+            "parcelas": f"{parcela_atual}/{total_parcelas}",
+            "parcelas_pagas": parcelas_pagas
+        })
+
+    # Total do mês - soma dos valores das parcelas do mês filtradas
+    total_mes = sum(float(p["valor_parcela"]) for p in parcelas_do_mes)
 
     return jsonify({
-       "comprador": comprador_nome,
+        "comprador": comprador_nome,
         "total_mes": total_mes,
-        "quantidade_parcelas": quantidade_parcelas,
         "bandeira_nome": bandeira_nome,
-        "detalhes":resultado
- 
+        "detalhes": resultado
     })
+
 @app.route('/detalhes_compras',methods=['GET', 'POST'], strict_slashes=False)
 def detalhes_compras():
+
     if request.method == 'POST':
         data = request.get_json()
         bandeira = data.get('bandeira') if data else None
@@ -2360,26 +2557,76 @@ def detalhes_compras():
 
 
 
-# def calcular_valor_pago(quantidade, preco):
-#     return round(quantidade * preco, 2)
+@app.route('/export_csv', methods=['GET'])
+def export_csv():
+    conn = get_db_connection()
 
-# def calcular_consumo(km, quantidade):
-#     return round(km / quantidade, 2) if quantidade != 0 else 0
+    # Filtros de período (para exportação)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    categoria_id = request.args.get('categoria_id')
 
-#  def obter_dados_por_mes(ano, mes):
-#     conn = get_db_connection()
-#     conn.row_factory = sqlite3.Row
-#     cursor = conn.cursor()
-#     mes_ano = f'/{mes}/{ano}'  # Exemplo: /08/2025
-#     cursor.execute('''
-#         SELECT * FROM combustivel
-#         WHERE data_abastecimento LIKE ?
-#     ''', (f'%{mes_ano}',))
+    # Base da consulta
+    query = """
+        SELECT 
+            D.data_compra,
+            P.nome AS produto_nome,
+            D.valor_parcela,
+            D.quantidade_parcelas,
+            C.nome AS comprador_nome,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira_nome
+            QP.quantidade AS quantidade_parcelas
+        FROM DESPESAS D
+        LEFT JOIN PRODUTO P ON D.produto_id = P.id
+        LEFT JOIN COMPRADOR C ON D.comprador_id = C.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+         WHERE 1=1
+    """
 
- 
-#     rows = cursor.fetchall()
-#     conn.close()
-#     return rows
+    if data_inicio:
+        query += f" AND D.data_compra >= '{data_inicio}'"
+    if data_fim:
+        query += f" AND D.data_compra <= '{data_fim}'"
+    if categoria_id:
+        query += f" AND D.categoria_id = {categoria_id}"
+
+    # Executar consulta
+    despesas = conn.execute(query).fetchall()
+    conn.close()
+
+    # Criar o CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Escrever cabeçalho
+    writer.writerow(['Data Compra', 'Produto', 'Valor Parcela', 'Quantidade Parcelas', 'Comprador', 'Forma Pagamento', 'Bandeira'])
+
+    # Escrever os dados das despesas
+    for despesa in despesas:
+        writer.writerow([
+            despesa['data_compra'],
+            despesa['produto_nome'],
+            despesa['valor_parcela'],
+            despesa['quantidade_parcelas'],
+            despesa['comprador_nome'],
+            despesa['forma_pagamento'],
+            despesa['bandeira_nome']
+        ])
+
+    # Preparar a resposta
+    output.seek(0)
+    return Response(output, 
+                    mimetype='text/csv', 
+                    headers={"Content-Disposition": "attachment;filename=despesas.csv"})
+
+
+
+#---------------------------- Rotas para o Menu  Combustiveis ----------------------------
+
+
 
 @app.route('/outros/combustivel', methods=['GET', 'POST'])
 def combustivel():
@@ -2538,8 +2785,6 @@ def deletar_combustivel(id):
     conn.commit()
     conn.close()
     return redirect(url_for('combustivel'))
-
-
 
 
 

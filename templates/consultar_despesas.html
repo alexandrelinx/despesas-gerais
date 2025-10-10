@@ -6,33 +6,78 @@
 
   <!-- Formulário de filtro -->
   <form method="GET" action="{{ url_for('consultar_despesas') }}">
-    <div class="form-row">
-      <div class="form-group col-12 col-md-4">
-        <select name="bandeira" class="form-control">
-          <option value="">Todas as bandeiras</option>
-          {% for b in bandeiras %}
-            <option value="{{ b.id }}" {% if bandeira_selecionada == b.id|string %}selected{% endif %}>{{ b.nome }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-group col-12 col-md-4">
-        <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}">
-      </div>
-      <div class="form-group col-12 col-md-4">
-        <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}">
-      </div>
+  
+<div class="d-flex flex-nowrap gap-3">
+  <div class="form-group" style="min-width: 200px;">
+  <label for="tipoPesquisa">Tipo de Pesquisa</label>
+  <select id="tipoPesquisa" class="form-control">
+    <option value="" selected>Selecione o tipo de pesquisa</option>
+    <option value="todas">Todas as Bandeiras</option>
+    <option value="estabelecimento">Todos os Estabelecimentos</option>
+    <option value="produto">Todos os Produtos</option>
+  </select>
+</div>
+
+  <div class="form-group" style="min-width: 150px;">
+  <label for="data_inicio">Data Início</label>
+  <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}">
+</div>
+
+
+  <div class="form-group" style="min-width: 150px;">
+    <label for="data_fim">Data Fim</label>
+    <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}">
+ </div>
+</div>
+ 
+
+  <div class="form-row align-items-end mt-3">
+    <div class="form-group col-md-4 " id="campoBandeira" style="display:none;">
+      <label for="bandeira">Bandeira</label>
+      <select name="bandeira" id="bandeira" class="form-control">
+        <option value="">Todas as bandeiras</option>
+        {% for b in bandeiras %}
+          <option value="{{ b.id }}" {% if bandeira_selecionada == b.id|string %}selected{% endif %}>{{ b.nome }}</option>
+        {% endfor %}
+      </select>
     </div>
-    <div class="mt-2 d-flex flex-column flex-md-row gap-2">
+
+    <div class="form-group col-md-4 " id="campoEstabelecimento" style="display:none;">
+      <label for="estabelecimento">Estabelecimento</label>
+      <select name="estabelecimento" id="estabelecimento" class="form-control">
+        <option value="">Todos os Estabelecimentos</option>
+        {% for est in estabelecimentos %}
+          <option value="{{ est.id }}" {% if estabelecimento_selecionado == est.id|string %}selected{% endif %}>{{ est.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group col-md-4 " id="campoProduto" style="display:none;">
+      <label for="produto">Produto</label>
+      <select name="produto" id="produto" class="form-control">
+        <option value="">Todos os Produtos</option>
+        {% for prod in produtos %}
+          <option value="{{ prod.id }}" {% if produto_selecionado == prod.id|string %}selected{% endif %}>{{ prod.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+    
+
+</div>
+    <div class="mt-3 d-flex flex-column flex-md-row gap-2">
       <button type="submit" class="btn btn-primary">Filtrar</button>
       <a href="{{ url_for('consultar_despesas') }}" class="btn btn-secondary ml-2">Limpar Filtros</a>
     </div>
+ 
   </form>
 
   <hr>
 
   <!-- Exibição das despesas -->
   <div class="table-responsive">
-    <table class="table table-sm table-striped table-bordered w-100">
+    <table class="table table-sm  table-bordered w-100">
       <thead class="thead-dark">
         <tr>
           <th>ID</th>
@@ -42,9 +87,8 @@
           <th style="min-width: 120px;"class="text-center">Data Compra</th>
           <th style="min-width: 80px;">Bandeira</th>
           <th style="min-width: 80px;"class="text-center">Qdte de parcelas</th>
-          <th class="min-width: 80px;">data_vencimento</th>
-          <th class="d-none d-sm-table-cell" style="max-width: 100px;">observacao</th>
           <th class="text-end" style="max-width: 120px;">Valor Parcela</th>
+          <th class="d-none d-sm-table-cell" style="max-width: 100px;">observacao</th>
           <th style="min-width: 90px" class="text-center">Ações</th>
         </tr>
       </thead>
@@ -62,19 +106,37 @@
              {{ despesa.numero_parcela }}
            </a>
           </td>
+         
          <!-- <td class="d-none d-sm-table-cell"  style="white-space: normal; word-wrap: break-word;">{{ (despesa.observacao or '').replace('\n', '<br>') | safe }}</td> -->
         <!--  <td class="text-end">{{ despesa.valor_parcela | real  }}</td>> -->
-          <td class="text-center">{{ despesa.data_vencimento }}</td>
-          <td class="d-none d-sm-table-cell text-center">
+        {% set parcelas_pagas = despesa.parcelas_pagas or 1 %}
+        {% set total_parcelas = despesa.total_parcelas or despesa.numero_parcela or 0 %}
+        {% set faltam = total_parcelas - parcelas_pagas %}
+
+       {% if parcelas_pagas >= total_parcelas %}
+          {% set status_class = 'status-todas-pagas' %}
+       {% elif faltam == 1 and total_parcelas > 1 %}
+          {% set status_class = 'status-uma-pendente' %}
+       {% else %}
+          {% set status_class = 'status-varias-pendentes' %}
+       {% endif %}
+	   
+
+<td style="min-width:150px" class="text-end {{ status_class }} {% if despesa.parcela_alterada %}text-primary fw-bold{% endif %}">
+  {{ despesa.valor_parcela | real }}
+</td>
+
+
+            <td class="d-none d-sm-table-cell text-center">
             {% if despesa.observacao %}
                <a href="#" class="link-observacao" data-observacao="{{ despesa.observacao | e }}">Observação</a>
             {% else %}
                ---
             {% endif %}
-          </td>
-          <td style="min-width:150px" class="text-end {% if despesa.parcela_alterada %}text-primary fw-bold{% endif %}">
+            </td>
+        <!--  <td style="min-width:150px" class="text-end {% if despesa.parcela_alterada %}text-primary fw-bold{% endif %}">
            {{ despesa.valor_parcela | real }}
-          </td>
+          </td>  -->
 
           <td style="min-width:190px" class="text-center">
             <div class="d-flex justify-content-center">
@@ -111,7 +173,33 @@
   </div>
 </div>
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
+    // Controle visibilidade dos campos de filtro
+    const tipoPesquisa = document.getElementById('tipoPesquisa');
+    const campoBandeira = document.getElementById('campoBandeira');
+    const campoEstabelecimento = document.getElementById('campoEstabelecimento');
+    const campoProduto = document.getElementById('campoProduto');
+
+    function atualizarCampos() {
+      const valor = tipoPesquisa.value;
+    
+      campoBandeira.style.display = 'none';
+      campoEstabelecimento.style.display = 'none';
+      campoProduto.style.display = 'none';
+
+      if (valor === 'todas') {
+        campoBandeira.style.display = 'block';
+      } else if (valor === 'estabelecimento') {
+        campoEstabelecimento.style.display = 'block';
+      } else if (valor === 'produto') {
+        campoProduto.style.display = 'block';
+      }
+    }
+
+    tipoPesquisa.addEventListener('change', atualizarCampos);
+    atualizarCampos();
+
+    // Script modal observação (seu código original)
     const links = document.querySelectorAll('.link-observacao');
     const modalElement = document.getElementById('modalObservacao');
     const modalContent = document.getElementById('observacaoConteudo');
