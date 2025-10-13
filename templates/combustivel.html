@@ -213,7 +213,7 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 <hr>
 
 
-<table class="table table-striped table-hover mt-4">
+<table class="table table-striped table-hover mt-4 espacada">
   <thead class="table-light">
     <tr>
       <th scope="col">Data</th>
@@ -221,7 +221,8 @@ import zoomPlugin from 'chartjs-plugin-zoom';
       <th scope="col">Kilometragem</th>
       <th scope="col">Preço por L</th>
       <th scope="col">Valor Pago</th>
-      <th scope="col">Ações</th>
+      <th scope="col">Consumo (km/L)</th> <!-- NOVO -->
+      <th scope="col" class="text-center">Ações</th>
     </tr>
   </thead>
   <tbody>
@@ -233,6 +234,13 @@ import zoomPlugin from 'chartjs-plugin-zoom';
       <td>{{ "%.2f"|format(row['preco_litro']) }}</td>
       <td>{{ "%.2f"|format(row['valor_pago']) }}</td>
       <td>
+         {% if row['consumo'] %}
+           {{ "%.2f"|format(row['consumo']) }}
+         {% else %}
+           -
+        {% endif %}
+      </td> <!-- NOVO -->
+      <td class="text-center">
         <a href="{{ url_for('editar_combustivel', id=row['id']) }}" class="btn btn-sm btn-outline-success me-1">
           <i class="fa-solid fa-pen-to-square"></i> Editar
         </a>
@@ -250,10 +258,23 @@ import zoomPlugin from 'chartjs-plugin-zoom';
       <td><strong>{{ "%.2f"|format(total_km) }}</strong></td>
       <td></td>
       <td><strong>{{ "%.2f"|format(total_pago) }}</strong></td>
+      <td><strong>{{ "%.3f"|format(media_consumo) }}</strong></td>
       <td></td>
     </tr>
   </tfoot>
 </table>
 
+<style>
+  table.espacada {
+    border-collapse: separate !important;
+    border-spacing: 0.35rem 0.35rem;
+  }
+
+  table.espacada th,
+  table.espacada td {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+</style>
 
 {% endblock %}
