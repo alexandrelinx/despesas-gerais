@@ -42,15 +42,12 @@ from reportlab.lib.units import cm
 # Importações locais
 # ----------------------------
 from models import CreditoSalarial  # supondo que você tenha esse model
-from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float, calcular_valor_pago,calcular_consumo,parse_float_br )
-
-
-
-
+from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_para_ddmmYYYY, nome_forma_pagamento, calcular_totais_linhas, calcular_totais_por_coluna, calcular_totais_linhas, real,get_db_connection, header_footer,obter_dados_por_mes,safe_float, calcular_valor_pago,calcular_consumo,parse_float_br,real_sem_simbolo,init_app )
 
 
 app = Flask(__name__)
-app.jinja_env.filters['real'] = real
+#app.jinja_env.filters['real'] = real
+init_app(app)
 app.config['SECRET_KEY'] = 'despesas'  
 csrf = CSRFProtect(app)
 
@@ -59,8 +56,6 @@ csrf = CSRFProtect(app)
 def handle_csrf_error(e):
     flash('Erro de segurança: token CSRF inválido ou expirado. Recarregue a página e tente novamente.', 'danger')
     return redirect(request.url)
-
-#DB = 'despesas.db'
 
 
 @app.route('/toggle_pagamento', methods=['POST'])
@@ -746,8 +741,6 @@ def despesas_detalhadas():
 #----------------Rotas para Despesas ---------------------------
 
 
-
-
 @app.route('/despesas', methods=['GET', 'POST'])
 def lancar_despesas():
     conn = get_db_connection()
@@ -925,7 +918,9 @@ def consultar_despesas():
     data_fim = request.args.get('data_fim', '').strip()
     estabelecimento_filtro = request.args.get('estabelecimento', '').strip()
     produto_filtro = request.args.get('produto', '').strip()
-
+   # Novo parâmetro para despesa alterada
+    alterada_id = request.args.get('alterada_id')
+    print("alterada_id recebido na rota consultar_despesas:", alterada_id)
     # Buscar dados para os filtros (selects)
     bandeiras = conn.execute("SELECT id, nome FROM BANDEIRA").fetchall()
     estabelecimentos = conn.execute("SELECT id, nome FROM ESTABELECIMENTO").fetchall()
@@ -1000,18 +995,36 @@ def consultar_despesas():
 
     # Executa a consulta com os filtros aplicados
     despesas = conn.execute(query, params).fetchall()
+
+   # Para cada despesa, buscar status das parcelas
+    despesas_com_status = []
+    for despesa in despesas:
+        parcelas = conn.execute("""
+            SELECT pago
+            FROM PARCELAS
+            WHERE despesa_id = ?
+        """, (despesa['id'],)).fetchall()
+
+        status_parcelas = ['pago' if p['pago'] == 1 else 'aberto' for p in parcelas]
+
+        despesa_dict = dict(despesa)
+        despesa_dict['status_parcelas'] = status_parcelas
+
+        despesas_com_status.append(despesa_dict)
+
     conn.close()
 
     # Renderiza o template com os dados
     return render_template(
         'consultar_despesas.html',
-        despesas=despesas,
+        despesas=despesas_com_status,
         bandeiras=bandeiras,
         estabelecimentos=estabelecimentos,
         produtos=produtos,
         bandeira_selecionada=bandeira_filtro,
         estabelecimento_selecionado=estabelecimento_filtro,
         produto_selecionado=produto_filtro,
+        alterada_id=alterada_id, 
         request=request
     )
 
@@ -1046,18 +1059,12 @@ def editar_despesa(id):
 
             parcela_alterada = 1
 
-
             valor_compra_str = request.form['valor_compra']
             valor_parcela_str = request.form['valor_parcela']
 
             # Substitui vírgula por ponto para poder converter para float
             valor_compra = float(valor_compra_str.replace(',', '.'))
             valor_parcela = float(valor_parcela_str.replace(',', '.'))
-
-
-
-
-
 
             # Atualiza tabela DESPESAS
             conn.execute("""
@@ -1079,7 +1086,6 @@ def editar_despesa(id):
                 "SELECT quantidade FROM QUANTIDADE_PARCELAS WHERE id = ?",
                 (quantidade_parcelas_id,)
             ).fetchone()['quantidade']
-
 
             
             # Busca dados da bandeira para cálculo das datas
@@ -1136,7 +1142,7 @@ def editar_despesa(id):
             conn.commit()
             flash("Despesa atualizada com sucesso!", "success")
             conn.close()
-            return redirect(url_for('consultar_despesas'))
+            return redirect(url_for('consultar_despesas', alterada_id=id))
 
         except Exception as e:
             conn.rollback()
@@ -1155,6 +1161,21 @@ def editar_despesa(id):
     parcelamentos = conn.execute("SELECT * FROM PARCELAMENTO").fetchall()
     quantidade_parcelas = conn.execute("SELECT * FROM QUANTIDADE_PARCELAS").fetchall()
 
+    # Busca as parcelas da despesa para mostrar no formulário
+    parcelas = conn.execute(
+         "SELECT * FROM PARCELAS WHERE despesa_id = ? ORDER BY numero_parcela", (id,)
+    ).fetchall()
+
+    # Formata as parcelas para o template
+    parcelas_formatadas = []
+    for p in parcelas:
+      parcelas_formatadas.append({
+        'data_vencimento': p['data_vencimento'],
+        'valor_parcela': p['valor_parcela'],
+        'pago': bool(p['pago'])  # garante True/False
+    })
+
+
     conn.close()
 
     return render_template(
@@ -1168,7 +1189,8 @@ def editar_despesa(id):
         formas=formas,
         bandeiras=bandeiras,
         parcelamentos=parcelamentos,
-        quantidades=quantidade_parcelas
+        quantidades=quantidade_parcelas,
+        parcelas=parcelas_formatadas  
     )
                        
 @app.route('/excluir_despesa/<int:id>', methods=['POST'])

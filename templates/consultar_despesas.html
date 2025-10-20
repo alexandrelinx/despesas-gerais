@@ -1,11 +1,93 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+.highlight-blue,
+.highlight-blue > td {
+  background-color: rgb(0, 183, 255) !important;
+  color: rgb(7, 12, 12) !important;
+  font-weight: bold;
+  }
+   .status-verde {
+    background-color: #d4edda; /* verde claro */
+    color: #155724;
+    font-weight: bold;
+  }
+  .status-laranja {
+    background-color: #fff3cd; /* amarelo/laranja claro */
+    color: #856404;
+    font-weight: bold;
+  }
+  .status-vermelho {
+    background-color: #f8d7da; /* vermelho claro */
+    color: #721c24;
+    font-weight: bold;
+  }
+
+  .real-symbol {
+  display: inline-block;
+  width: 2.5ch; /* largura fixa para "R$" + espaço */
+  text-align: right;
+  margin-right: 0.25ch;
+}
+
+ .real-valor {
+  display: inline-block;
+  min-width: 6ch; /* ajuste conforme precisar */
+  text-align: right;
+}
+
+.modal-dialog {
+  max-width: 100%;
+  margin: auto;
+}
+
+.modal-content {
+  width: auto;
+  min-width: 300px;
+  max-height: none !important;
+}
+
+</style>
+
+<!-- --- Macro para definir classe CSS com base nos status das parcelas --- -->
+
+{% macro class_por_status(status_parcelas) %}
+  {% if status_parcelas is not iterable %}
+    {% set status_parcelas = [status_parcelas] %}
+  {% endif %}
+
+  {% set all_pago = status_parcelas | reject("equalto", "aberto") | list | length == status_parcelas | length %}
+  {% set all_aberto = status_parcelas | reject("equalto", "pago") | list | length == status_parcelas | length %}
+  {% set tem_aberto = "aberto" in status_parcelas %}
+  {% set tem_pago = "pago" in status_parcelas %}
+
+  {% if all_pago %}
+    status-verde
+  {% elif tem_aberto and tem_pago %}
+    status-laranja
+  {% elif all_aberto %}
+    status-vermelho
+  {% else %}
+    ""
+  {% endif %}
+{% endmacro %}
+
+
 <div class="container-fluid">
   <h2>Consultar Despesas</h2>
+  {% if alterada_id %}
+  <div class="alert alert-success" role="alert">
+    Despesa <strong>{{ alterada_id }}</strong> atualizada com sucesso!
+  </div>
+{% endif %}
 
   <!-- Formulário de filtro -->
   <form method="GET" action="{{ url_for('consultar_despesas') }}">
+    {% if alterada_id %}
+  <input type="hidden" name="alterada_id" value="{{ alterada_id }}">
+{% endif %}
   
 <div class="d-flex flex-nowrap gap-3">
   <div class="form-group" style="min-width: 200px;">
@@ -63,12 +145,11 @@
     </div>
   </div>
 
-    
 
 </div>
     <div class="mt-3 d-flex flex-column flex-md-row gap-2">
       <button type="submit" class="btn btn-primary">Filtrar</button>
-      <a href="{{ url_for('consultar_despesas') }}" class="btn btn-secondary ml-2">Limpar Filtros</a>
+      <a href="{{ url_for('consultar_despesas', alterada_id=alterada_id) }}" class="btn btn-secondary ml-2">Limpar Filtros</a>
     </div>
  
   </form>
@@ -94,57 +175,39 @@
       </thead>
       <tbody>
         {% for despesa in despesas %}
-        <tr>
+         <tr {% if despesa.id|string == alterada_id|string %}class="highlight-blue"{% endif %}>
           <td>{{ despesa.id }}</td>
           <td>{{ despesa.estabelecimento }}</td>
           <td>{{ despesa.produto_nome }}</td>
-          <td class="text-end">{{ despesa.valor_compra | real  }}</td>
+          <td class="text-end">
+          <span class="real-symbol">R$</span> <span class="real-valor">{{ despesa.valor_compra | real_sem_simbolo }}</span>
+           </td>
+
           <td class="text-center">{{ despesa.data_compra }}</td>
           <td>{{ despesa.bandeira_nome }}</td>
-          <td class="text-center">
-          <a href="#" class="abrir-modal-parcelas" data-id="{{ despesa.id }}">
-             {{ despesa.numero_parcela }}
+          <td class="text-center {{ class_por_status(despesa.status_parcelas) }}">
+          <a href="#" class="abrir-modal-parcelas {{ class_por_status(despesa.status_parcelas) }}" data-id="{{ despesa.id }}">
+             {{ despesa.numero_parcela }} 
            </a>
           </td>
-         
-         <!-- <td class="d-none d-sm-table-cell"  style="white-space: normal; word-wrap: break-word;">{{ (despesa.observacao or '').replace('\n', '<br>') | safe }}</td> -->
-        <!--  <td class="text-end">{{ despesa.valor_parcela | real  }}</td>> -->
-        {% set parcelas_pagas = despesa.parcelas_pagas or 1 %}
-        {% set total_parcelas = despesa.total_parcelas or despesa.numero_parcela or 0 %}
-        {% set faltam = total_parcelas - parcelas_pagas %}
+          <td class="text-end">
+          <span class="real-symbol">R$</span> <span class="real-valor">{{ despesa.valor_parcela | real_sem_simbolo }} </span>
+          </td>
 
-       {% if parcelas_pagas >= total_parcelas %}
-          {% set status_class = 'status-todas-pagas' %}
-       {% elif faltam == 1 and total_parcelas > 1 %}
-          {% set status_class = 'status-uma-pendente' %}
-       {% else %}
-          {% set status_class = 'status-varias-pendentes' %}
-       {% endif %}
-	   
-
-<td style="min-width:150px" class="text-end {{ status_class }} {% if despesa.parcela_alterada %}text-primary fw-bold{% endif %}">
-  {{ despesa.valor_parcela | real }}
-</td>
-
-
-            <td class="d-none d-sm-table-cell text-center">
-            {% if despesa.observacao %}
-               <a href="#" class="link-observacao" data-observacao="{{ despesa.observacao | e }}">Observação</a>
-            {% else %}
-               ---
-            {% endif %}
-            </td>
-        <!--  <td style="min-width:150px" class="text-end {% if despesa.parcela_alterada %}text-primary fw-bold{% endif %}">
-           {{ despesa.valor_parcela | real }}
-          </td>  -->
-
+          <td class="d-none d-sm-table-cell text-center">
+             {% if despesa.observacao %}
+                <a href="#" class="link-observacao" data-observacao="{{ despesa.observacao | e }}">Observação</a>
+             {% else %}
+                ---
+             {% endif %}
+          </td>
           <td style="min-width:190px" class="text-center">
-            <div class="d-flex justify-content-center">
-              <a href="{{ url_for('editar_despesa', id=despesa.id) }}" class="btn btn-sm btn-warning mr-2">Editar</a>
-              <form action="{{ url_for('excluir_despesa', id=despesa.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa?');">
-                <button type="submit" name="csrf_token" value="{{ csrf_token() }}" class="btn btn-sm btn-danger">Excluir</button>
-              </form>
-            </div>
+             <div class="d-flex justify-content-center">
+               <a href="{{ url_for('editar_despesa', id=despesa.id) }}" class="btn btn-sm btn-warning mr-2">Editar</a>
+               <form action="{{ url_for('excluir_despesa', id=despesa.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta despesa?');">
+                 <button type="submit" name="csrf_token" value="{{ csrf_token() }}" class="btn btn-sm btn-danger">Excluir</button>
+               </form>
+             </div>
           </td>
         </tr>
         {% else %}
@@ -158,6 +221,7 @@
   <!-- Modal de Observação (Bootstrap 5) -->
 <div class="modal fade" id="modalObservacao" tabindex="-1" aria-labelledby="observacaoModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-xl" style="max-width: 60%;">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="observacaoModalLabel">Observação</h5>
@@ -215,7 +279,7 @@
         modal.show();
       });
     });
-  });
+   });
 </script>
 
 {% endblock %}

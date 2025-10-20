@@ -160,7 +160,7 @@
     /* Faz o modal crescer com o conteúdo sem rolagem */
     .modal-dialog {
       max-width: 100%;
-      margin: 1.75rem auto;
+      margin: auto;
     }
 
     .modal-content {
@@ -174,6 +174,7 @@
       overflow-y: visible !important;
     }
 
+    
     /* Alinha o valor da parcela à direita */
     #detalhesCompradorCorpo td:nth-child(5) {
       text-align: right;
@@ -223,6 +224,7 @@
      background-color: #ffc403 !important;  /* laranja claro */
    }
 
+  
   </style>
 </head>
 
@@ -282,7 +284,8 @@
   </div>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
+ 
+ <script>
     // Toggle submenu
     document.querySelectorAll('.menu-toggle').forEach(item => {
       item.addEventListener('click', function () {
@@ -398,6 +401,8 @@
   </script>
   <!-- DataTables JS -->
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+ 
+   <!--    Modal .abrir-modal-parcelas  -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll(".abrir-modal-parcelas").forEach(el => {
@@ -451,8 +456,8 @@
             });
         });
       });
-
-      document.querySelectorAll('.valor-mes-comprador').forEach(td => {
+     
+     document.querySelectorAll('.valor-mes-comprador').forEach(td => {
         td.style.cursor = 'pointer'; // muda o cursor para indicar que é clicável
         td.addEventListener('click', () => {
           const comprador = td.dataset.comprador;
@@ -518,6 +523,8 @@
       });
     });
   </script>
+            
+             <!-- Modal.abrir-modal-detalhes-compras -->  
   <script>
     document.getElementById('abrirSaldoModalBtn').addEventListener('click', function () {
       const saldoModal = new bootstrap.Modal(document.getElementById('saldoModal'));
@@ -560,7 +567,6 @@
                   tbody.insertAdjacentHTML("beforeend", row);
                 });
               }
-
               // Abrir modal
               const modal = new bootstrap.Modal(document.getElementById('modalDetalhesCompras'));
               modal.show();
@@ -572,14 +578,13 @@
         });
       });
     });
-
-
-
   </script>
+ 
   <!-- Modal Detalhes Comprador/Mês -->
+
   <div class="modal fade" id="detalhesCompradorModal" tabindex="-1" aria-labelledby="detalhesCompradorModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl" style="max-width: 60%;">
+     <div class="modal-dialog modal-xl" style="max-width: 70%;">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="detalhesCompradorModalLabel">Detalhes do Comprador e Mês</h5>
@@ -594,7 +599,7 @@
             <!-- <p><strong>Bandeira:</strong> <span id="modal-bandeira"></span></p> -->
           </div>
           <!-- Tabela com detalhes -->
-          <table class="table table-bordered table-sm">
+          <table class="table table-striped table-bordered">
             <thead>
               <tr>
                 <th>Estabelecimento</th>
@@ -611,15 +616,14 @@
             </tbody>
           </table>
         </div>
-      </div>
-    <!--  <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div> -->
+        <div class="modal-footer">
+     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div> 
     </div>
   </div>
-  </div>
-  <!-- Conteúdo será inserido aqui via JS -->
+   </div>
   <!-- Modal Detalhes Compras -->
+
   <div class="modal fade" id="modalDetalhesCompras" tabindex="-1" aria-labelledby="modalDetalhesComprasLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-xl " style="max-width: 70%;">
@@ -657,6 +661,7 @@
   </div>
   
   <!-- Modal Parcelas -->
+
   <div class="modal fade" id="parcelasModal" tabindex="-1" aria-labelledby="parcelasModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" style="max-width: 60%;">
       <!-- largura grande para mostrar tabelas -->

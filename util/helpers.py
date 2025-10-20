@@ -133,16 +133,28 @@ except:
 
 
 def real(value):
-    """Formata um número float como moeda brasileira"""
+    """Formata um número float como moeda brasileira com R$."""
     try:
-        return f"R$ {float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        numero = float(value)
+        return f"R$ {numero:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except (ValueError, TypeError):
+        # Retorna valor padrão para valores inválidos ou None
+        if value in (None, '', 'None'):
+            return "R$ 0,00"
+        return f"R$ {value}"  # Se quiser forçar o R$, mesmo para strings não numéricas
+
+def real_sem_simbolo(value):
+    try:
+        return f"{float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
     except (ValueError, TypeError):
         return value
-    
+
+
+
 def init_app(app): 
 
  app.jinja_env.filters['real'] = real
-
+ app.jinja_env.filters['real_sem_simbolo'] = real_sem_simbolo
 
 # funçoões de calculos para o dashboard
 
