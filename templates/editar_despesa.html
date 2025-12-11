@@ -39,15 +39,6 @@
             </select>
         </div>
 
-        <div class="col-md-6">
-            <label>Local da Compra</label>
-            <select name="local_compra_id" class="form-control" required>
-                <option value="" disabled {% if not despesa.local_compra_id %} selected {% endif %}>Selecione</option>
-                {% for l in locais %}
-                <option value="{{ l.id }}" {% if l.id == despesa.local_compra_id %} selected {% endif %}>{{ l.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
 
         <div class="col-md-6">
             <label>Comprador</label>

@@ -18,6 +18,7 @@ from datetime import datetime
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from io import BytesIO
+import textwrap
 # ----------------------------
 # Flask e extensões
 # ----------------------------
@@ -118,8 +119,7 @@ def toggle_pagamento_ajax():
 
 @app.route('/')
 def dashboard():
-    tempo_atualizacao_segundos = 15 
-  
+    tempo_atualizacao_segundos = 15   
 # Simulando que você recebeu do frontend (ex: via POST, GET, cookie, etc)
     tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)  # ou POST
 
@@ -339,6 +339,7 @@ def dashboard():
         }
         for bandeira, meses in parcelas_status_pagamento.items()
     }
+    print("pagamento_por_mes_bandeira:", pagamento_por_mes_bandeira)
 
     pagamento_por_mes_bandeira_outros = {
         bandeira: {
@@ -351,6 +352,12 @@ def dashboard():
     colunas_meses = sorted(meses_set, key=lambda x: datetime.strptime(x, "%m/%Y"))
     totais_por_mes, total_geral = calcular_totais_por_mes(parcelas_por_mes, colunas_meses)
     totais_por_mes_outros, total_geral_outros = calcular_totais_por_mes(parcelas_por_mes_outros, colunas_meses)
+
+
+    # ADICIONE:
+    total_bandeiras_mes = float(totais_por_mes.get(mes_selecionado, 0.0))
+    total_outros_mes = float(totais_por_mes_outros.get(mes_selecionado, 0.0))
+
 
     # Aí você insere esse novo cálculo para totais por linha
     totais_por_linha = {}
@@ -430,7 +437,9 @@ def dashboard():
     total_pago_mes = float(valor_pago_mes['total_pago'] or 0.0)
   
     # Cálculo do saldo
-    saldo_mes_ajustado = total_pago_mes - total_despesas_mes  
+    #saldo_mes_ajustado = total_pago_mes - total_despesas_mes  
+    saldo_mes_ajustado = total_despesas_mes - total_pago_mes
+
 
     csrf_token = generate_csrf()
     conn.close()
@@ -473,7 +482,6 @@ def dashboard():
     #print('totais_por_mes_comprador:', totais_por_mes_comprador)
     return render_template(
         'dashboard.html',
-       
         tempo_atualizacao=tempo_atualizacao_segundos,
         parcelas=parcelas_exibidas,
         parcelas_por_mes=parcelas_por_mes,
@@ -489,6 +497,8 @@ def dashboard():
         total_geral_colunas_outros=total_geral_colunas_outros,
         total_geral=total_geral,
         total_geral_outros=total_geral_outros,
+         total_bandeiras_mes=total_bandeiras_mes,
+         total_outros_mes=total_outros_mes,
         credito_compradores=credito_compradores,
         creditos_do_mes=creditos_do_mes,
         pagamento_por_mes_bandeira=pagamento_por_mes_bandeira,
@@ -512,7 +522,6 @@ def dashboard():
 def rota_de_atualizacao():
     # código para retornar alguma resposta
     return "Rota de atualização funcionando"
-
 
 @app.route('/dashboard_analytics')
 def dashboard_analytics():
@@ -752,7 +761,7 @@ def lancar_despesas():
             dados = (
                 request.form['estabelecimento_id'],
                 request.form['categoria_id'],
-                request.form['local_compra_id'],
+               # request.form['local_compra_id'],
                 request.form['comprador_id'],
                 request.form['produto_id'],
                 request.form['data_compra'],
@@ -765,10 +774,6 @@ def lancar_despesas():
                 request.form.get('observacao', '')
             )
 
-            # Verifica se todos os campos foram preenchidos
-           # if not all(dados):
-            #    flash("Todos os campos devem ser preenchidos.", "danger")
-             #   return redirect(url_for('lancar_despesas'))
             campos_obrigatorios = dados[:-1] 
 
             if any((v is None or str(v).strip() == '') for v in campos_obrigatorios):
@@ -783,7 +788,6 @@ def lancar_despesas():
             SELECT COUNT(*) as count FROM DESPESAS 
             WHERE estabelecimento_id = ?
             AND categoria_id = ?
-            AND local_compra_id = ?
             AND comprador_id = ?
             AND produto_id = ?
             AND data_compra = ?
@@ -793,7 +797,7 @@ def lancar_despesas():
             AND parcelamento_id = ?
             AND quantidade_parcelas_id = ?
             AND valor_parcela = ?
-            """, dados[:12])
+            """, dados[:11])
 
             existe = cursor.fetchone()['count']
 
@@ -806,10 +810,10 @@ def lancar_despesas():
             # Insere a despesa (sem vencimento_bandeira_id e melhor_dia_compra_id)
             cursor.execute("""
                 INSERT INTO DESPESAS (
-                    estabelecimento_id, categoria_id, local_compra_id, comprador_id,
+                    estabelecimento_id, categoria_id, comprador_id,
                     produto_id, data_compra, valor_compra, forma_pagamento_id, bandeira_id,
                     parcelamento_id, quantidade_parcelas_id, valor_parcela, observacao
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
             """, dados)
             conn.commit()
 
@@ -832,29 +836,7 @@ def lancar_despesas():
             melhor_dia_compra = bandeira_dados['melhor_dia_compra']
             vencimento_bandeira = bandeira_dados['vencimento_dia']
             nome_bandeira = bandeira_dados['nome']
-            # Converter a data de compra (YYYY-MM-DD)
-            # data_compra_dt = datetime.strptime(data_compra, "%d/%m/%Y")
-
-            # Define a data da primeira parcela com base no melhor dia de compra
-            # if data_compra_dt.day < melhor_dia_compra:
-            #     primeira_data = data_compra_dt.replace(day=1) + relativedelta(months=1)
-            # else:
-            #     primeira_data = data_compra_dt.replace(day=1) + relativedelta(months=2)
-
-            # # Ajusta para o vencimento da fatura
-            # try:
-            #     primeira_data = primeira_data.replace(day=vencimento_bandeira)
-            # except ValueError:
-            #     ultima_do_mes = (primeira_data + relativedelta(months=1, day=1)) - relativedelta(days=1)
-            #     primeira_data = ultima_do_mes
-
-            # # Gera as datas das parcelas
-            # parcelas = [primeira_data + relativedelta(months=i) for i in range(quantidade_parcelas)]
-
-            # Inserir parcelas
-           
             data_compra_str = datetime.strptime(request.form['data_compra'], "%d/%m/%Y").strftime("%d/%m/%Y")
-
             parcelas = calcular_parcelas(
             data_compra_str,
             quantidade_parcelas,
@@ -887,7 +869,7 @@ def lancar_despesas():
     # Carrega os dados para o formulário (sem vencimento_bandeira e melhor_dia_compra)
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO ORDER BY nome ASC").fetchall()
     categorias = conn.execute("SELECT * FROM CATEGORIA ORDER BY nome ASC").fetchall()
-    locais = conn.execute("SELECT * FROM LOCAL_COMPRA ORDER BY nome ASC").fetchall()
+   # locais = conn.execute("SELECT * FROM LOCAL_COMPRA ORDER BY nome ASC").fetchall()
     compradores = conn.execute("SELECT * FROM COMPRADOR ORDER BY nome ASC").fetchall()
     produtos = conn.execute("SELECT * FROM PRODUTO ORDER BY nome ASC").fetchall()
     formas = conn.execute("SELECT * FROM FORMA_PAGAMENTO ORDER BY nome ASC").fetchall()
@@ -899,7 +881,7 @@ def lancar_despesas():
     return render_template('Incluir_despesas.html', 
                            estabelecimentos=estabelecimentos, 
                            categorias=categorias,
-                           locais=locais, 
+                          # locais=locais, 
                            compradores=compradores, 
                            produtos=produtos, 
                            formas=formas, 
@@ -1045,7 +1027,7 @@ def editar_despesa(id):
             # Captura dados do formulário
             estabelecimento_id = request.form['estabelecimento_id']
             categoria_id = request.form['categoria_id']
-            local_compra_id = request.form['local_compra_id']
+           # local_compra_id = request.form['local_compra_id']
             comprador_id = request.form['comprador_id']
             produto_id = request.form['produto_id']
             data_compra_str = request.form['data_compra']
@@ -1069,12 +1051,12 @@ def editar_despesa(id):
             # Atualiza tabela DESPESAS
             conn.execute("""
                 UPDATE DESPESAS SET
-                    estabelecimento_id = ?, categoria_id = ?, local_compra_id = ?, comprador_id = ?,
+                    estabelecimento_id = ?, categoria_id = ?, comprador_id = ?,
                     produto_id = ?, data_compra = ?, valor_compra = ?, forma_pagamento_id = ?, bandeira_id = ?,
                     parcelamento_id = ?, quantidade_parcelas_id = ?, valor_parcela = ?, observacao = ?, parcela_alterada = ?
                 WHERE id = ?
             """, (
-                estabelecimento_id, categoria_id, local_compra_id, comprador_id,
+                estabelecimento_id, categoria_id, comprador_id,
                 produto_id, data_compra_str, valor_compra, forma_pagamento_id, bandeira_id,
                 parcelamento_id, quantidade_parcelas_id, valor_parcela, observacao, parcela_alterada,
                 id
@@ -1153,7 +1135,7 @@ def editar_despesa(id):
     # Método GET - carrega dados para o formulário
     estabelecimentos = conn.execute("SELECT * FROM ESTABELECIMENTO").fetchall()
     categorias = conn.execute("SELECT * FROM CATEGORIA").fetchall()
-    locais = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
+   # locais = conn.execute("SELECT * FROM LOCAL_COMPRA").fetchall()
     compradores = conn.execute("SELECT * FROM COMPRADOR").fetchall()
     produtos = conn.execute("SELECT * FROM PRODUTO").fetchall()
     formas = conn.execute("SELECT * FROM FORMA_PAGAMENTO").fetchall()
@@ -1183,7 +1165,7 @@ def editar_despesa(id):
         despesa=despesa,
         estabelecimentos=estabelecimentos,
         categorias=categorias,
-        locais=locais,
+       # locais=locais,
         compradores=compradores,
         produtos=produtos,
         formas=formas,
@@ -1218,6 +1200,7 @@ def excluir_despesa(id):
         conn.close()
 
     return redirect(url_for('consultar_despesas'))
+
 
 
 # ------------------ Rotas do CRUD de estabelecimento -------------------------
@@ -1320,6 +1303,268 @@ def excluir_estabelecimento(id):
     conn.close()
     flash("Estabelecimento excluído com sucesso!", "success")
     return redirect(url_for('listar_estabelecimentos'))
+
+
+
+
+@app.route('/cadastro/endereco/novo', methods=['GET', 'POST'])
+def novo_endereco():
+    conn = get_db_connection()
+    try:
+        bairros = conn.execute("SELECT id, nome FROM BAIRRO ORDER BY nome").fetchall()
+        ufs = conn.execute("SELECT id, sigla FROM UF ORDER BY sigla").fetchall()
+        estabelecimentos = conn.execute("SELECT id, nome FROM ESTABELECIMENTO ORDER BY nome").fetchall()
+        cidades = conn.execute("SELECT id, nome, uf_id FROM CIDADE ORDER BY nome").fetchall()
+
+        if request.method == 'POST':
+            form = request.form
+            logradouro = form.get('logradouro', '').strip().upper()
+            numero = form.get('numero', '').strip()
+            cep = form.get('cep', '').strip()
+            bairro_id = form.get('bairro_id') or None
+            cidade_id = form.get('cidade_id')
+            uf_id = form.get('uf_id') or None
+            estabelecimento_id = form.get('estabelecimento_id')
+
+            if not estabelecimento_id:
+                flash("O estabelecimento é obrigatório.", "warning")
+                return render_template('incluir_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco')
+
+            estabelecimento_id = int(estabelecimento_id)
+
+            if not logradouro:
+                flash("O logradouro é obrigatório.", "warning")
+                return render_template('incluir_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco')
+
+            if not cidade_id:
+                flash("A cidade é obrigatória.", "warning")
+                return render_template('incluir_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco')
+
+            city = conn.execute("SELECT id, nome, uf_id FROM CIDADE WHERE id = ?", (cidade_id,)).fetchone()
+            if not city:
+                flash("Cidade inválida.", "danger")
+                return render_template('incluir_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco')
+
+            cidade_nome = str(city['nome']).upper()
+            uf_id = city['uf_id']  # garante UF coerente com a cidade
+
+            # Verifica duplicidade: 1 endereço por estabelecimento
+            existente = conn.execute("""
+                SELECT 1 FROM ENDERECO 
+                WHERE estabelecimento_id = ?
+            """, (estabelecimento_id,)).fetchone()
+
+            if existente:
+                flash("Este estabelecimento já possui um endereço cadastrado!", "danger")
+                return render_template('incluir_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco')
+
+            try:
+                conn.execute("""
+                    INSERT INTO ENDERECO 
+                    (logradouro, numero, cep, bairro_id, cidade, uf_id, estabelecimento_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (logradouro, numero, cep, bairro_id, cidade_nome, uf_id, estabelecimento_id))
+                conn.commit()
+                flash("Endereço cadastrado com sucesso!", "success")
+                return redirect(url_for('consultar_endereco'))
+            except sqlite3.Error as e:
+                flash(f"Erro ao cadastrar endereço: {str(e)}", "danger")
+                return render_template('incluir_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco')
+
+        # GET
+        return render_template(
+            'Incluir_endereco.html',
+            registro={},  # evita None no template
+            bairros=bairros,
+            ufs=ufs,
+            cidades=cidades,
+            estabelecimentos=estabelecimentos,
+            tipo='endereco'
+        )
+    finally:
+        conn.close()
+
+
+@app.route('/cadastro/endereco', strict_slashes=False)
+def consultar_endereco():
+    conn = get_db_connection()
+    try:
+        enderecos = conn.execute("""
+            SELECT E.*, B.nome AS bairro, U.sigla AS uf, ES.nome AS estabelecimento
+            FROM ENDERECO E
+            LEFT JOIN BAIRRO B ON B.id = E.bairro_id
+            LEFT JOIN UF U ON U.id = E.uf_id
+            LEFT JOIN ESTABELECIMENTO ES ON ES.id = E.estabelecimento_id
+            ORDER BY E.id DESC
+        """).fetchall()
+    except Exception as e:
+        enderecos = []
+        flash(f"Erro ao consultar endereços: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return render_template('consultar_endereco.html', enderecos=enderecos)
+
+@app.route('/cadastro/endereco/editar/<int:id>', methods=['GET', 'POST'])
+def editar_endereco(id):
+    import sqlite3  # garantir que esteja importado no arquivo
+
+    conn = get_db_connection()
+    try:
+        endereco_row = conn.execute("SELECT * FROM ENDERECO WHERE id = ?", (id,)).fetchone()
+        if not endereco_row:
+            flash("Endereço não encontrado.", "danger")
+            return redirect(url_for('consultar_endereco'))
+
+        endereco = dict(endereco_row)
+
+        # Carrega combos
+        bairros = conn.execute("SELECT id, nome FROM BAIRRO ORDER BY nome").fetchall()
+        ufs = conn.execute("SELECT id, sigla FROM UF ORDER BY sigla").fetchall()
+        estabelecimentos = conn.execute("SELECT id, nome FROM ESTABELECIMENTO ORDER BY nome").fetchall()
+        cidades = conn.execute("SELECT id, nome, uf_id FROM CIDADE ORDER BY nome").fetchall()
+
+        if request.method == 'POST':
+            form = request.form
+            logradouro = form.get('logradouro', '').strip().upper()
+            numero = form.get('numero', '').strip()
+            cep = form.get('cep', '').strip()
+            bairro_id = form.get('bairro_id') or None
+            cidade_id = form.get('cidade_id')
+            estabelecimento_id = form.get('estabelecimento_id')
+
+            # Validações
+            if not estabelecimento_id:
+                flash("O estabelecimento é obrigatório.", "warning")
+                return render_template(
+                    'editar_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco'
+                )
+
+            if not logradouro:
+                flash("O logradouro é obrigatório.", "warning")
+                return render_template(
+                    'editar_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco'
+                )
+
+            if not cidade_id:
+                flash("A cidade é obrigatória.", "warning")
+                return render_template(
+                    'editar_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco'
+                )
+
+            # Cidade selecionada
+            city = conn.execute(
+                "SELECT id, nome, uf_id FROM CIDADE WHERE id = ?",
+                (cidade_id,)
+            ).fetchone()
+            if not city:
+                flash("Cidade inválida.", "danger")
+                return render_template(
+                    'editar_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco'
+                )
+
+            cidade_nome = str(city['nome']).upper()
+            uf_id = city['uf_id']  # Mantém UF coerente com a cidade
+
+            estabelecimento_id = int(estabelecimento_id)
+
+            # Verifica duplicidade (outro endereço para o mesmo estabelecimento)
+            duplicado = conn.execute("""
+                SELECT 1 FROM ENDERECO 
+                WHERE estabelecimento_id = ? AND id != ?
+            """, (estabelecimento_id, id)).fetchone()
+
+            if duplicado:
+                flash("Outro endereço já está cadastrado para este estabelecimento.", "danger")
+                return render_template(
+                    'editar_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco'
+                )
+
+            try:
+                conn.execute("""
+                    UPDATE ENDERECO SET
+                        logradouro = ?, numero = ?, cep = ?,
+                        bairro_id = ?, cidade = ?, uf_id = ?, estabelecimento_id = ?
+                    WHERE id = ?
+                """, (logradouro, numero, cep, bairro_id, cidade_nome, uf_id, estabelecimento_id, id))
+                conn.commit()
+                flash("Endereço atualizado com sucesso!", "success")
+                return redirect(url_for('consultar_endereco'))
+            except sqlite3.Error as e:
+                flash(f"Erro ao atualizar: {str(e)}", "danger")
+                return render_template(
+                    'editar_endereco.html',
+                    registro=form, bairros=bairros, ufs=ufs, cidades=cidades,
+                    estabelecimentos=estabelecimentos, tipo='endereco'
+                )
+
+        # GET: opcionalmente tenta mapear o nome da cidade do endereço para um cidade_id
+        if endereco.get('cidade'):
+            row = conn.execute(
+                "SELECT id FROM CIDADE WHERE UPPER(nome) = ? LIMIT 1",
+                (endereco['cidade'].upper(),)
+            ).fetchone()
+            if row:
+                endereco['cidade_id'] = row['id']
+
+        return render_template(
+            'editar_endereco.html',
+            registro=endereco,  # preenche o formulário na edição
+            bairros=bairros,
+            ufs=ufs,
+            cidades=cidades,
+            estabelecimentos=estabelecimentos,
+            tipo='endereco'
+        )
+    finally:
+        conn.close()
+
+
+@app.route('/enderecos')
+def listar_enderecos():
+    conn = get_db_connection()
+    enderecos = conn.execute("""
+        SELECT E.*, B.nome AS bairro, U.sigla AS uf, ES.nome AS estabelecimento
+        FROM ENDERECO E
+        LEFT JOIN BAIRRO B ON B.id = E.bairro_id
+        LEFT JOIN UF U ON U.id = E.uf_id
+        LEFT JOIN ESTABELECIMENTO ES ON ES.id = E.estabelecimento_id
+        ORDER BY E.id DESC
+    """).fetchall()
+    conn.close()
+    return render_template('consultar_endereco.html', enderecos=enderecos)
+
+@app.route('/endereco/excluir/<int:id>', methods=['POST'])
+def excluir_endereco(id):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM ENDERECO WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+
+    flash("Endereço excluído com sucesso!", "success")
+    return redirect(url_for('listar_enderecos'))
 
 
 
@@ -2175,6 +2420,158 @@ def excluir_usuario(id):
 
 
 
+
+
+# ===================== CADASTRAR NOVA MANUTENÇÃO ===================== #
+@app.route('/cadastro/manutencao/novo', methods=['GET', 'POST'])
+def nova_manutencao():
+    conn = get_db_connection()
+
+    # Carregar listas auxiliares para selects
+    estabelecimentos = conn.execute("SELECT id, nome FROM ESTABELECIMENTO ORDER BY nome").fetchall()
+    produtos = conn.execute("SELECT id, nome FROM PRODUTO ORDER BY nome").fetchall()
+    tipos = conn.execute("SELECT id, nome FROM TIPO ORDER BY nome").fetchall()
+
+    if request.method == 'POST':
+        data = request.form.get('data', '').strip()
+        estabelecimento_id = request.form.get('estabelecimento_id')
+        tipo_id = request.form.get('tipo_id')
+        produto_id = request.form.get('produto_id')
+        fabricante = request.form.get('fabricante', '').strip().upper()
+        valor = request.form.get('valor')
+        data_aplicacao = request.form.get('data_aplicacao', '').strip()
+        quilometragem = request.form.get('quilometragem')
+        observacao = request.form.get('observacao', '').strip()
+
+        if not data or not tipo_id:
+            flash("Data e Tipo são obrigatórios.", "warning")
+            return redirect(request.url)
+
+        try:
+            conn.execute("""
+                INSERT INTO MANUTENCAO_AUTO 
+                (data, estabelecimento_id, tipo_id, produto_id, fabricante, valor, data_aplicacao, quilometragem, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (data, estabelecimento_id, tipo_id, produto_id, fabricante, valor, data_aplicacao, quilometragem, observacao))
+            conn.commit()
+            flash("Manutenção cadastrada com sucesso!", "success")
+        except Exception as e:
+            flash(f"Erro ao cadastrar manutenção: {str(e)}", "danger")
+        finally:
+            conn.close()
+
+        return redirect(url_for('listar_manutencoes'))
+
+    conn.close()
+    return render_template(
+        'editar_manutencao.html',
+        registro=None,
+        tipo='manutencao',
+        estabelecimentos=estabelecimentos,
+        produtos=produtos,
+        tipos=tipos
+    )
+
+# ===================== CONSULTAR MANUTENÇÕES ===================== #
+@app.route('/cadastro/manutencao')
+def consultar_manutencao():
+    conn = get_db_connection()
+    try:
+        manutencoes = conn.execute("""
+            SELECT M.*, 
+                   E.nome AS estabelecimento_nome, 
+                   P.nome AS produto_nome, 
+                   T.nome AS tipo_nome
+            FROM MANUTENCAO_AUTO M
+            LEFT JOIN ESTABELECIMENTO E ON M.estabelecimento_id = E.id
+            LEFT JOIN PRODUTO P ON M.produto_id = P.id
+            LEFT JOIN TIPO T ON M.tipo_id = T.id
+            ORDER BY M.data DESC
+        """).fetchall()
+    except Exception as e:
+        manutencoes = []
+        flash(f"Erro ao consultar manutenções: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return render_template('consultar_manutencao.html', manutencoes=manutencoes)
+
+@app.route('/manutencoes')
+def listar_manutencoes():
+    return consultar_manutencao()
+
+# ===================== EDITAR MANUTENÇÃO ===================== #
+@app.route('/cadastro/manutencao/editar/<int:id>', methods=['GET', 'POST'])
+def editar_manutencao(id):
+    conn = get_db_connection()
+    manutencao = conn.execute("SELECT * FROM MANUTENCAO_AUTO WHERE id = ?", (id,)).fetchone()
+
+    if not manutencao:
+        flash("Manutenção não encontrada.", "danger")
+        conn.close()
+        return redirect(url_for('listar_manutencoes'))
+
+    estabelecimentos = conn.execute("SELECT id, nome FROM ESTABELECIMENTO ORDER BY nome").fetchall()
+    produtos = conn.execute("SELECT id, nome FROM PRODUTO ORDER BY nome").fetchall()
+    tipos = conn.execute("SELECT id, nome FROM TIPO ORDER BY nome").fetchall()
+
+    if request.method == 'POST':
+        data = request.form.get('data', '').strip()
+        estabelecimento_id = request.form.get('estabelecimento_id')
+        tipo_id = request.form.get('tipo_id')
+        produto_id = request.form.get('produto_id')
+        fabricante = request.form.get('fabricante', '').strip().upper()
+        valor = request.form.get('valor')
+        data_aplicacao = request.form.get('data_aplicacao', '').strip()
+        quilometragem = request.form.get('quilometragem')
+        observacao = request.form.get('observacao', '').strip()
+
+        if not data or not tipo_id:
+            flash("Data e Tipo são obrigatórios.", "warning")
+            return redirect(request.url)
+
+        try:
+            conn.execute("""
+                UPDATE MANUTENCAO_AUTO
+                SET data = ?, estabelecimento_id = ?, tipo_id = ?, produto_id = ?, fabricante = ?, 
+                    valor = ?, data_aplicacao = ?, quilometragem = ?, observacao = ?
+                WHERE id = ?
+            """, (data, estabelecimento_id, tipo_id, produto_id, fabricante, valor, data_aplicacao, quilometragem, observacao, id))
+            conn.commit()
+            flash("Manutenção atualizada com sucesso!", "success")
+        except Exception as e:
+            flash(f"Erro ao atualizar manutenção: {str(e)}", "danger")
+        finally:
+            conn.close()
+
+        return redirect(url_for('listar_manutencoes'))
+
+    conn.close()
+    return render_template(
+        'editar_manutencao.html',
+        registro=manutencao,
+        tipo='manutencao',
+        estabelecimentos=estabelecimentos,
+        produtos=produtos,
+        tipos=tipos
+    )
+
+# ===================== EXCLUIR MANUTENÇÃO ===================== #
+@app.route('/manutencao/excluir/<int:id>', methods=['POST'])
+def excluir_manutencao(id):
+    conn = get_db_connection()
+    try:
+        conn.execute("DELETE FROM MANUTENCAO_AUTO WHERE id = ?", (id,))
+        conn.commit()
+        flash("Manutenção excluída com sucesso!", "success")
+    except Exception as e:
+        flash(f"Erro ao excluir manutenção: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('listar_manutencoes'))
+
+
 #-------------------Rotas de acesso  ao ususarios do sistema  login e logout
 
 @app.before_request
@@ -2576,6 +2973,54 @@ def detalhes_compras():
         "quantidade_parcelas": quantidade_parcelas,
         "detalhes": resultado
     })
+
+
+@app.route('/api/buscar')
+def buscar_generico():
+    tabela = request.args.get('tabela')
+    termo = request.args.get('q', '').strip()
+    print(f"Termo recebido para busca: '{termo}'") 
+
+    tabelas_permitidas = {
+        "produto": ("PRODUTO", "id", "nome"),
+        "estabelecimento": ("ESTABELECIMENTO", "id", "nome"),
+        "comprador": ("COMPRADOR", "id", "nome"),
+        "categoria": ("CATEGORIA", "id", "nome"),
+        "local": ("LOCAL_COMPRA", "id", "nome"),
+        "forma_pagamento": ("FORMA_PAGAMENTO", "id", "nome"),
+        "bandeira": ("BANDEIRA", "id", "nome")
+    }
+
+    if tabela not in tabelas_permitidas:
+        return jsonify([]), 400
+
+    if not termo:
+        return jsonify([])
+
+    tabela_sql, campo_id, campo_nome = tabelas_permitidas[tabela]
+    conn = get_db_connection()
+
+    palavras = termo.split()
+    condicoes = " AND ".join([f"LOWER({campo_nome}) LIKE ?" for _ in palavras])
+    parametros = [f"%{p.lower()}%" for p in palavras]
+
+    query = f"""
+    SELECT {campo_id} as id, {campo_nome} as text
+    FROM {tabela_sql}
+    WHERE {condicoes}
+    ORDER BY {campo_nome} ASC
+    LIMIT 20
+    """
+    resultados = conn.execute(query, parametros).fetchall()
+    conn.close()
+
+    return jsonify([dict(r) for r in resultados])
+
+
+
+
+
+
 
 
 

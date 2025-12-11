@@ -21,7 +21,7 @@
         </thead>
         <tbody>
             {% for reg in registros %}
-            <tr> <tr {% if reg.id == destaque %} class="table-success destaque" {% endif %}>
+             <tr {% if reg.id == destaque %} class="table-success destaque" {% endif %}>
                 <td>{{ reg.id }}</td>
                 <td>{{ reg.data_abastecimento }}</td>
                 <td>{{ reg.quantidade }}</td>

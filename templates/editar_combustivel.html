@@ -14,6 +14,7 @@ Editar Abasteciment
   <input type="text" id="data_abastecimento" name="data_abastecimento" placeholder="dd/mm/aaaa" class="form-control"
          value="{{ row['data_abastecimento'] }}" required><br>
 
+  <label>Quantidede de combustivel abastecida(L):</label>
   <label for="Quantidade" class="form-label"> Quantidade(L):</label>
   <input type="number" name="quantidade" step="0.001" class="form-control"
     value="{{ '%.3f'|format(row['quantidade']) }}" required><br>
