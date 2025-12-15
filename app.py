@@ -2666,7 +2666,6 @@ def totais_despesas_mensais():
         bandeiras=sorted(bandeiras_set)
     )
 
-
 @app.route('/pagar', methods=['POST'])
 def pagar():
     data = request.get_json()
@@ -2696,7 +2695,6 @@ def pagar():
     except Exception as e:
         print(f"Erro ao marcar como pago: {e}")
         return jsonify({'success': False})
-
 
 @app.route('/parcelas/<int:despesa_id>')
 def listar_parcelas(despesa_id):
@@ -2972,7 +2970,6 @@ def detalhes_compras():
         "detalhes": resultado
     })
 
-
 @app.route('/api/buscar')
 def buscar_generico():
     tabela = request.args.get('tabela')
@@ -3016,76 +3013,6 @@ def buscar_generico():
 
 
 
-
-
-
-
-
-
-@app.route('/export_csv', methods=['GET'])
-def export_csv():
-    conn = get_db_connection()
-
-    # Filtros de período (para exportação)
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    categoria_id = request.args.get('categoria_id')
-
-    # Base da consulta
-    query = """
-        SELECT 
-            D.data_compra,
-            P.nome AS produto_nome,
-            D.valor_parcela,
-            D.quantidade_parcelas,
-            C.nome AS comprador_nome,
-            FP.nome AS forma_pagamento,
-            B.nome AS bandeira_nome
-            QP.quantidade AS quantidade_parcelas
-        FROM DESPESAS D
-        LEFT JOIN PRODUTO P ON D.produto_id = P.id
-        LEFT JOIN COMPRADOR C ON D.comprador_id = C.id
-        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
-        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-         WHERE 1=1
-    """
-
-    if data_inicio:
-        query += f" AND D.data_compra >= '{data_inicio}'"
-    if data_fim:
-        query += f" AND D.data_compra <= '{data_fim}'"
-    if categoria_id:
-        query += f" AND D.categoria_id = {categoria_id}"
-
-    # Executar consulta
-    despesas = conn.execute(query).fetchall()
-    conn.close()
-
-    # Criar o CSV
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Escrever cabeçalho
-    writer.writerow(['Data Compra', 'Produto', 'Valor Parcela', 'Quantidade Parcelas', 'Comprador', 'Forma Pagamento', 'Bandeira'])
-
-    # Escrever os dados das despesas
-    for despesa in despesas:
-        writer.writerow([
-            despesa['data_compra'],
-            despesa['produto_nome'],
-            despesa['valor_parcela'],
-            despesa['quantidade_parcelas'],
-            despesa['comprador_nome'],
-            despesa['forma_pagamento'],
-            despesa['bandeira_nome']
-        ])
-
-    # Preparar a resposta
-    output.seek(0)
-    return Response(output, 
-                    mimetype='text/csv', 
-                    headers={"Content-Disposition": "attachment;filename=despesas.csv"})
 
 
 
@@ -3251,7 +3178,7 @@ def deletar_combustivel(id):
     conn.close()
     return redirect(url_for('combustivel'))
 
-
+#---------------------------- Rotas para Exportação CSV e PDF ----------------------------
 
 @app.route('/exportar/csv')
 def exportar_csv():
@@ -3275,6 +3202,73 @@ def exportar_csv():
 
     return Response(generate(), mimetype='text/csv',
                     headers={"Content-Disposition": "attachment;filename=combustivel.csv"})
+
+
+@app.route('/export_csv', methods=['GET'])
+def export_csv():
+    conn = get_db_connection()
+
+    # Filtros de período (para exportação)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    categoria_id = request.args.get('categoria_id')
+
+    # Base da consulta
+    query = """
+        SELECT 
+            D.data_compra,
+            P.nome AS produto_nome,
+            D.valor_parcela,
+            D.quantidade_parcelas,
+            C.nome AS comprador_nome,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira_nome
+            QP.quantidade AS quantidade_parcelas
+        FROM DESPESAS D
+        LEFT JOIN PRODUTO P ON D.produto_id = P.id
+        LEFT JOIN COMPRADOR C ON D.comprador_id = C.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+         WHERE 1=1
+    """
+
+    if data_inicio:
+        query += f" AND D.data_compra >= '{data_inicio}'"
+    if data_fim:
+        query += f" AND D.data_compra <= '{data_fim}'"
+    if categoria_id:
+        query += f" AND D.categoria_id = {categoria_id}"
+
+    # Executar consulta
+    despesas = conn.execute(query).fetchall()
+    conn.close()
+
+    # Criar o CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Escrever cabeçalho
+    writer.writerow(['Data Compra', 'Produto', 'Valor Parcela', 'Quantidade Parcelas', 'Comprador', 'Forma Pagamento', 'Bandeira'])
+
+    # Escrever os dados das despesas
+    for despesa in despesas:
+        writer.writerow([
+            despesa['data_compra'],
+            despesa['produto_nome'],
+            despesa['valor_parcela'],
+            despesa['quantidade_parcelas'],
+            despesa['comprador_nome'],
+            despesa['forma_pagamento'],
+            despesa['bandeira_nome']
+        ])
+
+    # Preparar a resposta
+    output.seek(0)
+    return Response(output, 
+                    mimetype='text/csv', 
+                    headers={"Content-Disposition": "attachment;filename=despesas.csv"})
+
 
 @app.route('/exportar/pdf')
 def exportar_pdf():
@@ -3338,8 +3332,7 @@ def exportar_pdf():
     response.headers['Content-Disposition'] = f'attachment; filename=relatorio_{ano}_{mes}.pdf'
     return response
 
-
-
+#---------------------------- Rotas para Marcas por Comprador e Mês ----------------------------
 
 
 @app.get('/marcas_comprador_mes')
@@ -3393,18 +3386,6 @@ def set_marca_comprador_mes():
     conn.commit()
     conn.close()
     return jsonify({'ok': True, 'comprador': comprador, 'mes': mes, 'marcado': marcado})
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
