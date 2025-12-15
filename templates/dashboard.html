@@ -50,7 +50,10 @@
 <!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
 <!-- Modal Saldo -->
+
 <div class="modal fade" id="modalSaldo" tabindex="-1" aria-labelledby="modalSaldoLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content">
@@ -271,7 +274,68 @@
       min-width: 0;
       width: 100%;
     }
-  }
+     }
+
+/* Por Comprador: alinhar valores à direita e fixar o botão à direita */
+.secao-totais-compradores .scroll-container td.valor-mes-comprador,
+.secao-totais-compradores .scroll-container td.valor-mes-comprador.text-center {
+  position: relative;
+  text-align: right !important;   /* anula .text-center e a regra global de td */
+  padding-right: 30px;            /* reserva espaço fixo pro botão */
+  white-space: nowrap;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Botão fixo na borda direita, fora do fluxo, não empurra o texto */
+.secao-totais-compradores .scroll-container td.valor-mes-comprador .btn-check-comprador {
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  line-height: 1;
+}
+.secao-totais-compradores .scroll-container td.valor-mes-comprador .btn-check-comprador i {
+  font-size: 16px;
+}
+
+/* Totais por Bandeira (valores nas colunas de meses + coluna Total) */
+.secao-totais .scroll-container td.total-cell {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+.secao-totais .scroll-container tbody td:last-child {
+  text-align: right !important;      /* coluna Total do corpo */
+}
+.secao-totais .scroll-container tfoot th:not(:first-child) {
+  text-align: right !important;      /* totais do rodapé, exceto "Total Geral" */
+  white-space: nowrap;
+}
+
+/* Totais Outros (valores nas colunas de meses + coluna Total) */
+.secao-totais-outros .scroll-container td.total-cell {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+.secao-totais-outros .scroll-container tbody td:last-child {
+  text-align: right !important;      /* coluna Total do corpo */
+}
+.secao-totais-outros .scroll-container tfoot th:not(:first-child):not(:nth-child(2)) {
+  text-align: right !important;      /* meses + total no rodapé (pula 1ª e 2ª) */
+  white-space: nowrap;
+}
+
+
+
 </style>
 
 <!-- Abas -->
@@ -472,6 +536,15 @@
                     data-comprador="{{ comprador }}" data-mes="{{ mes }}" style="cursor:pointer;"
                     title="{% if pago %}simPago{% else %}Não pago{% endif %}">
                   R$ {{ '%.2f'|format(valor) }}
+                  <!-- Botão de marcação visual -->
+                  <button type="button"
+                        class="btn btn-sm btn-link p-0 ms-2 btn-check-comprador"
+                        title="Marcar como pago (visual)"
+                        data-comprador="{{ comprador }}"
+                        data-mes="{{ mes }}"
+                        aria-label="Marcar {{ comprador }} em {{ mes }}">
+                   <i class="bi bi-circle text-muted" aria-hidden="true"></i>
+                   </button>
                 </td>
               {% endfor %}
               <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(valores.values() | sum) }}</span></strong></td>
@@ -681,6 +754,115 @@
   }
   window.handleClick = handleClick;
   window.handleDoubleClick = handleDoubleClick;
+
+
+  // Marcação visual por comprador e mês
+(function () {
+  const keyFor = (comprador, mes) =>
+    `${(comprador || '').trim()}__${(mes || '').trim()}`;
+
+  function setIcon(btn, checked) {
+    const icon = btn.querySelector('i');
+    if (!icon) return;
+    icon.classList.toggle('bi-check-circle-fill', checked);
+    icon.classList.toggle('text-success', checked);
+    icon.classList.toggle('bi-circle', !checked);
+    icon.classList.toggle('text-muted', !checked);
+    btn.title = checked ? 'Marcado como pago (visual)' : 'Marcar como pago (visual)';
+    btn.dataset.checked = checked ? '1' : '0';
+  }
+  const isChecked = (btn) => btn.dataset.checked === '1';
+
+  async function loadMarks() {
+    try {
+      const r = await fetch('/marcas_comprador_mes', {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'X-CSRF-Token': csrfToken
+        },
+        credentials: 'same-origin',     // envia cookie de sessão
+        cache: 'no-store'
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()));
+      const { marks } = await r.json();
+
+      document.querySelectorAll('.btn-check-comprador').forEach((btn) => {
+        const key = keyFor(btn.dataset.comprador, btn.dataset.mes);
+        setIcon(btn, !!(marks && marks[key]));
+      });
+    } catch (e) {
+      console.error('Falha ao carregar marcações dos compradores', e);
+      document.querySelectorAll('.btn-check-comprador').forEach((btn) => setIcon(btn, false));
+    }
+  }
+
+  async function toggleMark(btn) {
+    const comprador = btn.dataset.comprador || '';
+    const mes = btn.dataset.mes || '';
+    const next = !isChecked(btn);
+
+    btn.disabled = true;
+    const previous = isChecked(btn);
+    setIcon(btn, next); // UI otimista
+
+    try {
+      const r = await fetch('/marcas_comprador_mes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+          'X-CSRF-Token': csrfToken
+        },
+        credentials: 'same-origin',     // envia cookie de sessão
+        body: JSON.stringify({ comprador, mes, marcado: next ? 1 : 0 })
+      });
+      if (!r.ok) {
+        console.error('POST marcas HTTP', r.status, await r.text());
+        setIcon(btn, previous); // reverte se falhar
+      }
+    } catch (e) {
+      console.error('Falha ao salvar marcação', e);
+      setIcon(btn, previous);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    loadMarks();
+    document.querySelectorAll('.btn-check-comprador').forEach((btn) => {
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        toggleMark(btn);
+      });
+    });
+  });
+})();
+
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 {% endblock %}

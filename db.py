@@ -127,6 +127,22 @@ def criar_tabela(conn):
         senha_hash TEXT NOT NULL
     );
 
+    
+    -- Marcações visuais por comprador/mês (por usuário)
+    CREATE TABLE IF NOT EXISTS marcas_comprador_mes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        comprador TEXT NOT NULL,
+        mes TEXT NOT NULL,                     -- formato 'MM/YYYY'
+        marcado INTEGER NOT NULL DEFAULT 1,    -- 1 marcado, 0 desmarcado
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES usuario(id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_marcas_user_comprador_mes
+    ON marcas_comprador_mes (user_id, comprador, mes);
+
     CREATE TABLE IF NOT EXISTS combustivel (
        id INTEGER PRIMARY KEY AUTOINCREMENT,
        data_abastecimento TEXT NOT NULL,

@@ -1396,7 +1396,6 @@ def novo_endereco():
     finally:
         conn.close()
 
-
 @app.route('/cadastro/endereco', strict_slashes=False)
 def consultar_endereco():
     conn = get_db_connection()
@@ -1540,7 +1539,6 @@ def editar_endereco(id):
         )
     finally:
         conn.close()
-
 
 @app.route('/enderecos')
 def listar_enderecos():
@@ -3339,6 +3337,75 @@ def exportar_pdf():
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'attachment; filename=relatorio_{ano}_{mes}.pdf'
     return response
+
+
+
+
+
+@app.get('/marcas_comprador_mes')
+def get_marcas_comprador_mes():
+    if 'user_id' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
+    user_id = session['user_id']
+    conn = get_db_connection()
+
+    # Opcional: filtrar por meses recebidos (?meses=01/2026,02/2026)
+    meses = request.args.get('meses')
+    if meses:
+        meses_list = [m.strip() for m in meses.split(',') if m.strip()]
+        q_marks = ','.join(['?']*len(meses_list))
+        rows = conn.execute(
+            f"SELECT comprador, mes, marcado FROM marcas_comprador_mes WHERE user_id=? AND mes IN ({q_marks})",
+            (user_id, *meses_list)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT comprador, mes, marcado FROM marcas_comprador_mes WHERE user_id=?",
+            (user_id,)
+        ).fetchall()
+
+    conn.close()
+    # Retorna mapa achatado "comprador__mes": 0/1
+    data = {f"{r['comprador']}__{r['mes']}": int(r['marcado'] or 0) for r in rows}
+    return jsonify({'marks': data})
+
+@app.post('/marcas_comprador_mes')
+def set_marca_comprador_mes():
+    if 'user_id' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
+    user_id = session['user_id']
+    payload = request.get_json(force=True) or {}
+    comprador = (payload.get('comprador') or '').strip()
+    mes = (payload.get('mes') or '').strip()      # esperado 'MM/YYYY'
+    marcado = 1 if payload.get('marcado') else 0
+
+    if not comprador or not mes:
+        return jsonify({'error': 'comprador e mes são obrigatórios'}), 400
+
+    conn = get_db_connection()
+    # UPSERT (SQLite 3.24+)
+    conn.execute("""
+        INSERT INTO marcas_comprador_mes (user_id, comprador, mes, marcado, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id, comprador, mes)
+        DO UPDATE SET marcado=excluded.marcado, updated_at=CURRENT_TIMESTAMP
+    """, (user_id, comprador, mes, marcado))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'comprador': comprador, 'mes': mes, 'marcado': marcado})
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
