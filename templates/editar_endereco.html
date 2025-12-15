@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  {% if registro %}
+    Editar {{ tipo | capitalize }}
+  {% else %}
+    Novo {{ tipo | capitalize }}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<h2>
+  {% if registro %}
+    Editar {{ tipo | capitalize }}
+  {% else %}
+    Novo {{ tipo | capitalize }}
+  {% endif %}
+</h2>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% set reg = registro or {} %}
+
+  <div class="mb-3">
+    <label class="form-label">Estabelecimento</label>
+    <select name="estabelecimento_id" class="form-select" required>
+      <option value="">Selecione</option>
+      {% for e in estabelecimentos %}
+        <option value="{{ e.id }}"
+          {{ 'selected' if (reg.get('estabelecimento_id')|string) == (e.id|string) else '' }}>
+          {{ e.nome }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Logradouro</label>
+    <input type="text" name="logradouro" class="form-control"
+           value="{{ reg.get('logradouro', '') }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Número</label>
+    <input type="text" name="numero" class="form-control"
+           value="{{ reg.get('numero', '') }}">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">CEP</label>
+    <input type="text" name="cep" class="form-control"
+           value="{{ reg.get('cep', '') }}">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Cidade</label>
+    <select name="cidade_id" class="form-select" required>
+      <option value="">Selecione</option>
+      {% for c in cidades %}
+        {% set selected = '' %}
+        {% if reg.get('cidade_id') and (reg.get('cidade_id')|string) == (c.id|string) %}
+          {% set selected = 'selected' %}
+        {% elif reg.get('cidade') and (reg.get('cidade')|upper) == (c.nome|upper) %}
+          {# quando registro vem do banco com o nome da cidade #}
+          {% set selected = 'selected' %}
+        {% endif %}
+        <option value="{{ c.id }}" {{ selected }}>{{ c.nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">UF</label>
+    <select name="uf_id" class="form-select" required>
+      <option value="">Selecione</option>
+      {% for u in ufs %}
+        <option value="{{ u.id }}"
+          {{ 'selected' if (reg.get('uf_id')|string) == (u.id|string) else '' }}>
+          {{ u.sigla }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Bairro</label>
+    <select name="bairro_id" class="form-select">
+      <option value="">Selecione</option>
+      {% for b in bairros %}
+        <option value="{{ b.id }}"
+          {{ 'selected' if (reg.get('bairro_id')|string) == (b.id|string) else '' }}>
+          {{ b.nome }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Salvar</button>
+  <a href="{{ url_for('consultar_endereco') }}" class="btn btn-secondary">Voltar</a>
+</form>
+
+{% endblock %}

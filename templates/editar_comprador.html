@@ -16,9 +16,10 @@
     {% endif %}
   </h2>
   <form method="post">
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-3">
       <label for="nome" class="form-label">Nome</label>
-      <input type="text" name="nome" class="form-control" 
+      <input type="text" name="nome" class="form-control" style="text-transform: uppercase;"
              value="{{ registro.nome if registro else '' }}" required>
     </div>
     <button type="submit" class="btn btn-primary">Salvar</button>

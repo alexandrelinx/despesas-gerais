@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Endereços{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Endereços</h3>
+
+    <a href="{{ url_for('novo_endereco') }}" class="btn btn-primary mb-3">Novo Endereço</a>
+     
+
+    <table class="table table-bordered" id="tabelaEnderecos">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Estabelecimento</th>
+                <th>Logradouro</th>
+                <th>Número</th>
+                <th>Bairro</th>
+                <th>Cidade</th>
+                <th>UF</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for e in enderecos %}
+            <tr>
+                <td>{{ e.id }}</td>
+                <td>{{ e.estabelecimento }}</td>
+                <td>{{ e.logradouro }}</td>
+                <td>{{ e.numero }}</td>
+                <td>{{ e.bairro }}</td>
+                <td>{{ e.cidade }}</td>
+                <td>{{ e.uf }}</td>
+
+                <td class="text-center">
+                    <a href="{{ url_for('editar_endereco', id=e.id) }}" 
+                       class="btn btn-sm btn-warning">Editar</a>
+
+                    <form action="{{ url_for('excluir_endereco', id=e.id) }}" 
+                          method="POST" 
+                          style="display:inline;"
+                          onsubmit="return confirm('Tem certeza que deseja excluir este endereço?');">
+                        <button type="submit" name="csrf_token" value="{{ csrf_token() }}" 
+                                class="btn btn-sm btn-danger">
+                            Excluir
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables -->
+<script>
+    $(document).ready(function() {
+        $('#tabelaEnderecos').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            }
+        });
+    });
+</script>
+{% endblock %}

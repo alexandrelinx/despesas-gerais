@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Analytics{% endblock %}
+
+{% block content %}
+<h1>Dashboard Analytics</h1>
+
+<p>Atualização automática a cada {{ tempo_atualizacao }} segundos</p>
+
+<!-- Filtro estabelecimento + mês/ano -->
+<div class="row mb-3">
+  <div class="col-md-4">
+    <select id="estabFiltro" class="form-select">
+      <option value="">Selecione Estabelecimento</option>
+      {% for est in estabelecimentos %}
+       <!-- <option value="{{ est.estabelecimento_id or est.id }}">{{ est.estabelecimento }}</option> -->
+         <option value="{{ est.id }}">{{ est.nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
+    <input type="month" id="mesFiltro" class="form-control" placeholder="Mês/Ano">
+    <!-- Esse input tipo month retorna valor tipo "YYYY-MM" em HTML5 -->
+  </div>
+  <div class="col-md-4">
+    <button id="btnVerDespesas" class="btn btn-primary">Ver Despesas</button>
+  </div>
+</div>
+
+
+<div style="margin-bottom: 20px; text-align: center;">
+  <label>
+    <input type="checkbox" id="toggleZoom" />
+    Ativar Zoom (scroll e arrastar)
+  </label>
+</div>
+
+<div id="dashboardGraficos">
+
+  <label for="selectGrafico"><strong>Selecione o gráfico:</strong></label>
+  <select id="selectGrafico" class="form-select mb-3" style="max-width: 300px;">
+    <option value="chartEstabelecimentos">Estabelecimentos</option>
+    <option value="chartProdutos">Produtos</option>
+    <option value="chartBandeiras">Bandeiras</option>
+    <option value="chartCompradores">Compradores</option>
+    <option value="chartMeses">Meses (Evolução)</option>
+  </select>
+
+<div id="graficosContainer">
+  <div class="grafico-wrapper" data-chart-id="chartEstabelecimentos" style="display:none;width: 40vw;margin: 0 auto;">
+    <h3>Estabelecimentos</h3>
+    <label>Tipo de gráfico:
+      <select class="chart-type-select" data-chart-id="chartEstabelecimentos">
+        <option value="bar">Barra</option>
+        <option value="line">Linha</option>
+        <option value="pie">Pizza</option>
+        <option value="doughnut">Donut</option>
+      </select>
+    </label>
+
+    <!-- Botões de zoom -->
+    <div style="text-align:center; margin: 10px 0;">
+      <button id="zoomInEstabelecimentos" type="button">Zoom +</button>
+      <button id="zoomOutEstabelecimentos" type="button">Zoom -</button>
+      <button id="resetZoomEstabelecimentos" type="button">Resetar Zoom</button>
+    </div>
+
+    <canvas id="chartEstabelecimentos" style="width: 100%; height: 300px;"></canvas>
+  </div>
+</div>
+
+
+    <div class="grafico-wrapper" data-chart-id="chartProdutos" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Produtos</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartProdutos">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+          <option value="pie">Pizza</option>
+          <option value="doughnut">Donut</option>
+        </select>
+      </label>
+      <canvas id="chartProdutos" style="width: 50%; height: 300px;"></canvas>
+    </div>
+
+    <div class="grafico-wrapper" data-chart-id="chartBandeiras" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Bandeiras</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartBandeiras">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+          <option value="pie">Pizza</option>
+          <option value="doughnut">Donut</option>
+        </select>
+      </label>
+      <canvas id="chartBandeiras" style="width: 50%; height: 300px;"></canvas>
+    </div>
+
+    <div class="grafico-wrapper" data-chart-id="chartCompradores" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Compradores</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartCompradores">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+          <option value="pie">Pizza</option>
+          <option value="doughnut">Donut</option>
+        </select>
+      </label>
+      <canvas id="chartCompradores" style="width: 50%; height: 300px;"></canvas>
+    </div>
+
+    <div class="grafico-wrapper" data-chart-id="chartMeses" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Meses (Evolução)</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartMeses">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+        </select>
+      </label>
+      <canvas id="chartMeses" style="width: 50%; height: 300px;"></canvas>
+    </div>
+  </div>
+
+</div>
+
+
+
+<!-- Modal para exibir despesas -->
+<div class="modal fade" id="modalDespesasEstabelecimento" tabindex="-1" aria-labelledby="modalDespesasEstabelecimentoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+     <div class="modal-content">
+        <div class="modal-header">
+           <h5 class="modal-title" id="modalDespesasEstabelecimentoLabel">Despesas do Estabelecimento</h5>
+           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+           <table class="table table-sm table-striped">
+             <thead>
+               <tr>
+                 <th>Data Compra</th>
+                 <th>Bandeira</th>
+                 <th>Valor Compra</th>
+                 <th>Quantidade de Parcelas</th>
+                 <th>Valor Parcela</th>
+               </tr>
+             </thead>
+             <tbody id="tbodyDespesasEstab">
+               <!-- será preenchido via JS -->
+             </tbody>
+           </table>
+           <p class="mt-3"><strong>Total Compras:</strong> R$ <span id="totalDespesasEstab">0.00</span></p>
+        </div>
+        <div class="modal-footer">
+           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+     </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('btnVerDespesas').addEventListener('click', function(event) {
+    event.preventDefault();
+    const estSelect = document.getElementById('estabFiltro');
+    const estId = estSelect ? estSelect.value : null;
+    const mesInput = document.getElementById('mesFiltro');
+    const mesAnoInput = mesInput ? mesInput.value : null;
+
+    console.log("Selecionado estId:", estId);
+    console.log("Selecionado mesAnoInput:", mesAnoInput);
+
+    if (!estId || estId.trim() === "") {
+      alert("Selecione estabelecimento");
+      return;
+    }
+    if (!mesAnoInput || mesAnoInput.trim() === "") {
+      alert("Selecione mês/ano");
+      return;
+    }
+
+    // Converter "YYYY-MM" para "MM/YYYY"
+    const parts = mesAnoInput.split('-');
+    if (parts.length !== 2) {
+      alert("Formato de mês inválido");
+      return;
+    }
+    const ano = parts[0];
+    const mes = parts[1];
+    const mesAno = `${mes}/${ano}`;
+
+    fetch(`/analytics/despesas_por_estabelecimento?estabelecimento_id=${estId}&mes_ano=${mesAno}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+        const tbody = document.getElementById('tbodyDespesasEstab');
+        tbody.innerHTML = '';
+        data.despesas.forEach(d => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${d.data_compra}</td>
+            <td>${d.bandeira}</td>
+            <td>R$ ${d.valor_compra.toFixed(2)}</td>
+            <td>${d.quantidade_parcelas}</td>
+            <td>R$ ${d.valor_parcela.toFixed(2)}</td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+        document.getElementById('totalDespesasEstab').textContent = data.total.toFixed(2);
+
+        const estNome = estSelect.options[estSelect.selectedIndex].text;
+        document.getElementById('modalDespesasEstabelecimentoLabel').textContent =
+          `Despesas de ${estNome} no mês ${mesAno}`;
+
+        const modalEl = document.getElementById('modalDespesasEstabelecimento');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+      })
+      .catch(err => {
+        console.error('Erro ao buscar despesas:', err);
+        alert('Erro ao buscar as despesas.');
+      });
+  });
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+<script>
+const chartInstances = {};
+
+function prepareChartData(data, labelKey) {
+  // Para meses (que já vem com labels separados), adaptar função:
+  if (labelKey === 'meses') {
+    return {
+      labels: data,
+      datasets: [{
+        label: 'Total (R$)',
+        data: data.map ? data.map(Number) : data, // já deve ser número
+        fill: false,
+        borderColor: '#4e79a7',
+        tension: 0.1
+      }]
+    };
+  }
+  return {
+    labels: data.map(item => item[labelKey]),
+    datasets: [{
+      label: 'Total (R$)',
+      data: data.map(item => Number(item.total.toFixed(2))),
+      backgroundColor: [
+        '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+        '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'
+      ],
+      borderWidth: 1
+    }]
+  };
+}
+
+const optionsBasicas = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true }
+  },
+  scales: {
+    y: { beginAtZero: true }
+  }
+};
+
+const optionsComZoom = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true },
+    zoom: {
+      pan: {
+        enabled: true,
+        mode: 'xy'  // permite arrastar nos eixos x e y
+      },
+      zoom: {
+        wheel: {
+          enabled: true,  // zoom com scroll do mouse
+        },
+        pinch: {
+          enabled: true   // zoom com gesto de pinça no touch
+        },
+        mode: 'xy'  // zoom nos eixos x e y
+      }
+    }
+  },
+  scales: {
+    y: { beginAtZero: true }
+  }
+};
+
+
+
+function criarGrafico(chartId, tipo, data, options) {
+  const ctx = document.getElementById(chartId).getContext('2d');
+  if (chartInstances[chartId]) {
+    chartInstances[chartId].destroy();
+  }
+  chartInstances[chartId] = new Chart(ctx, {
+    type: tipo,
+    data: data,
+    options: options
+  });
+}
+
+// Dados dos gráficos (adaptar para seu backend)
+const dadosGraficos = {
+  chartEstabelecimentos: prepareChartData({{ totais_estab|tojson }}, 'estabelecimento'),
+  chartProdutos: prepareChartData({{ produtos|tojson }}, 'produto'),
+  chartBandeiras: prepareChartData({{ bandeiras|tojson }}, 'bandeira'),
+  chartCompradores: prepareChartData({{ compradores|tojson }}, 'comprador'),
+  chartMeses: {
+    labels: {{ meses|map(attribute='mes_ano')|list|tojson }},
+    datasets: [{
+      label: 'Total (R$)',
+      data: {{ meses|map(attribute='total')|list|tojson }},
+      fill: false,
+      borderColor: '#4e79a7',
+      tension: 0.1
+    }]
+  }
+};
+
+// Inicializa todos os gráficos com tipo padrão
+const tiposPadrao = {
+  chartEstabelecimentos: 'bar',
+  chartProdutos: 'bar',
+  chartBandeiras: 'bar',
+  chartCompradores: 'bar',
+  chartMeses: 'line'
+};
+
+const usarZoom = document.getElementById('toggleZoom').checked;
+
+for (const chartId in dadosGraficos) {
+  criarGrafico(chartId, 'bar', dadosGraficos[chartId], usarZoom ? optionsComZoom : optionsBasicas);
+}
+
+// Aguardar o gráfico estar criado e acessível em chartInstances['chartEstabelecimentos']
+
+const chartEstabelecimentos = chartInstances['chartEstabelecimentos'];
+
+document.getElementById('zoomInEstabelecimentos').addEventListener('click', () => {
+  chartEstabelecimentos.zoom(1.1);
+});
+
+document.getElementById('zoomOutEstabelecimentos').addEventListener('click', () => {
+  chartEstabelecimentos.zoom(0.9);
+});
+
+document.getElementById('resetZoomEstabelecimentos').addEventListener('click', () => {
+  chartEstabelecimentos.resetZoom();
+});
+
+
+// Função para mostrar só o gráfico selecionado
+function mostrarGraficoSelecionado(idSelecionado) {
+  document.querySelectorAll('.grafico-wrapper').forEach(div => {
+    div.style.display = div.dataset.chartId === idSelecionado ? 'block' : 'none';
+  });
+}
+
+// Evento para mudar gráfico
+document.getElementById('selectGrafico').addEventListener('change', function() {
+  mostrarGraficoSelecionado(this.value);
+});
+
+
+document.getElementById('toggleZoom').addEventListener('change', function () {
+  const usarZoom = this.checked;
+
+  for (const chartId in dadosGraficos) {
+    // pegar o tipo atual selecionado no select de tipo do gráfico
+    const selectTipo = document.querySelector(`select[data-chart-id="${chartId}"]`);
+    const tipo = selectTipo ? selectTipo.value : 'bar';
+
+    criarGrafico(chartId, tipo, dadosGraficos[chartId], usarZoom ? optionsComZoom : optionsBasicas);
+  }
+});
+
+
+
+
+
+
+
+
+
+// Evento para mudar tipo do gráfico (para cada select)
+document.querySelectorAll('.chart-type-select').forEach(select => {
+  select.addEventListener('change', function() {
+    const chartId = this.dataset.chartId;
+    const tipo = this.value;
+    const data = dadosGraficos[chartId];
+    const options = JSON.parse(JSON.stringify(optionsBasicas));
+
+    // Ajuste para gráficos tipo pizza/donut remover eixos e mostrar legenda
+    if (tipo === 'pie' || tipo === 'doughnut') {
+      delete options.scales;
+      options.plugins.legend.display = true;
+    }
+
+    criarGrafico(chartId, tipo, data, options);
+  });
+});
+
+// Inicializa mostrando o gráfico padrão selecionado e tipo padrão
+const selectGrafico = document.getElementById('selectGrafico');
+mostrarGraficoSelecionado(selectGrafico.value);
+
+// Ajusta o select de tipo para o gráfico inicial (exibe o tipo padrão selecionado)
+document.querySelectorAll('.chart-type-select').forEach(select => {
+  const chartId = select.dataset.chartId;
+  if (chartId === selectGrafico.value) {
+    select.value = tiposPadrao[chartId];
+  }
+});
+
+
+</script>
+
+
+
+
+{% endblock %}

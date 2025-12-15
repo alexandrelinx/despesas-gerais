@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  {% if registro %}
+    Editar {{ tipo | capitalize }}
+  {% else %}
+    Novo {{ tipo | capitalize }}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <h2>
+    {% if registro %}
+      Editar {{ tipo | capitalize }}
+    {% else %}
+      Novo {{ tipo | capitalize }}
+    {% endif %}
+  </h2>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="data" class="form-label">Data da Manutenção</label>
+        <input type="date" name="data" class="form-control"
+               value="{{ registro.data if registro else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="estabelecimento_id" class="form-label">Estabelecimento</label>
+        <select name="estabelecimento_id" class="form-select">
+            <option value="">-- Selecione --</option>
+            {% for e in estabelecimentos %}
+              <option value="{{ e.id }}"
+                {% if registro and registro.estabelecimento_id == e.id %}selected{% endif %}>
+                {{ e.nome }}
+              </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="tipo_id" class="form-label">Tipo</label>
+        <select name="tipo_id" class="form-select" required>
+            <option value="">-- Selecione --</option>
+            {% for t in tipos %}
+              <option value="{{ t.id }}"
+                {% if registro and registro.tipo_id == t.id %}selected{% endif %}>
+                {{ t.nome }}
+              </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="produto_id" class="form-label">Produto</label>
+        <select name="produto_id" class="form-select">
+            <option value="">-- Selecione --</option>
+            {% for p in produtos %}
+              <option value="{{ p.id }}"
+                {% if registro and registro.produto_id == p.id %}selected{% endif %}>
+                {{ p.nome }}
+              </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="fabricante" class="form-label">Fabricante</label>
+        <input type="text" name="fabricante" class="form-control"
+               style="text-transform: uppercase;"
+               value="{{ registro.fabricante if registro else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="valor" class="form-label">Valor (R$)</label>
+        <input type="number" step="0.01" name="valor" class="form-control"
+               value="{{ registro.valor if registro else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="data_aplicacao" class="form-label">Data da Aplicação</label>
+        <input type="date" name="data_aplicacao" class="form-control"
+               value="{{ registro.data_aplicacao if registro else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="quilometragem" class="form-label">Quilometragem</label>
+        <input type="number" step="1" name="quilometragem" class="form-control"
+               value="{{ registro.quilometragem if registro else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="observacao" class="form-label">Observação</label>
+        <textarea name="observacao" class="form-control" rows="3"
+                  style="text-transform: uppercase;">{{ registro.observacao if registro else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('listar_manutencoes') }}" class="btn btn-secondary">Voltar</a>
+</form>
+{% endblock %}

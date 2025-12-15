@@ -5,9 +5,10 @@
 {% block content %}
 <h2>Nova Bandeira</h2>
 <form method="post">
+     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-3">
         <label for="nome" class="form-label">Nome</label>
-        <input type="text" id="nome" name="nome" class="form-control" required>
+        <input type="text" id="nome" name="nome" class="form-control" style="text-transform: uppercase;" required>
     </div>
     
     <div class="mb-4">

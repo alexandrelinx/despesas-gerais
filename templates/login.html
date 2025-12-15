@@ -1,0 +1,30 @@
+{% extends 'base_login.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block page_title %}Login{% endblock %}
+
+{% block content %}
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+      <label for="usuario" class="form-label">Usuário:</label>
+      <input type="text" id="usuario" name="usuario" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="senha" class="form-label">Senha:</label>
+      <input type="password" id="senha" name="senha" class="form-control" required>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-center">
+      <button type="submit" class="btn btn-primary">Entrar</button>
+    <!--<button type="button" class="btn btn-secondary ms-2" onclick="window.close()">Fechar</button> -->
+    </div>
+    </div>
+  </form>
+{% endblock %}
+
+
+

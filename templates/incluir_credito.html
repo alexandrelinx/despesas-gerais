@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Novo Crédito{% endblock %}
+{% block content %}
+<h2>Novo Crédito de Salário</h2>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Campo ID do Crédito -->
+  <!--  <div class="mb-3">
+        <label for="id" class="form-label">ID do Crédito</label>
+        <input type="number" name="id" class="form-control" required>
+    </div> -->
+
+    <!-- Campo Data do Crédito -->
+    <div class="mb-3">
+        <input type="text" name="data_do_credito"placeholder="dd/mm/aaaa" id="data_do_credito" class="form-control"  required
+            value="{{ registro.data_do_credito if registro else '' }}">
+
+    </div>
+
+    <!-- Campo Valor do Salário -->
+    <div class="mb-3">
+        <label for="valor_salario" class="form-label">Valor do Salário</label>
+        <input type="number" step="0.01" name="valor_salario" class="form-control" required>
+    </div>
+
+    <!-- Botões -->
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('listar_credito') }}" class="btn btn-secondary">Voltar</a>
+</form>
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- jQuery Mask Plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+
+<!-- Ativando a máscara -->
+<script>
+  const input = document.getElementById('data_do_credito');
+
+  input.addEventListener('input', function(e) {
+    let value = input.value;
+
+    // Remove tudo que não for número
+    value = value.replace(/\D/g, '');
+
+    // Limita o tamanho máximo para 8 dígitos (ddmmyyyy)
+    if (value.length > 8) {
+      value = value.slice(0,8);
+    }
+
+    // Insere as barras automaticamente
+    if (value.length > 4) {
+      // dd/mm/yyyy
+      value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    } else if (value.length > 2) {
+      // dd/mm
+      value = value.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    }
+
+    input.value = value;
+  });
+</script>>
+{% endblock %}

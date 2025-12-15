@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+
+{% block title %}
+Editar Abasteciment
+{% endblock %}
+
+{% block content %}
+<h2>Editar Abastecimento</h2>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <label for="data_abastecimento">Data (dd/mm/aaaa):</label>
+  <input type="text" id="data_abastecimento" name="data_abastecimento" placeholder="dd/mm/aaaa" class="form-control"
+         value="{{ row['data_abastecimento'] }}" required><br>
+
+  <label>Quantidede de combustivel abastecida(L):</label>
+  <label for="Quantidade" class="form-label"> Quantidade(L):</label>
+  <input type="number" name="quantidade" step="0.001" class="form-control"
+    value="{{ '%.3f'|format(row['quantidade']) }}" required><br>
+
+  <label>Kilometragem (km):</label>
+  <input type="number" name="kilometragem" step="0.01" class="form-control"
+   value="{{ '%.2f'|format(row['kilometragem']) }}" required><br>
+
+  <label>Preço por litro (R$):</label>
+  <input type="number" name="preco_litro" step="0.01" class="form-control"
+  value="{{ '%.2f'|format(row['preco_litro']) }}" required><br>
+
+  <button type="submit"  class="btn btn-primary">Salvar Alterações</button>
+   <a href="{{ url_for('combustivel') }}" class="btn btn-secondary">Voltar</a>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("data_abastecimento");
+    input.addEventListener("input", function () {
+        let value = input.value.replace(/\D/g, '');
+        if (value.length >= 2) value = value.slice(0,2) + '/' + value.slice(2);
+        if (value.length >= 5) value = value.slice(0,5) + '/' + value.slice(5,9);
+        input.value = value;
+    });
+});
+</script>
+{% endblock %}

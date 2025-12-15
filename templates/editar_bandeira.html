@@ -17,26 +17,28 @@
     {% endif %}
   </h2>
   <form method="post">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-3">
       <label for="nome" class="form-label">Nome</label>
       <input
         type="text"
         id="nome"
         name="nome"
-        class="form-control"
+        class="form-control" 
+        style="text-transform: uppercase;"
         value="{{ registro.nome if registro else '' }}"
         required
       >
     </div>
 
     <div class="mb-4">
-      <label for="vencimento" class="form-label">Vencimento</label>
+      <label for="vencimento_dia" class="form-label">Vencimento</label>
       <input
         type="text"
-        id="vencimento"
-        name="vencimento"
+        id="vencimento_dia"
+        name="vencimento_dia"
         class="form-control"
-        value="{{ registro.vencimento if registro else '' }}"
+        value="{{ registro.vencimento_dia if registro else '' }}"
         required
       >
     </div>

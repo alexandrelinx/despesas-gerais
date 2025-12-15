@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Lançar Despesas{% endblock %}
+
+{% block content %}
+<h2>Lançar Nova Despesa</h2>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row">
+        <!-- Estabelecimento -->
+        <div class="col-md-6">
+          <label>Estabelecimento</label>
+          <select id="estabelecimento_id" name="estabelecimento_id" class="form-control select2" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for e in estabelecimentos %}
+            <option value="{{ e.id }}">{{ e.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Categoria -->
+        <div class="col-md-6">
+          <label>Categoria</label>
+          <select id="categoria_id" name="categoria_id" class="form-control select2" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for c in categorias %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Local da Compra -->
+       <!--   <div class="col-md-6">
+          <label>Local da Compra</label>
+          <select id="local_compra_id" name="local_compra_id" class="form-control select2" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for l in locais %}
+            <option value="{{ l.id }}">{{ l.nome }}</option>
+            {% endfor %}
+          </select>
+        </div> -->
+
+        <!-- Comprador -->
+        <div class="col-md-6">
+          <label>Comprador</label>
+          <select id="comprador_id" name="comprador_id" class="form-control select2" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for c in compradores %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Produto -->
+        <div class="col-md-6">
+          <label>Produto</label>
+          <select id="produto_id" name="produto_id" class="form-control select2" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for p in produtos %}
+            <option value="{{ p.id }}">{{ p.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Data da Compra -->
+        <div class="col-md-6">
+          <label>Data da Compra</label>
+          <input type="text" name="data_compra" id="data_do_credito" placeholder="dd/mm/aaaa" class="form-control" required
+                 value="{{ registro.data_do_credito if registro else '' }}">
+        </div>
+
+        <!-- Valor da Compra -->
+        <div class="col-md-6">
+          <label>Valor da Compra</label>
+          <input type="text" name="valor_compra" class="form-control" required id="valor_compra">
+        </div>
+
+        <!-- Forma de Pagamento -->
+        <div class="col-md-6">
+          <label>Forma de Pagamento</label>
+          <select name="forma_pagamento_id" class="form-control" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for f in formas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Bandeira -->
+        <div class="col-md-6">
+          <label>Bandeira</label>
+          <select id="bandeira_id" name="bandeira_id" class="form-control select2" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for b in bandeiras %}
+            <option value="{{ b.id }}">{{ b.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Parcelamento -->
+        <div class="col-md-6">
+          <label>Parcelamento</label>
+          <select name="parcelamento_id" id="parcelamento" class="form-control" required>
+             <option value="" disabled selected>Selecione</option>
+            {% for p in parcelamentos %}
+            <option value="{{ p.id }}">{{ p.tipo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Quantidade de Parcelas -->
+        <div class="col-md-6">
+          <label>Qtd Parcelas</label>
+          <select name="quantidade_parcelas_id" id="quantidade_parcelas" class="form-control" required>
+             <option value="" disabled selected>Selecione</option>
+            {% for q in quantidades %}
+            <option value="{{ q.id }}" {% if q.quantidade == 1 %}selected{% endif %}>{{ q.quantidade }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Valor da Parcela -->
+        <div class="col-md-6">
+          <label>Valor da Parcela</label>
+          <input type="number" step="0.01" name="valor_parcela" class="form-control" id="valor_parcela" required>
+        </div>
+
+        <!-- Observação -->
+        <div class="col-md-12">
+          <label>Observação</label>
+          <textarea name="observacao" class="form-control" rows="3" placeholder="Digite aqui alguma observação..." autocorrect="on" autocapitalize="sentences" spellcheck="true">{{ request.form.observacao or '' }}</textarea>
+        </div>
+
+    </div>
+    <br>
+    <button type="submit" class="btn btn-success">Salvar Lançamento</button>
+    <button type="button" id="limparCampos" class="btn btn-warning">Limpar Filtros</button>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Voltar</a>
+</form>
+
+<!-- Script ajustado -->
+<script>
+$(document).ready(function () {
+  // Máscara para campo data
+  const inputData = document.getElementById('data_do_credito');
+  if (inputData) {
+    inputData.addEventListener('input', function () {
+      let value = inputData.value.replace(/\D/g, '');
+      if (value.length > 8) value = value.slice(0, 8);
+
+      if (value.length > 4) {
+        value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+      } else if (value.length > 2) {
+        value = value.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+      }
+      inputData.value = value;
+    });
+  }
+
+  // Inputs e selects usados para cálculo das parcelas
+  const valorCompraInput = $('input[name="valor_compra"]');
+  const parcelaInput = $('input[name="valor_parcela"]');
+  const qtdParcelasSelect = $('#quantidade_parcelas');
+  const parcelamentoSelect = $('#parcelamento');
+
+  // Retorna a quantidade de parcelas selecionada (número)
+  function getQtdParcelas() {
+    const texto = qtdParcelasSelect.find('option:selected').text();
+    return parseInt(texto) || 1;
+  }
+
+  // Calcula valor da parcela e preenche o campo
+  function calcularParcela() {
+    let valorCompra = valorCompraInput.val().replace(',', '.');
+    valorCompra = parseFloat(valorCompra) || 0;
+    const qtdParcelas = getQtdParcelas();
+
+    if (valorCompra > 0) {
+      const valorParcela = (valorCompra / qtdParcelas).toFixed(2);
+      parcelaInput.val(valorParcela);
+    } else {
+      parcelaInput.val('');
+    }
+  }
+
+  // Habilita/desabilita qtd parcelas conforme parcelamento
+  parcelamentoSelect.on('change', function () {
+    const tipo = parcelamentoSelect.find('option:selected').text().trim();
+
+    if (tipo === 'Sim') {
+      qtdParcelasSelect.css({'pointer-events': 'auto', 'background-color': ''});
+      parcelaInput.val('');
+    } else {
+      qtdParcelasSelect.css({'pointer-events': 'none', 'background-color': '#e9ecef'});
+
+      // Força qtd parcelas = 1
+      const valorUm = qtdParcelasSelect.find('option').filter(function () {
+        return $(this).text().trim() === '1';
+      }).val();
+      qtdParcelasSelect.val(valorUm);
+      calcularParcela();
+    }
+  });
+
+  // Recalcula parcela quando valor compra ou qtd parcelas mudam
+  valorCompraInput.on('input', calcularParcela);
+  qtdParcelasSelect.on('change', calcularParcela);
+
+  // Formata valor da compra ao sair do campo (2 decimais com vírgula)
+  valorCompraInput.on('blur', function () {
+    let val = $(this).val();
+    if (val) {
+      val = val.replace(',', '.');
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+        $(this).val(num.toFixed(2).replace('.', ','));
+      }
+    }
+  });
+
+  // Inicializa estado com parcelamento "Não"
+  setTimeout(function () {
+    const valorNao = parcelamentoSelect.find('option').filter(function () {
+      return $(this).text().trim() === 'Não';
+    }).val();
+
+    if (valorNao) {
+      parcelamentoSelect.val(valorNao).trigger('change');
+    }
+  }, 100);
+
+  // Inicializa Select2 com ajax para todos os campos
+  const camposSelect2 = [
+    { id: '#estabelecimento_id', tabela: 'estabelecimento', placeholder: 'Buscar estabelecimento...' },
+    { id: '#categoria_id', tabela: 'categoria', placeholder: 'Buscar categoria...' },
+    { id: '#local_compra_id', tabela: 'local', placeholder: 'Buscar local de compra...' },
+    { id: '#comprador_id', tabela: 'comprador', placeholder: 'Buscar comprador...' },
+    { id: '#produto_id', tabela: 'produto', placeholder: 'Buscar produto...' },
+    { id: '#bandeira_id', tabela: 'bandeira', placeholder: 'Buscar bandeira...' }
+  ];
+
+  camposSelect2.forEach(function (campo) {
+  if ($(campo.id).length) {
+    $(campo.id).select2({
+      placeholder: campo.placeholder,
+      minimumInputLength: 2, // mínimo 2 letras para buscar
+      ajax: {
+        url: `/api/buscar?tabela=${campo.tabela}`,
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term };
+        },
+        processResults: function (data) {
+          console.log(data); // Log para depuração
+          return { results: data };
+        },
+        cache: true
+      },
+      width: '100%',
+      allowClear: true,
+      matcher: function(params, data) {
+        // Se não há termo, retorna todos
+        if ($.trim(params.term) === '') return data;
+
+        // Busca case-insensitive em qualquer parte do texto
+        if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+          return data;
+        }
+
+        // Não encontrado
+        return null;
+      }
+    });
+  }
+});
+
+});
+</script>
+<script>
+// Botão "Limpar Campos"
+$('#limparCampos').on('click', function () {
+  // Limpa todos os campos de texto, número e textarea
+  $('input[type="text"], input[type="number"], textarea').val('');
+
+  // Reseta selects normais
+  $('select').prop('selectedIndex', 0);
+
+  // Reseta selects com Select2
+  $('.select2').val(null).trigger('change');
+
+  // Opcional: resetar campos calculados
+  $('#valor_parcela').val('');
+
+  // Opcional: voltar parcelamento para "Não" e qtd parcelas = 1
+  const parcelamentoSelect = $('#parcelamento');
+  const qtdParcelasSelect = $('#quantidade_parcelas');
+
+  const valorNao = parcelamentoSelect.find('option').filter(function () {
+    return $(this).text().trim() === 'Não';
+  }).val();
+
+  if (valorNao) {
+    parcelamentoSelect.val(valorNao).trigger('change');
+  }
+
+  const valorUm = qtdParcelasSelect.find('option').filter(function () {
+    return $(this).text().trim() === '1';
+  }).val();
+
+  if (valorUm) {
+    qtdParcelasSelect.val(valorUm).trigger('change');
+  }
+});
+
+</script>
+
+{% endblock %}
