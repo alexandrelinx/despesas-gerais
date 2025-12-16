@@ -3025,40 +3025,165 @@ def combustivel():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-
-    # Filtros de mês/ano
     mes = request.args.get('mes') or datetime.today().strftime('%m')
     ano = request.args.get('ano') or datetime.today().strftime('%Y')
 
-    dados = obter_dados_por_mes(ano, mes)
+    # Traz os registros do mês filtrado (sua função atual)
+    dados = obter_dados_por_mes(ano, mes)  # precisa conter id, data_abastecimento, quantidade, kilometragem, valor_pago, consumo
+    dados = [dict(r) for r in dados] 
+    total_quantidade = sum(row['quantidade'] for row in dados) if dados else 0
+    total_km = sum(row['kilometragem'] for row in dados) if dados else 0
+    total_pago = sum(row['valor_pago'] for row in dados) if dados else 0
 
-    total_quantidade = sum(row['quantidade'] for row in dados)
-    total_km = sum(row['kilometragem'] for row in dados)
-    total_pago = sum(row['valor_pago'] for row in dados)
+    # Média simples de consumo (km/L) dos registros do mês
+    # media_consumo = round(
+    #     (sum(row['consumo'] for row in dados if row.get('consumo') is not None) /
+    #      max(1, sum(1 for r in dados if r.get('consumo') is not None))),
+    #     3
+    # ) if dados else 0
 
-    media_consumo = round(sum(row['consumo'] for row in dados) / len(dados), 2) if dados else 0
+    # Média simples de consumo (km/L) dos registros do mês — compatível com sqlite3.Row
+    if dados:
+       consumos_validos = [r['consumo'] for r in dados if ('consumo' in r.keys() and r['consumo'] is not None)]
+       media_consumo = round(sum(consumos_validos) / len(consumos_validos), 3) if consumos_validos else 0
+    else:
+        media_consumo = 0
+
+
+
+    # Carrega TODOS abastecimentos para calcular os dias entre um e outro (ordenação por data dd/mm/aaaa)
+    cursor.execute('''
+        SELECT id, data_abastecimento, quantidade, kilometragem, valor_pago
+        FROM combustivel
+        WHERE data_abastecimento IS NOT NULL
+        ORDER BY substr(data_abastecimento,7,4), substr(data_abastecimento,4,2), substr(data_abastecimento,1,2)
+    ''')
+    todos = cursor.fetchall()
+
+    def parse_br(s):
+        try:
+            return datetime.strptime(s, '%d/%m/%Y').date()
+        except:
+            return None
+
+    # Calcula métricas diárias do período (abastecimento anterior -> atual)
+    metrics_by_id = {}
+    prev_date = None
+    for row_all in todos:
+        curr_date = parse_br(row_all['data_abastecimento'])
+        if prev_date is None or curr_date is None:
+            metrics_by_id[row_all['id']] = {
+                'dias_periodo': None, 'km_dia': None, 'litros_dia': None, 'valor_dia': None
+            }
+        else:
+            dias = (curr_date - prev_date).days
+            if dias <= 0:
+                metrics_by_id[row_all['id']] = {
+                    'dias_periodo': dias, 'km_dia': None, 'litros_dia': None, 'valor_dia': None
+                }
+            else:
+                km = row_all['kilometragem'] or 0
+                lt = row_all['quantidade'] or 0
+                val = row_all['valor_pago'] or 0
+                metrics_by_id[row_all['id']] = {
+                    'dias_periodo': dias,
+                    'km_dia': round(km / dias, 2) if km else 0,
+                    'litros_dia': round(lt / dias, 2) if lt else 0,
+                    'valor_dia': round(val / dias, 2) if val else 0
+                }
+        if curr_date:
+            prev_date = curr_date
+
+    # Enriquecer os dados do mês com as métricas e calcular resumo mensal coerente (apenas onde dias > 0)
+    dados_enriquecidos = []
+    total_dias_periodo = 0
+    soma_km_periodos = 0.0
+    soma_litros_periodos = 0.0
+    soma_valor_periodos = 0.0
+
+    for row in dados:
+        m = metrics_by_id.get(row['id'], {})
+        dias = m.get('dias_periodo')
+
+        if isinstance(dias, int) and dias > 0:
+            total_dias_periodo += dias
+            soma_km_periodos += row['kilometragem'] or 0
+            soma_litros_periodos += row['quantidade'] or 0
+            soma_valor_periodos += row['valor_pago'] or 0
+
+        novo = dict(row)
+        novo.update({
+            'dias_periodo': dias,
+            'km_dia': m.get('km_dia'),
+            'litros_dia': m.get('litros_dia'),
+            'valor_dia': m.get('valor_dia'),
+        })
+        dados_enriquecidos.append(novo)
+
+    media_km_dia_mes = round(soma_km_periodos / total_dias_periodo, 2) if total_dias_periodo else 0
+    media_litros_dia_mes = round(soma_litros_periodos / total_dias_periodo, 2) if total_dias_periodo else 0
+    media_valor_dia_mes = round(soma_valor_periodos / total_dias_periodo, 2) if total_dias_periodo else 0
 
     # Totais do ano
     cursor.execute('''
-    SELECT 
-        SUM(quantidade),
-        SUM(kilometragem),
-        SUM(valor_pago)
-    FROM combustivel
-    WHERE data_abastecimento LIKE ? 
-    ''', (f'%/{ano}',))
-    total_ano = cursor.fetchone()
+        SELECT SUM(quantidade), SUM(kilometragem), SUM(valor_pago)
+        FROM combustivel
+        WHERE substr(data_abastecimento,7,4) = ?
+    ''', (ano,))
+    total_ano = cursor.fetchone() or (0, 0, 0)
+
     conn.close()
 
-    return render_template('combustivel.html',
-                           dados=dados,
-                           mes=mes,
-                           ano=ano,
-                           total_quantidade=total_quantidade,
-                           total_km=total_km,
-                           total_pago=total_pago,
-                           media_consumo=media_consumo,
-                           total_ano=total_ano)
+    return render_template(
+        'combustivel.html',
+        dados=dados_enriquecidos,
+        mes=mes, ano=ano,
+        total_quantidade=total_quantidade,
+        total_km=total_km,
+        total_pago=total_pago,
+        media_consumo=media_consumo,
+        total_ano=total_ano,
+        total_dias_periodo=total_dias_periodo,
+        media_km_dia_mes=media_km_dia_mes,
+        media_litros_dia_mes=media_litros_dia_mes,
+        media_valor_dia_mes=media_valor_dia_mes
+    )
+
+
+
+    # Filtros de mês/ano
+   # mes = request.args.get('mes') or datetime.today().strftime('%m')
+    # ano = request.args.get('ano') or datetime.today().strftime('%Y')
+
+    # dados = obter_dados_por_mes(ano, mes)
+
+    # total_quantidade = sum(row['quantidade'] for row in dados)
+    # total_km = sum(row['kilometragem'] for row in dados)
+    # total_pago = sum(row['valor_pago'] for row in dados)
+
+    # media_consumo = round(sum(row['consumo'] for row in dados) / len(dados), 2) if dados else 0
+
+    # # Totais do ano
+    # cursor.execute('''
+    # SELECT 
+    #     SUM(quantidade),
+    #     SUM(kilometragem),
+    #     SUM(valor_pago)
+    # FROM combustivel
+    # WHERE data_abastecimento LIKE ? 
+    # ''', (f'%/{ano}',))
+    # total_ano = cursor.fetchone()
+    # conn.close()
+
+    # return render_template('combustivel.html',
+    #                        dados=dados,
+    #                        mes=mes,
+    #                        ano=ano,
+    #                        total_quantidade=total_quantidade,
+    #                        total_km=total_km,
+    #                        total_pago=total_pago,
+    #                        media_consumo=media_consumo,
+    #                        total_ano=total_ano)
 
 @app.route('/grafico/consumo')
 def grafico_consumo():
