@@ -2471,28 +2471,111 @@ def nova_manutencao():
     )
 
 # ===================== CONSULTAR MANUTENÇÕES ===================== #
-@app.route('/cadastro/manutencao')
+# @app.route('/cadastro/manutencao')
+# def consultar_manutencao():
+#     conn = get_db_connection()
+#     try:
+#         manutencoes = conn.execute("""
+#             SELECT M.*, 
+#                    E.nome AS estabelecimento_nome, 
+#                    P.nome AS produto_nome, 
+#                    T.nome AS tipo_nome
+#             FROM MANUTENCAO_AUTO M
+#             LEFT JOIN ESTABELECIMENTO E ON M.estabelecimento_id = E.id
+#             LEFT JOIN PRODUTO P ON M.produto_id = P.id
+#             LEFT JOIN TIPO T ON M.tipo_id = T.id
+#             ORDER BY M.data DESC
+#         """).fetchall()
+#     except Exception as e:
+#         manutencoes = []
+#         flash(f"Erro ao consultar manutenções: {str(e)}", "danger")
+#     finally:
+#         conn.close()
+
+#     return render_template('consultar_manutencao.html', manutencoes=manutencoes)
+@app.route('/cadastro/manutencao', methods=['GET'])
 def consultar_manutencao():
     conn = get_db_connection()
+
+    # Se no futuro você quiser filtros, já deixo o padrão aqui:
+    # tipo_filtro = request.args.get('tipo', '').strip()
+    # data_inicio = request.args.get('data_inicio', '').strip()
+    # data_fim = request.args.get('data_fim', '').strip()
+    # estabelecimento_filtro = request.args.get('estabelecimento', '').strip()
+    # produto_filtro = request.args.get('produto', '').strip()
+
+    # Para destacar uma manutenção alterada (igual alterada_id em despesas)
+    alterada_id = request.args.get('alterada_id')
+    print("alterada_id recebido na rota consultar_manutencao:", alterada_id)
+
     try:
-        manutencoes = conn.execute("""
-            SELECT M.*, 
-                   E.nome AS estabelecimento_nome, 
-                   P.nome AS produto_nome, 
-                   T.nome AS tipo_nome
+        query = """
+            SELECT 
+                M.id,
+                M.data,
+                M.data_aplicacao,
+                M.quilometragem,
+                M.valor,
+                M.observacao,
+                M.fabricante,
+                E.nome AS estabelecimento_nome, 
+                P.nome AS produto_nome, 
+                T.nome AS tipo_nome
             FROM MANUTENCAO_AUTO M
             LEFT JOIN ESTABELECIMENTO E ON M.estabelecimento_id = E.id
             LEFT JOIN PRODUTO P ON M.produto_id = P.id
             LEFT JOIN TIPO T ON M.tipo_id = T.id
-            ORDER BY M.data DESC
-        """).fetchall()
+            WHERE 1=1
+        """
+        params = []
+
+        # Se quiser filtros, adicionar como nas despesas:
+        # if estabelecimento_filtro:
+        #     query += " AND E.id = ?"
+        #     params.append(estabelecimento_filtro)
+        #
+        # if produto_filtro:
+        #     query += " AND P.id = ?"
+        #     params.append(produto_filtro)
+        #
+        # if data_inicio:
+        #     query += """
+        #         AND (
+        #             substr(M.data, 7, 4) || substr(M.data, 4, 2) || substr(M.data, 1, 2)
+        #         ) >= ?
+        #     """
+        #     params.append(data_inicio.replace("-", ""))
+        #
+        # if data_fim:
+        #     query += """
+        #         AND (
+        #             substr(M.data, 7, 4) || substr(M.data, 4, 2) || substr(M.data, 1, 2)
+        #         ) <= ?
+        #     """
+        #     params.append(data_fim.replace("-", ""))
+
+        # Ordenação desc por data (mesma lógica de despesas)
+        query += """
+            ORDER BY substr(M.data, 7, 4) || substr(M.data, 4, 2) || substr(M.data, 1, 2) DESC
+        """
+
+        print("Query SQL manutencao:", query)
+        print("Parâmetros:", params)
+
+        manutencoes = conn.execute(query, params).fetchall()
+
     except Exception as e:
         manutencoes = []
         flash(f"Erro ao consultar manutenções: {str(e)}", "danger")
     finally:
         conn.close()
 
-    return render_template('consultar_manutencao.html', manutencoes=manutencoes)
+    return render_template(
+        'consultar_manutencao.html',
+        manutencoes=manutencoes,
+        alterada_id=alterada_id,
+        request=request
+    )
 
 @app.route('/manutencoes')
 def listar_manutencoes():
