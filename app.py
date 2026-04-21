@@ -2915,6 +2915,16 @@ def detalhes_comprador_mes():
 
         if parcela_atual is None:
             parcela_atual = 1
+            
+            
+            
+       
+        print(f"   Comprador: {p['comprador']}")
+        print(f"   Total parcelas encontradas: {total_parcelas}")
+        print(f"   Parcelas pagas: {parcelas_pagas}")
+        print(f"   Lista de parcelas: {[par['data_vencimento'] + ' (pago=' + str(par['pago']) + ')' for par in todas_parcelas_ordenadas]}")
+        print("   " + "="*50)
+        print(f"   Parcela atual: {parcela_atual} de {total_parcelas} (data vencimento: {p['data_vencimento']}, pago: {p['pago']})")
 
         resultado.append({
             "comprador": p["comprador"],
@@ -2941,9 +2951,8 @@ def detalhes_comprador_mes():
         "detalhes": resultado
     })
 
-@app.route('/detalhes_compras',methods=['GET', 'POST'], strict_slashes=False)
+@app.route('/detalhes_compras', methods=['GET', 'POST'], strict_slashes=False)
 def detalhes_compras():
-
     if request.method == 'POST':
         data = request.get_json()
         bandeira = data.get('bandeira') if data else None
@@ -2952,105 +2961,258 @@ def detalhes_compras():
         bandeira = request.args.get('bandeira')
         mes_ano = request.args.get('mes_ano')
 
-    # DEBUG
-    print("Recebido bandeira:", bandeira)
-    print("Recebido mes_ano:", mes_ano)
+    # Corrige a bandeira principal
+    bandeira_principal = bandeira.split(' - ')[0] if bandeira else None
+
+    print("\n" + "=" * 80)
+    print("🔎 INÍCIO /detalhes_compras")
+    print(f"Recebido bandeira: {bandeira}")
+    print(f"Recebido mes_ano: {mes_ano}")
+    print(f"Bandeira principal usada na query: {bandeira_principal}")
+    print("=" * 80)
 
     if not bandeira or not mes_ano:
+        print("❌ Parâmetros inválidos: bandeira ou mes_ano ausente")
         return jsonify({'error': 'Parâmetros inválidos'}), 400
 
     try:
         datetime.strptime(mes_ano, "%m/%Y")
     except ValueError:
+        print(f"❌ Formato de data inválido: {mes_ano}")
         return jsonify({'error': 'Formato de data inválido (esperado MM/YYYY)'}), 400
-    
-    try:
-         mes, ano = mes_ano.split('/')
-    except ValueError:
-        return jsonify({'error': 'Formato de data inválido (esperado MM/YYYY)'}), 400
-    
 
     conn = get_db_connection()
+
     try:
-      
-      query = """
-      SELECT 
-         E.nome AS estabelecimento,
-         D.data_compra,
-         D.valor_compra,
-         FP.nome AS forma_pagamento,
-         B.nome AS bandeira,
-         QP.quantidade AS quantidade_parcelas,
-         P.data_vencimento,
-         P.valor_parcela AS valor_parcela,
-         P.pago
-      FROM PARCELAS P
-      JOIN DESPESAS D ON P.despesa_id = D.id
-      LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
-      LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
-      LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-      LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-      WHERE UPPER(B.nome) LIKE UPPER(?) || '%'
-      AND substr(P.data_vencimento, 4, 7) = ?
-      ORDER BY 
-         substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
-      """
-# Ajusta o parâmetro bandeira para só o texto principal, sem o "- 6"
-      bandeira_principal = bandeira.split(' - ')[0]  # Pega só 'TORRA TORRA'
+        query = """
+        SELECT 
+            C.nome AS comprador,
+            E.nome AS estabelecimento,
+            D.data_compra,
+            D.valor_compra,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira,
+            QP.quantidade AS quantidade_parcelas,
+            P.data_vencimento,
+            P.valor_parcela AS valor_parcela,
+            P.pago,
+            D.id AS despesa_id
+        FROM PARCELAS P
+        JOIN DESPESAS D ON P.despesa_id = D.id
+        JOIN COMPRADOR C ON D.comprador_id = C.id
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        WHERE UPPER(B.nome) LIKE UPPER(?) || '%'
+        ORDER BY D.id, P.data_vencimento
+        """
 
-# Ajusta a bandeira para ignorar o sufixo " - 6" 
+        despesas = conn.execute(query, [bandeira_principal]).fetchall()
 
-      print("Bandeira principal usada na query:", bandeira_principal)
+        print(f"✅ Total de registros retornados pela query: {len(despesas)}")
 
-      despesas = conn.execute(query, [bandeira_principal, mes_ano]).fetchall()
+        for i, d in enumerate(despesas[:10], start=1):
+            print(
+                f"[QUERY {i}] despesa_id={d['despesa_id']} | "
+                f"comprador={d['comprador']} | "
+                f"vencimento={d['data_vencimento']} | "
+                f"valor_parcela={d['valor_parcela']} | "
+                f"pago={d['pago']}"
+            )
 
-
-     #despesas = conn.execute(query, [bandeira, mes_ano]).fetchall()
-      print(f"Despesas encontradas para bandeira {bandeira}: {len(despesas)}")
- 
     finally:
-      conn.close()
+        conn.close()
 
     if not despesas:
-        return jsonify({'error': 'Nenhuma despesa encontrada para essa bandeira e mês.'}), 404
+        print(f"❌ Nenhuma despesa encontrada para a bandeira: {bandeira_principal}")
+        return jsonify({'error': 'Nenhuma despesa encontrada para essa bandeira.'}), 404
 
-    total_mes = sum(float(d["valor_parcela"]) for d in despesas if d["valor_parcela"])
-    quantidade_parcelas = sum(d["quantidade_parcelas"] or 0 for d in despesas)
+    # Filtra somente as parcelas do mês solicitado
+    parcelas_do_mes = [p for p in despesas if p["data_vencimento"][3:] == mes_ano]
+
+    print(f"📆 Total de parcelas encontradas no mês {mes_ano}: {len(parcelas_do_mes)}")
+
+    if not parcelas_do_mes:
+        print(f"❌ Nenhuma parcela encontrada para o mês: {mes_ano}")
+        return jsonify({'error': f'Nenhuma parcela encontrada para {mes_ano}.'}), 404
+
+    from collections import defaultdict
+
+    # Agrupa todas as parcelas por despesa
+    parcelas_por_despesa = defaultdict(list)
+    for p in despesas:
+        parcelas_por_despesa[p["despesa_id"]].append(p)
+
+    print(f"📦 Total de despesas agrupadas: {len(parcelas_por_despesa)}")
 
     resultado = []
-    for d in despesas:
+
+    for d in parcelas_do_mes:
+        todas_parcelas = parcelas_por_despesa[d["despesa_id"]]
+        todas_parcelas_ordenadas = sorted(
+            todas_parcelas,
+            key=lambda x: datetime.strptime(x["data_vencimento"], "%d/%m/%Y")
+        )
+
+        total_parcelas = len(todas_parcelas_ordenadas)
+        parcelas_pagas = sum(1 for par in todas_parcelas_ordenadas if par["pago"])
+
+        data_vencimento_atual = datetime.strptime(d["data_vencimento"], "%d/%m/%Y")
+        parcela_atual = next(
+            (
+                i + 1 for i, par in enumerate(todas_parcelas_ordenadas)
+                if datetime.strptime(par["data_vencimento"], "%d/%m/%Y") == data_vencimento_atual
+            ),
+            None
+        )
+
+        if parcela_atual is None:
+            parcela_atual = 1
+
+        print("\n" + "-" * 80)
+        print(f"🔍 DESPESA ID: {d['despesa_id']}")
+        print(f"Comprador: {d['comprador']}")
+        print(f"Estabelecimento: {d['estabelecimento']}")
+        print(f"Data compra: {d['data_compra']}")
+        print(f"Data vencimento atual: {d['data_vencimento']}")
+        print(f"Total de parcelas encontradas: {total_parcelas}")
+        print(f"✅ Parcelas pagas calculadas: {parcelas_pagas}")
+        print(f"📌 Parcela atual: {parcela_atual}/{total_parcelas}")
+
+        print("📋 Lista completa das parcelas da despesa:")
+        for idx, par in enumerate(todas_parcelas_ordenadas, start=1):
+            print(
+                f"   Parcela {idx}: "
+                f"vencimento={par['data_vencimento']} | "
+                f"valor={par['valor_parcela']} | "
+                f"pago={par['pago']}"
+            )
+
         try:
-           data_vencimento_iso = datetime.strptime(d["data_vencimento"], "%d/%m/%Y").strftime("%Y-%m-%d")
-           data_compra_iso = datetime.strptime(d["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d")
+            data_vencimento_iso = datetime.strptime(
+                d["data_vencimento"], "%d/%m/%Y"
+            ).strftime("%Y-%m-%d")
         except Exception as e:
-           print(f"Erro ao converter datas:{e}")
-           data_vencimento_iso =d["data_vencimento"]
-           data_compra_iso =d["data_compra"]
+            print(f"⚠️ Erro convertendo data_vencimento: {e}")
+            data_vencimento_iso = d["data_vencimento"]
 
-        valor_raw = d["valor_compra"]
-        if isinstance(valor_raw, str):
-            valor_compra = float(valor_raw.replace(',', '.'))
-        else:
-            valor_compra = float(valor_raw)
+        try:
+            data_compra_iso = datetime.strptime(
+                d["data_compra"], "%d/%m/%Y"
+            ).strftime("%Y-%m-%d")
+        except Exception as e:
+            print(f"⚠️ Erro convertendo data_compra: {e}")
+            data_compra_iso = d["data_compra"]
 
+        try:
+            valor_compra = parse_float_br(d["valor_compra"])
+        except Exception as e:
+            print(f"⚠️ Erro convertendo valor_compra com parse_float_br: {e}")
+            valor_raw = d["valor_compra"]
+            if isinstance(valor_raw, str):
+                valor_compra = float(valor_raw.replace(',', '.'))
+            else:
+                valor_compra = float(valor_raw)
 
         resultado.append({
+            "comprador": d["comprador"],
             "estabelecimento": d["estabelecimento"],
             "data_compra": data_compra_iso,
-            "valor_compra":valor_compra,
-            "quantidade_parcelas": d["quantidade_parcelas"],
+            "valor_compra": valor_compra,
+            "quantidade_parcelas": total_parcelas,
             "forma_pagamento": d["forma_pagamento"],
             "bandeira": d["bandeira"],
             "valor_parcela_atual": float(d["valor_parcela"]),
             "data_vencimento": data_vencimento_iso,
-            "pago": d["pago"]
+            "pago": d["pago"],
+            "parcelas": f"{parcela_atual}/{total_parcelas}",
+            "parcelas_pagas": parcelas_pagas
         })
+
+    total_mes = sum(float(d["valor_parcela"]) for d in parcelas_do_mes)
+    quantidade_parcelas_total = len(parcelas_do_mes)
+
+    print("\n" + "=" * 80)
+    print("📊 RESUMO FINAL /detalhes_compras")
+    print(f"Bandeira: {bandeira}")
+    print(f"Mês/Ano: {mes_ano}")
+    print(f"Quantidade de parcelas no mês: {quantidade_parcelas_total}")
+    print(f"Total do mês: {round(total_mes, 2)}")
+    print(f"Quantidade de itens no resultado: {len(resultado)}")
+    print("=" * 80 + "\n")
 
     return jsonify({
         "bandeira": bandeira,
-        "total_mes": total_mes,
-        "quantidade_parcelas": quantidade_parcelas,
+        "mes_ano": mes_ano,
+        "total_mes": round(total_mes, 2),
+        "quantidade_parcelas": quantidade_parcelas_total,
         "detalhes": resultado
+    })
+
+
+@app.route('/detalhes_compras/<int:despesa_id>', methods=['GET'])
+def detalhes_compras_por_id(despesa_id):
+    print(f"🔍 CHAMADA: detalhes_compras/{despesa_id}")
+    
+    conn = get_db_connection()
+    try:
+        query = """
+        SELECT 
+            E.nome AS estabelecimento,
+            D.id AS despesa_id,
+            D.data_compra,
+            D.valor_compra,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira,
+            QP.quantidade AS qtd_parcelas,
+            (SELECT COUNT(*) FROM PARCELAS pp 
+             WHERE pp.despesa_id = D.id AND pp.pago = 1) AS parcelas_pagas,
+            -- ✅ NOVA: pega a menor parcela não paga
+            (SELECT COALESCE(MIN(numero_parcela), 1) FROM PARCELAS pp
+             WHERE pp.despesa_id = D.id AND pp.pago = 0) AS parcela_atual,
+            -- ✅ NOVA: pega a data de vencimento da primeira parcela não paga
+            (SELECT COALESCE(MIN(data_vencimento), D.data_compra) FROM PARCELAS pp
+             WHERE pp.despesa_id = D.id AND pp.pago = 0) AS data_vencimento_proxima
+        FROM DESPESAS D
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        WHERE D.id = ?
+        """
+        
+        resultado = conn.execute(query, [despesa_id]).fetchone()
+        print(f"📊 RESULTADO: {resultado}")
+        
+    finally:
+        conn.close()
+
+    if not resultado:
+        print(f"❌ Compra {despesa_id} não encontrada")
+        return jsonify({'error': 'Compra não encontrada'}), 404
+
+    # ✅ CONVERTER DATAS PARA ISO
+    try:
+        data_compra_iso = datetime.strptime(resultado["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d")
+        data_vencimento_iso = datetime.strptime(resultado["data_vencimento_proxima"], "%d/%m/%Y").strftime("%Y-%m-%d")
+    except:
+        data_compra_iso = resultado["data_compra"]
+        data_vencimento_iso = resultado["data_vencimento_proxima"]
+
+    return jsonify({
+        "detalhes": [{
+            "estabelecimento": resultado["estabelecimento"] or '-',
+            "data_compra": data_compra_iso,
+            "valor_compra": float(resultado["valor_compra"] or 0),
+            "qtd_parcelas": resultado["qtd_parcelas"] or 1,
+            "forma_pagamento": resultado["forma_pagamento"] or '-',
+            "bandeira": resultado["bandeira"] or '-',
+            "parcela_atual": resultado["parcela_atual"] or 1,  # ✅ DINÂMICO
+            "data_vencimento": data_vencimento_iso,  # ✅ DINÂMICO
+            "pago": (resultado["parcelas_pagas"] or 0) >= (resultado["qtd_parcelas"] or 1),
+            "parcelas_pagas": int(resultado["parcelas_pagas"] or 0)  # ✅ AGORA FUNCIONA!
+        }]
     })
 
 @app.route('/api/buscar')

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+ {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
@@ -678,11 +678,36 @@
     })
     .then(data => {
       document.getElementById('modalDetalhesComprasLabel').textContent = `Detalhes da bandeira "${bandeira}" - ${mesAno}`;
+
       document.getElementById('totalMes').textContent = `Total do mês: R$ ${data.total_mes.toFixed(2)}`;
+
       const tbody = document.getElementById('tbodyDetalhesCompras');
       tbody.innerHTML = '';
-      data.detalhes.forEach(item => {
+
+      const detalhesOrdenados = [...(data.detalhes || [])].sort((a, b) => {
+        const dataA = new Date(a.data_compra.split('/').reverse().join('-'));
+        const dataB = new Date(b.data_compra.split('/').reverse().join('-'));
+        return dataB - dataA;
+      });
+
+      detalhesOrdenados.forEach((item, index) => {
+        const pagas = item.parcelas_pagas ?? 0;
+        const total = item.quantidade_parcelas ?? 0;
+
+        const badgeParcelas =
+          pagas === 0
+            ? `<span class="badge bg-secondary">0 pagas</span>`
+            : pagas === total
+            ? `<span class="badge bg-primary">Quitado</span>`
+            : `<span class="badge bg-success">${pagas} ${pagas === 1 ? 'paga' : 'pagas'}</span>`;
+
+        const classeLinha = index === 0 ? 'fw-bold' : '';
+
+    <!--   data.detalhes.forEach(item => { -->
+
         const tr = document.createElement('tr');
+        tr.className = classeLinha;
+
         tr.innerHTML = `
           <td>${item.estabelecimento || '-'}</td>
           <td>${item.data_compra}</td>
@@ -693,6 +718,26 @@
           <td>R$ ${item.valor_parcela_atual.toFixed(2)}</td>
           <td>${item.data_vencimento}</td>
           <td>${item.pago ? 'Sim' : 'Não'}</td>
+          <td>
+              <div class="d-flex justify-content-between align-items-center">
+                <span>${item.parcelas_pagas ?? 0}/${item.quantidade_parcelas ?? 0}</span>
+                <span
+                  class="badge ${(item.parcelas_pagas ?? 0) === 0
+                   ? 'bg-secondary'
+                   : (item.parcelas_pagas ?? 0) === (item.quantidade_parcelas ?? 0)
+                   ? 'bg-primary'
+                   : 'bg-success'} text-center"
+                   style="min-width: 90px;"
+                  >
+                  ${(item.parcelas_pagas ?? 0) === 0
+                    ? '0 pagas'
+                    : (item.parcelas_pagas ?? 0) === (item.quantidade_parcelas ?? 0)
+                    ? 'Quitado'
+                    : `${item.parcelas_pagas ?? 0} ${(item.parcelas_pagas ?? 0) === 1 ? 'paga' : 'pagas'}`
+                    }
+                </span>
+             </div>
+          </td>
         `;
         tbody.appendChild(tr);
       });
