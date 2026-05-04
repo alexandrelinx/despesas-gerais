@@ -3029,7 +3029,23 @@ def detalhes_compras():
         return jsonify({'error': 'Nenhuma despesa encontrada para essa bandeira.'}), 404
 
     # Filtra somente as parcelas do mês solicitado
-    parcelas_do_mes = [p for p in despesas if p["data_vencimento"][3:] == mes_ano]
+    #parcelas_do_mes = [p for p in despesas if p["data_vencimento"][3:] == mes_ano]
+    def dv_mes_ano(dv: str) -> str:
+        s = str(dv).strip()
+        # espera dd/mm/YYYY
+        return s[3:10]  # "mm/YYYY"
+
+    parcelas_do_mes = []
+    for p in despesas:
+        dv = str(p["data_vencimento"]).strip()
+        chave = dv_mes_ano(dv)
+        if chave == mes_ano.strip():
+          parcelas_do_mes.append(p)
+
+    print("🧪 DEBUG parcelas_do_mes (despesa_id, vencimento, chave):")
+    for p in parcelas_do_mes:
+     print(p["despesa_id"], repr(str(p["data_vencimento"])), dv_mes_ano(p["data_vencimento"]))
+
 
     print(f"📆 Total de parcelas encontradas no mês {mes_ano}: {len(parcelas_do_mes)}")
 
