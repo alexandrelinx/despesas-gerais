@@ -1,3 +1,117 @@
+Crie pra mim um dashboard que tenha os sequintes campos de entrada do tipo select orizontalmente.
+  Estabelecimento (exibir Selecione)
+  Produto (exibir Selecione)
+  Bandeira (exibir Selecione)
+  O campo valor da compra : exibir(informar um valor)
+  Radio button  contendo as opções   igual, maior que, menor que. 
+  Periodo no formato de entrada (ex:  de 01/01/2026  a 30/08/2026 , ou 2026 a 2026 ).
+
+botão consultar.
+
+ao selecionar as opções acima, mais periodo seja exibida em cards na horizontal com as seguintes informações:
+
+
+1) Quando selecionado um estabelecimento, mais periodo:  
+
+Cards:
+
+   Card Estabelecimento:MULT-SHELL
+   Card Categoria:Postos
+   Card quantidade de transações : 3
+   Card Valor total : 1500,00
+   Card Periodo : 01/2026 a 08/2026
+
+Graficos: um campo listas( barras, pizza, linha) e um botão exibir ( o gragico sé será exibido caso seja selecionado e clicado no notão exibir ) 
+
+
+Grid :
+ Grid contendo os seguintes campos exibindo as informações detalhadas:
+ ordenar por data de compra e estabelecimento
+ Campos:
+   |Estabelecimento|Produtos|Valor da compra|Data da Compra|Bandeira|Parcelas|Valor da parcela|quantidade de parcelas Pagas|quantidade de parcelas em aberto|
+ 
+
+
+
+2) Quando selecionado um produto, mais periodo:
+
+Cards:
+
+  Card Produto: Gasolina
+  Card quantidade de transações : 3
+  Card Quantidade de Estabelecimentos : 2
+  Card Valor total : 1500,00
+  Card Periodo : 01/2026 a 08/2026
+
+Graficos: um campo listas( barras, pizza, linha) e um botão exibir ( o gragico sé será exibido caso seja selecionado e clicado no notão exibir ) 
+Deve exibir:
+  O titulo : o nome do produto
+  Estabelecimeto(os) que foi comprado os produtos
+  Quantidade comprada por estabelecimento
+  Valor total por estabelecimento
+
+
+Grid :
+  Grid contendo os seguintes campos exibindo as informações detalhadas:
+  Ordenar por estabelecimento e data de compra 
+  Campos:
+   |Produtos|Estabelecimento|Valor da compra|Data da Compra|Bandeira|Parcelas|Valor da parcela|quantidade de parcelas Pagas|quantidade de parcelas em aberto|
+ 
+
+3) Quando selecionado um bandeira, mais periodo:
+
+Cards:
+
+  Card Bandeira: 	VISA PLATINUM CASA BAHIA 8013 
+  Card Quantidade de transações : 10
+  Card Quantidade de Estabelecimentos : 10
+  Card Valor total : 15980,00
+  Card Periodo : 01/2026 a 08/2026
+
+Graficos: um campo listas( barras, pizza, linha) e um botão exibir ( o gragico sé será exibido caso seja selecionado e clicado no notão exibir ) 
+Deve exibir:
+  O titulo : o nome da Bandeira
+  Estabelecimeto(os) que recebeu a bandeira
+  Valor total por estabelecimento
+
+Grid :
+  Grid contendo os seguintes campos exibindo as informações detalhadas:
+  Ordenar por estabelecimento e data de compra 
+  Campos:
+    |Bandeira|Estabelecimento|Produtos|Valor da compra|Data da Compra|Parcelas|Valor da parcela|quantidade de parcelas Pagas|quantidade de parcelas em aberto|
+ 
+
+
+4) Quando selecionado um valor da compra , mais periodo:
+
+  obs.: fazer o mesmos fluxo para as condições (menor que ) e (maior que)
+
+Card:
+
+  Card Valor da Compra: 10,00
+  Card Quantidade de transações : 10
+  Card Quantidade de Estabelecimentos : 10
+  Card Valor total : 15980,00
+  Card Periodo : 01/2026 a 08/2026
+
+Graficos: um campo listas( barras, pizza, linha) e um botão exibir ( o gragico sé será exibido caso seja selecionado e clicado no notão exibir ) 
+Deve exibir:
+  O titulo : o nome valor da compra
+  Estabelecimeto(os) que teve a transação com o valor =10,00
+  Quantidade de transações que com o valor por estabelecimento
+
+Grid :
+ Grid contendo os seguintes campos exibindo as informações detalhadas:
+ Ordenar por estabelecimento e data de compra 
+ Campos:
+   |Valor da compra|Data da Compra|Estabelecimento|Produtos|Bandeira|Parcelas|Valor da parcela|quantidade de parcelas Pagas|quantidade de parcelas em aberto|
+ 
+
+Analise o app.py  e  reconstrua  o dashboard_analytics.html  já contendo a implementações acima solicitada
+
+
+Conteudo de app.py 
+
 from db import inicializar_banco
 inicializar_banco()
 
@@ -559,132 +673,6 @@ def dashboard():
 def rota_de_atualizacao():
     # código para retornar alguma resposta
     return "Rota de atualização funcionando"
-def converter_valor_float(valor):
-    """
-    Converte valores como:
-    15,26
-    1.234,56
-    R$ 15,26
-    para float.
-    """
-    if valor is None or valor == "":
-        return 0.0
-
-    if isinstance(valor, (int, float)):
-        return float(valor)
-
-    valor = str(valor).strip()
-
-    valor = (
-        valor
-        .replace("R$", "")
-        .replace(" ", "")
-    )
-
-    # Formato brasileiro: 1.234,56
-    if "," in valor:
-        valor = valor.replace(".", "")
-        valor = valor.replace(",", ".")
-
-    return float(valor)
-
-
-def converter_valor_brasileiro(valor):
-    """
-    Converte valores como:
-    10,50
-    1.500,00
-    1500.00
-    para float.
-    """
-    if valor is None:
-        return None
-
-    valor = str(valor).strip()
-
-    if not valor:
-        return None
-
-    try:
-        if ',' in valor:
-            valor = valor.replace('.', '').replace(',', '.')
-        return float(valor)
-    except ValueError:
-        return None
-
-
-def converter_data_filtro(data, inicio=True):
-    """
-    Aceita:
-    dd/mm/aaaa
-    aaaa-mm-dd
-    mm/aaaa
-    aaaa
-
-    Retorna data no formato aaaaMMdd para comparação no SQLite.
-    """
-    if not data:
-        return None
-
-    data = data.strip()
-
-    try:
-        if len(data) == 10 and '/' in data:
-            dt = datetime.strptime(data, '%d/%m/%Y')
-
-        elif len(data) == 10 and '-' in data:
-            dt = datetime.strptime(data, '%Y-%m-%d')
-
-        elif len(data) == 7 and '/' in data:
-            mes, ano = data.split('/')
-            if inicio:
-                return f'{ano}{mes}01'
-
-            ultimo_dia = calendar.monthrange(int(ano), int(mes))[1]
-            return f'{ano}{mes}{ultimo_dia:02d}'
-
-        elif len(data) == 4:
-            ano = int(data)
-
-            if inicio:
-                return f'{ano}0101'
-
-            return f'{ano}1231'
-
-        else:
-            return None
-
-        return dt.strftime('%Y%m%d')
-
-    except ValueError:
-        return None
-    
-    
-def normalizar_data_banco(data):
-    """
-    Converte dd/mm/yyyy ou yyyy-mm-dd para yyyymmdd.
-    O formato yyyymmdd permite comparação correta no SQLite.
-    """
-    if not data:
-        return None
-
-    data = data.strip()
-
-    try:
-        if '/' in data:
-            dia, mes, ano = data.split('/')
-            return f'{ano}{mes.zfill(2)}{dia.zfill(2)}'
-
-        if '-' in data:
-            ano, mes, dia = data.split('-')
-            return f'{ano}{mes.zfill(2)}{dia.zfill(2)}'
-
-    except ValueError:
-        return None
-
-    return None
-
-
 
 @app.route('/dashboard_analytics')
 def dashboard_analytics():
@@ -693,563 +681,119 @@ def dashboard_analytics():
 
     conn = get_db_connection()
 
+    # Parâmetro para tempo de atualização (em segundos), default 15
     tempo_atualizacao_segundos = 15
-
-    tempo_atualizacao_usuario = request.args.get(
-        'tempo_atualizacao',
-        None
-    )
-
+    tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)
     if tempo_atualizacao_usuario is not None:
         try:
-            tempo_atualizacao_segundos = int(
-                tempo_atualizacao_usuario
-            )
-
+            tempo_atualizacao_segundos = int(tempo_atualizacao_usuario)
             if tempo_atualizacao_segundos == 0:
-                tempo_atualizacao_segundos = None
-
+                tempo_atualizacao_segundos = None  # desliga atualização automática
         except ValueError:
             pass
 
-    # Estabelecimentos do select
+    # Buscar estabelecimentos para o filtro, com id e nome
     estabelecimentos = conn.execute("""
-        SELECT
-            id,
-            COALESCE(nome, 'Não especificado') AS nome
+        SELECT id, COALESCE(nome, 'Não especificado') AS nome
         FROM estabelecimento
-        ORDER BY nome COLLATE NOCASE
+        ORDER BY nome
     """).fetchall()
 
-    # Produtos do select
-    produtos = conn.execute("""
-        SELECT
-            id,
-            COALESCE(nome, 'Não especificado') AS nome
-        FROM produto
-        ORDER BY nome COLLATE NOCASE
-    """).fetchall()
+    # Consultas agregadas (totais por Estabelecimento, Produto, Bandeira, Comprador e Mês)
 
-    # Bandeiras do select
-    bandeiras = conn.execute("""
-        SELECT
-            id,
-            COALESCE(nome, 'Não especificado') AS nome
-        FROM bandeira
-        ORDER BY nome COLLATE NOCASE
-    """).fetchall()
-
-    # Totais por estabelecimento
+    # Totais por Estabelecimento
     totais_estab = conn.execute("""
         SELECT
             E.id AS estabelecimento_id,
             COALESCE(E.nome, 'Não especificado') AS estabelecimento,
-            COALESCE(SUM(D.valor_compra), 0) AS total
+            SUM(D.valor_compra) AS total
         FROM despesas D
-        LEFT JOIN estabelecimento E
-            ON D.estabelecimento_id = E.id
-        GROUP BY E.id, E.nome
+        LEFT JOIN estabelecimento E ON D.estabelecimento_id = E.id
+        GROUP BY E.id, estabelecimento
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por produto
-    totais_produtos = conn.execute("""
+    # Totais por Produto
+    produtos = conn.execute("""
         SELECT
             P.id AS produto_id,
             COALESCE(P.nome, 'Não especificado') AS produto,
-            COALESCE(SUM(D.valor_compra), 0) AS total
+            SUM(D.valor_compra) AS total
         FROM despesas D
-        LEFT JOIN produto P
-            ON D.produto_id = P.id
-        GROUP BY P.id, P.nome
+        LEFT JOIN produto P ON D.produto_id = P.id
+        GROUP BY P.id, produto
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por bandeira
-    totais_bandeiras = conn.execute("""
+    # Totais por Bandeira
+    bandeiras = conn.execute("""
         SELECT
             B.id AS bandeira_id,
             COALESCE(B.nome, 'Não especificado') AS bandeira,
-            COALESCE(SUM(D.valor_compra), 0) AS total
+            SUM(D.valor_compra) AS total
         FROM despesas D
-        LEFT JOIN bandeira B
-            ON D.bandeira_id = B.id
-        GROUP BY B.id, B.nome
+        LEFT JOIN bandeira B ON D.bandeira_id = B.id
+        GROUP BY B.id, bandeira
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por comprador
+    # Totais por Comprador
     compradores = conn.execute("""
         SELECT
             C.id AS comprador_id,
             COALESCE(C.nome, 'Não especificado') AS comprador,
-            COALESCE(SUM(D.valor_compra), 0) AS total
+            SUM(D.valor_compra) AS total
         FROM despesas D
-        LEFT JOIN comprador C
-            ON D.comprador_id = C.id
-        GROUP BY C.id, C.nome
+        LEFT JOIN comprador C ON D.comprador_id = C.id
+        GROUP BY C.id, comprador
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por mês
+    # Totais por Mês (formatado MM/YYYY)
     meses = conn.execute("""
         SELECT
-            strftime(
-                '%m/%Y',
-                substr(D.data_compra, 7, 4) || '-' ||
-                substr(D.data_compra, 4, 2) || '-' ||
-                substr(D.data_compra, 1, 2)
-            ) AS mes_ano,
-            COALESCE(SUM(D.valor_compra), 0) AS total
+            strftime('%m/%Y', substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)) AS mes_ano,
+            SUM(D.valor_compra) AS total
         FROM despesas D
-        WHERE D.data_compra IS NOT NULL
-          AND length(D.data_compra) = 10
+        WHERE D.data_compra IS NOT NULL AND length(D.data_compra) = 10
         GROUP BY mes_ano
-        ORDER BY
-            substr(mes_ano, 4, 4),
-            substr(mes_ano, 1, 2)
+        ORDER BY mes_ano
     """).fetchall()
 
     conn.close()
 
-    # Conversão para objetos simples usados pelo template
+    # Preparar dados para o template (convertendo rows em listas de dicts)
+    def to_dict_list_with_id(rows, id_key, name_key):
+        # id_key: coluna de id (ex: 'estabelecimento_id'), name_key: coluna de nome (ex: 'estabelecimento' ou 'nome')
+        return [
+            { id_key: row[id_key], name_key: row[name_key], 'total': float(row['total'] or 0) }
+            for row in rows
+        ]
+
     estabelecimentos_lista = [
-        {
-            'id': item['id'],
-            'nome': item['nome']
-        }
-        for item in estabelecimentos
+        {'id': row['id'], 'nome': row['nome']}
+        for row in estabelecimentos
     ]
 
-    produtos_lista = [
-        {
-            'id': item['id'],
-            'nome': item['nome']
-        }
-        for item in produtos
-    ]
-
-    bandeiras_lista = [
-        {
-            'id': item['id'],
-            'nome': item['nome']
-        }
-        for item in bandeiras
-    ]
-
-    totais_estab_lista = [
-        {
-            'id': item['estabelecimento_id'],
-            'nome': item['estabelecimento'],
-            'total': float(item['total'] or 0)
-        }
-        for item in totais_estab
-    ]
-
-    totais_produtos_lista = [
-        {
-            'id': item['produto_id'],
-            'nome': item['produto'],
-            'total': float(item['total'] or 0)
-        }
-        for item in totais_produtos
-    ]
-
-    totais_bandeiras_lista = [
-        {
-            'id': item['bandeira_id'],
-            'nome': item['bandeira'],
-            'total': float(item['total'] or 0)
-        }
-        for item in totais_bandeiras
-    ]
-
-    compradores_lista = [
-        {
-            'id': item['comprador_id'],
-            'nome': item['comprador'],
-            'total': float(item['total'] or 0)
-        }
-        for item in compradores
-    ]
-
-    meses_lista = [
-        {
-            'mes_ano': item['mes_ano'],
-            'total': float(item['total'] or 0)
-        }
-        for item in meses
+    totais_estab_data = to_dict_list_with_id(totais_estab, 'estabelecimento_id', 'estabelecimento')
+    produtos_data = to_dict_list_with_id(produtos, 'produto_id', 'produto')
+    bandeiras_data = to_dict_list_with_id(bandeiras, 'bandeira_id', 'bandeira')
+    compradores_data = to_dict_list_with_id(compradores, 'comprador_id', 'comprador')
+    meses_data = [
+        {'mes_ano': row['mes_ano'], 'total': float(row['total'] or 0)}
+        for row in meses
     ]
 
     return render_template(
         'dashboard_analytics.html',
         tempo_atualizacao=tempo_atualizacao_segundos,
-
         estabelecimentos=estabelecimentos_lista,
-        produtos=produtos_lista,
-        bandeiras=bandeiras_lista,
-
-        totais_estab=totais_estab_lista,
-        totais_produtos=totais_produtos_lista,
-        totais_bandeiras=totais_bandeiras_lista,
-
-        compradores=compradores_lista,
-        meses=meses_lista
+        totais_estab=totais_estab_data,
+        produtos=produtos_data,
+        bandeiras=bandeiras_data,
+        compradores=compradores_data,
+        meses=meses_data,
     )
-@app.route('/analytics/dados', methods=['GET'])
-def analytics_dados():
-    if 'user_id' not in session:
-        return jsonify({
-            'erro': 'Não autorizado'
-        }), 401
-
-    estabelecimento_id = request.args.get(
-        'estabelecimento_id',
-        type=int
-    )
-
-    produto_id = request.args.get(
-        'produto_id',
-        type=int
-    )
-
-    bandeira_id = request.args.get(
-        'bandeira_id',
-        type=int
-    )
-
-    operador_valor = request.args.get(
-        'operador_valor',
-        ''
-    ).strip()
-
-    valor_compra = converter_valor_brasileiro(
-        request.args.get('valor_compra')
-    )
-
-    data_inicio = request.args.get(
-        'data_inicio',
-        ''
-    ).strip()
-
-    data_fim = request.args.get(
-        'data_fim',
-        ''
-    ).strip()
-
-    tipo_analise = request.args.get(
-        'tipo_analise',
-        ''
-    ).strip()
-
-    grafico = request.args.get(
-        'grafico',
-        ''
-    ).strip()
-
-    data_inicio_sql = normalizar_data_banco(data_inicio)
-    
-
-    data_fim_sql = normalizar_data_banco(data_fim)
-    
-
-    params = []
-    filtros = ["1 = 1"]
-
-    # A data armazenada é dd/mm/yyyy.
-    # Esta expressão converte para yyyy-mm-dd.
-    data_compra_normalizada = """
-        (
-            substr(trim(D.data_compra), 7, 4) || 
-            substr(trim(D.data_compra), 4, 2) || 
-            substr(trim(D.data_compra), 1, 2)
-        )
-    """
-
-    if estabelecimento_id:
-        filtros.append("D.estabelecimento_id = ?")
-        params.append(estabelecimento_id)
-
-    if produto_id:
-        filtros.append("D.produto_id = ?")
-        params.append(produto_id)
-
-    if bandeira_id:
-        filtros.append("D.bandeira_id = ?")
-        params.append(bandeira_id)
-
-    if data_inicio_sql:
-        filtros.append(
-            f"{data_compra_normalizada} >= ?"
-        )
-        params.append(data_inicio_sql)
-
-    if data_fim_sql:
-        filtros.append(
-            f"{data_compra_normalizada} <= ?"
-        )
-        params.append(data_fim_sql)
-
-    if valor_compra is not None:
-        if operador_valor not in (
-            'igual',
-            'maior',
-            'menor'
-        ):
-            return jsonify({
-                'erro': 'Operador de valor inválido'
-            }), 400
-
-        if operador_valor == 'igual':
-            filtros.append("D.valor_compra = ?")
-
-        elif operador_valor == 'maior':
-            filtros.append("D.valor_compra > ?")
-
-        elif operador_valor == 'menor':
-            filtros.append("D.valor_compra < ?")
-
-        params.append(valor_compra)
-
-    where_sql = " AND ".join(filtros)
-
-    conn = get_db_connection()
-
-    try:
-        query = f"""
-            WITH dados_base AS (
-                SELECT
-                    D.id AS despesa_id,
-                    D.estabelecimento_id AS estabelecimento_id,
-                    D.produto_id AS produto_id,
-                    D.bandeira_id AS bandeira_id,
-
-                    COALESCE(E.nome, 'Não especificado')
-                        AS estabelecimento,
-
-                    COALESCE(PR.nome, 'Não especificado')
-                        AS produto,
-
-                    COALESCE(B.nome, 'Não especificado')
-                        AS bandeira,
-
-                    COALESCE(CAT.nome, 'Não especificada')
-                        AS categoria,
-
-                    D.valor_compra,
-                    D.data_compra,
-
-                    COALESCE(QP.quantidade, 0)
-                        AS parcelas,
-
-                    COALESCE(D.valor_parcela, 0)
-                        AS valor_parcela,
-
-                    COALESCE(
-                        SUM(
-                            CASE
-                                WHEN P.id IS NOT NULL
-                                     AND P.pago = 1
-                                THEN 1
-                                ELSE 0
-                            END
-                        ),
-                        0
-                    ) AS parcelas_pagas,
-
-                    COALESCE(
-                        SUM(
-                            CASE
-                                WHEN P.id IS NOT NULL
-                                     AND (
-                                         P.pago = 0
-                                         OR P.pago IS NULL
-                                     )
-                                THEN 1
-                                ELSE 0
-                            END
-                        ),
-                        0
-                    ) AS parcelas_abertas
-
-                FROM despesas AS D
-
-                LEFT JOIN estabelecimento AS E
-                    ON E.id = D.estabelecimento_id
-
-                LEFT JOIN produto AS PR
-                    ON PR.id = D.produto_id
-
-                LEFT JOIN bandeira AS B
-                    ON B.id = D.bandeira_id
-
-                LEFT JOIN categoria AS CAT
-                    ON CAT.id = D.categoria_id
-
-                LEFT JOIN quantidade_parcelas AS QP
-                    ON QP.id = D.quantidade_parcelas_id
-
-                LEFT JOIN parcelas AS P
-                    ON P.despesa_id = D.id
-
-                GROUP BY
-                    D.id,
-                    D.estabelecimento_id,
-                    D.produto_id,
-                    D.bandeira_id,
-                    E.nome,
-                    PR.nome,
-                    B.nome,
-                    CAT.nome,
-                    D.valor_compra,
-                    D.data_compra,
-                    QP.quantidade,
-                    D.valor_parcela
-            )
-
-            SELECT *
-            FROM dados_base AS D
-            WHERE {where_sql}
-            ORDER BY
-                (
-                    substr(trim(D.data_compra), 7, 4) || 
-                    substr(trim(D.data_compra), 4, 2) ||
-                    substr(trim(D.data_compra), 1, 2)
-                ) DESC,
-                D.estabelecimento ASC
-        """
-
-        despesas = conn.execute(
-            query,
-            params
-        ).fetchall()
-
-    except Exception as erro:
-        app.logger.exception(
-            'Erro na rota /analytics/dados'
-        )
-
-        return jsonify({
-            'erro': 'Erro ao consultar os dados de analytics',
-            'detalhes': str(erro)
-        }), 500
-
-    finally:
-        conn.close()
-
-    despesas_lista = [
-        {
-            'despesa_id': item['despesa_id'],
-            'estabelecimento': item['estabelecimento'],
-            'produto': item['produto'],
-            'bandeira': item['bandeira'],
-            'categoria': item['categoria'],
-            'valor_compra': converter_valor_float(
-                item['valor_compra'] or 0
-            ),
-            'data_compra': item['data_compra'],
-            'parcelas': int(
-                item['parcelas'] or 0
-            ),
-            'valor_parcela': converter_valor_float(
-                item['valor_parcela'] or 0
-            ),
-            'parcelas_pagas': int(
-                item['parcelas_pagas'] or 0
-            ),
-            'parcelas_abertas': int(
-                item['parcelas_abertas'] or 0
-            )
-        }
-        for item in despesas
-    ]
-
-    total_transacoes = len(despesas_lista)
-
-    valor_total = sum(
-        item['valor_compra']
-        for item in despesas_lista
-    )
-
-    quantidade_estabelecimentos = len({
-        item['estabelecimento']
-        for item in despesas_lista
-    })
-
-    quantidade_produtos = len({
-        item['produto']
-        for item in despesas_lista
-    })
-
-    agrupamento = {}
-
-    if tipo_analise == 'estabelecimento':
-        campo_agrupamento = 'estabelecimento'
-
-    elif tipo_analise == 'produto':
-        campo_agrupamento = 'produto'
-
-    elif tipo_analise == 'bandeira':
-        campo_agrupamento = 'bandeira'
-
-    else:
-        campo_agrupamento = 'estabelecimento'
-
-    for item in despesas_lista:
-        chave = item[campo_agrupamento]
-
-        if chave not in agrupamento:
-            agrupamento[chave] = {
-                'quantidade': 0,
-                'valor_total': 0
-            }
-
-        agrupamento[chave]['quantidade'] += 1
-        agrupamento[chave]['valor_total'] += (
-            item['valor_compra']
-        )
-
-    grafico_dados = [
-        {
-            'label': chave,
-            'quantidade': valores['quantidade'],
-            'valor_total': round(
-                valores['valor_total'],
-                2
-            )
-        }
-        for chave, valores in agrupamento.items()
-    ]
-
-    return jsonify({
-        'filtros': {
-            'estabelecimento_id': estabelecimento_id,
-            'produto_id': produto_id,
-            'bandeira_id': bandeira_id,
-            'operador_valor': operador_valor,
-            'valor_compra': valor_compra,
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
-            'tipo_analise': tipo_analise,
-            'grafico': grafico
-        },
-        'cards': {
-            'quantidade_transacoes': total_transacoes,
-            'quantidade_estabelecimentos':
-                quantidade_estabelecimentos,
-            'quantidade_produtos':
-                quantidade_produtos,
-            'valor_total': round(valor_total, 2),
-            'periodo': {
-                'inicio': data_inicio or 'Não informado',
-                'fim': data_fim or 'Não informado'
-            }
-        },
-        'grafico': grafico_dados,
-        'despesas': despesas_lista
-    })
-
-
 
 @app.route('/analytics/despesas_por_estabelecimento', methods=['GET'])
 def despesas_por_estabelecimento():
@@ -4386,3 +3930,443 @@ def set_marca_comprador_mes():
 if __name__ == '__main__':
     app.secret_key = 'segredo-super-seguro'
     app.run(debug=True)
+
+
+
+
+Conteudo  de  dashboard_analytics.html  
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard Analytics{% endblock %}
+
+{% block content %}
+<h1>Dashboard Analytics</h1>
+
+<p>Atualização automática a cada {{ tempo_atualizacao }} segundos</p>
+
+<!-- Filtro estabelecimento + mês/ano -->
+<div class="row mb-3">
+  <div class="col-md-4">
+    <select id="estabFiltro" class="form-select">
+      <option value="">Selecione Estabelecimento</option>
+      {% for est in estabelecimentos %}
+       <!-- <option value="{{ est.estabelecimento_id or est.id }}">{{ est.estabelecimento }}</option> -->
+         <option value="{{ est.id }}">{{ est.nome }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
+    <input type="month" id="mesFiltro" class="form-control" placeholder="Mês/Ano">
+    <!-- Esse input tipo month retorna valor tipo "YYYY-MM" em HTML5 -->
+  </div>
+  <div class="col-md-4">
+    <button id="btnVerDespesas" class="btn btn-primary">Ver Despesas</button>
+  </div>
+</div>
+
+
+<div style="margin-bottom: 20px; text-align: center;">
+  <label>
+    <input type="checkbox" id="toggleZoom" />
+    Ativar Zoom (scroll e arrastar)
+  </label>
+</div>
+
+<div id="dashboardGraficos">
+
+  <label for="selectGrafico"><strong>Selecione o gráfico:</strong></label>
+  <select id="selectGrafico" class="form-select mb-3" style="max-width: 300px;">
+    <option value="chartEstabelecimentos">Estabelecimentos</option>
+    <option value="chartProdutos">Produtos</option>
+    <option value="chartBandeiras">Bandeiras</option>
+    <option value="chartCompradores">Compradores</option>
+    <option value="chartMeses">Meses (Evolução)</option>
+  </select>
+
+<div id="graficosContainer">
+  <div class="grafico-wrapper" data-chart-id="chartEstabelecimentos" style="display:none;width: 40vw;margin: 0 auto;">
+    <h3>Estabelecimentos</h3>
+    <label>Tipo de gráfico:
+      <select class="chart-type-select" data-chart-id="chartEstabelecimentos">
+        <option value="bar">Barra</option>
+        <option value="line">Linha</option>
+        <option value="pie">Pizza</option>
+        <option value="doughnut">Donut</option>
+      </select>
+    </label>
+
+    <!-- Botões de zoom -->
+    <div style="text-align:center; margin: 10px 0;">
+      <button id="zoomInEstabelecimentos" type="button">Zoom +</button>
+      <button id="zoomOutEstabelecimentos" type="button">Zoom -</button>
+      <button id="resetZoomEstabelecimentos" type="button">Resetar Zoom</button>
+    </div>
+
+    <canvas id="chartEstabelecimentos" style="width: 100%; height: 300px;"></canvas>
+  </div>
+</div>
+
+
+    <div class="grafico-wrapper" data-chart-id="chartProdutos" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Produtos</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartProdutos">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+          <option value="pie">Pizza</option>
+          <option value="doughnut">Donut</option>
+        </select>
+      </label>
+      <canvas id="chartProdutos" style="width: 50%; height: 300px;"></canvas>
+    </div>
+
+    <div class="grafico-wrapper" data-chart-id="chartBandeiras" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Bandeiras</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartBandeiras">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+          <option value="pie">Pizza</option>
+          <option value="doughnut">Donut</option>
+        </select>
+      </label>
+      <canvas id="chartBandeiras" style="width: 50%; height: 300px;"></canvas>
+    </div>
+
+    <div class="grafico-wrapper" data-chart-id="chartCompradores" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Compradores</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartCompradores">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+          <option value="pie">Pizza</option>
+          <option value="doughnut">Donut</option>
+        </select>
+      </label>
+      <canvas id="chartCompradores" style="width: 50%; height: 300px;"></canvas>
+    </div>
+
+    <div class="grafico-wrapper" data-chart-id="chartMeses" style="display:none;width:30vw;margin: 0 auto;">
+      <h3>Meses (Evolução)</h3>
+      <label>Tipo de gráfico:
+        <select class="chart-type-select" data-chart-id="chartMeses">
+          <option value="bar">Barra</option>
+          <option value="line">Linha</option>
+        </select>
+      </label>
+      <canvas id="chartMeses" style="width: 50%; height: 300px;"></canvas>
+    </div>
+  </div>
+
+</div>
+
+
+
+<!-- Modal para exibir despesas -->
+<div class="modal fade" id="modalDespesasEstabelecimento" tabindex="-1" aria-labelledby="modalDespesasEstabelecimentoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+     <div class="modal-content">
+        <div class="modal-header">
+           <h5 class="modal-title" id="modalDespesasEstabelecimentoLabel">Despesas do Estabelecimento</h5>
+           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+           <table class="table table-sm table-striped">
+             <thead>
+               <tr>
+                 <th>Data Compra</th>
+                 <th>Bandeira</th>
+                 <th>Valor Compra</th>
+                 <th>Quantidade de Parcelas</th>
+                 <th>Valor Parcela</th>
+               </tr>
+             </thead>
+             <tbody id="tbodyDespesasEstab">
+               <!-- será preenchido via JS -->
+             </tbody>
+           </table>
+           <p class="mt-3"><strong>Total Compras:</strong> R$ <span id="totalDespesasEstab">0.00</span></p>
+        </div>
+        <div class="modal-footer">
+           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+     </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('btnVerDespesas').addEventListener('click', function(event) {
+    event.preventDefault();
+    const estSelect = document.getElementById('estabFiltro');
+    const estId = estSelect ? estSelect.value : null;
+    const mesInput = document.getElementById('mesFiltro');
+    const mesAnoInput = mesInput ? mesInput.value : null;
+
+    console.log("Selecionado estId:", estId);
+    console.log("Selecionado mesAnoInput:", mesAnoInput);
+
+    if (!estId || estId.trim() === "") {
+      alert("Selecione estabelecimento");
+      return;
+    }
+    if (!mesAnoInput || mesAnoInput.trim() === "") {
+      alert("Selecione mês/ano");
+      return;
+    }
+
+    // Converter "YYYY-MM" para "MM/YYYY"
+    const parts = mesAnoInput.split('-');
+    if (parts.length !== 2) {
+      alert("Formato de mês inválido");
+      return;
+    }
+    const ano = parts[0];
+    const mes = parts[1];
+    const mesAno = `${mes}/${ano}`;
+
+    fetch(`/analytics/despesas_por_estabelecimento?estabelecimento_id=${estId}&mes_ano=${mesAno}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+        const tbody = document.getElementById('tbodyDespesasEstab');
+        tbody.innerHTML = '';
+        data.despesas.forEach(d => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${d.data_compra}</td>
+            <td>${d.bandeira}</td>
+            <td>R$ ${d.valor_compra.toFixed(2)}</td>
+            <td>${d.quantidade_parcelas}</td>
+            <td>R$ ${d.valor_parcela.toFixed(2)}</td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+        document.getElementById('totalDespesasEstab').textContent = data.total.toFixed(2);
+
+        const estNome = estSelect.options[estSelect.selectedIndex].text;
+        document.getElementById('modalDespesasEstabelecimentoLabel').textContent =
+          `Despesas de ${estNome} no mês ${mesAno}`;
+
+        const modalEl = document.getElementById('modalDespesasEstabelecimento');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+      })
+      .catch(err => {
+        console.error('Erro ao buscar despesas:', err);
+        alert('Erro ao buscar as despesas.');
+      });
+  });
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+<script>
+const chartInstances = {};
+
+function prepareChartData(data, labelKey) {
+  // Para meses (que já vem com labels separados), adaptar função:
+  if (labelKey === 'meses') {
+    return {
+      labels: data,
+      datasets: [{
+        label: 'Total (R$)',
+        data: data.map ? data.map(Number) : data, // já deve ser número
+        fill: false,
+        borderColor: '#4e79a7',
+        tension: 0.1
+      }]
+    };
+  }
+  return {
+    labels: data.map(item => item[labelKey]),
+    datasets: [{
+      label: 'Total (R$)',
+      data: data.map(item => Number(item.total.toFixed(2))),
+      backgroundColor: [
+        '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+        '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'
+      ],
+      borderWidth: 1
+    }]
+  };
+}
+
+const optionsBasicas = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true }
+  },
+  scales: {
+    y: { beginAtZero: true }
+  }
+};
+
+const optionsComZoom = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true },
+    zoom: {
+      pan: {
+        enabled: true,
+        mode: 'xy'  // permite arrastar nos eixos x e y
+      },
+      zoom: {
+        wheel: {
+          enabled: true,  // zoom com scroll do mouse
+        },
+        pinch: {
+          enabled: true   // zoom com gesto de pinça no touch
+        },
+        mode: 'xy'  // zoom nos eixos x e y
+      }
+    }
+  },
+  scales: {
+    y: { beginAtZero: true }
+  }
+};
+
+
+
+function criarGrafico(chartId, tipo, data, options) {
+  const ctx = document.getElementById(chartId).getContext('2d');
+  if (chartInstances[chartId]) {
+    chartInstances[chartId].destroy();
+  }
+  chartInstances[chartId] = new Chart(ctx, {
+    type: tipo,
+    data: data,
+    options: options
+  });
+}
+
+// Dados dos gráficos (adaptar para seu backend)
+const dadosGraficos = {
+  chartEstabelecimentos: prepareChartData({{ totais_estab|tojson }}, 'estabelecimento'),
+  chartProdutos: prepareChartData({{ produtos|tojson }}, 'produto'),
+  chartBandeiras: prepareChartData({{ bandeiras|tojson }}, 'bandeira'),
+  chartCompradores: prepareChartData({{ compradores|tojson }}, 'comprador'),
+  chartMeses: {
+    labels: {{ meses|map(attribute='mes_ano')|list|tojson }},
+    datasets: [{
+      label: 'Total (R$)',
+      data: {{ meses|map(attribute='total')|list|tojson }},
+      fill: false,
+      borderColor: '#4e79a7',
+      tension: 0.1
+    }]
+  }
+};
+
+// Inicializa todos os gráficos com tipo padrão
+const tiposPadrao = {
+  chartEstabelecimentos: 'bar',
+  chartProdutos: 'bar',
+  chartBandeiras: 'bar',
+  chartCompradores: 'bar',
+  chartMeses: 'line'
+};
+
+const usarZoom = document.getElementById('toggleZoom').checked;
+
+for (const chartId in dadosGraficos) {
+  criarGrafico(chartId, 'bar', dadosGraficos[chartId], usarZoom ? optionsComZoom : optionsBasicas);
+}
+
+// Aguardar o gráfico estar criado e acessível em chartInstances['chartEstabelecimentos']
+
+const chartEstabelecimentos = chartInstances['chartEstabelecimentos'];
+
+document.getElementById('zoomInEstabelecimentos').addEventListener('click', () => {
+  chartEstabelecimentos.zoom(1.1);
+});
+
+document.getElementById('zoomOutEstabelecimentos').addEventListener('click', () => {
+  chartEstabelecimentos.zoom(0.9);
+});
+
+document.getElementById('resetZoomEstabelecimentos').addEventListener('click', () => {
+  chartEstabelecimentos.resetZoom();
+});
+
+
+// Função para mostrar só o gráfico selecionado
+function mostrarGraficoSelecionado(idSelecionado) {
+  document.querySelectorAll('.grafico-wrapper').forEach(div => {
+    div.style.display = div.dataset.chartId === idSelecionado ? 'block' : 'none';
+  });
+}
+
+// Evento para mudar gráfico
+document.getElementById('selectGrafico').addEventListener('change', function() {
+  mostrarGraficoSelecionado(this.value);
+});
+
+
+document.getElementById('toggleZoom').addEventListener('change', function () {
+  const usarZoom = this.checked;
+
+  for (const chartId in dadosGraficos) {
+    // pegar o tipo atual selecionado no select de tipo do gráfico
+    const selectTipo = document.querySelector(`select[data-chart-id="${chartId}"]`);
+    const tipo = selectTipo ? selectTipo.value : 'bar';
+
+    criarGrafico(chartId, tipo, dadosGraficos[chartId], usarZoom ? optionsComZoom : optionsBasicas);
+  }
+});
+
+
+
+
+
+
+
+
+
+// Evento para mudar tipo do gráfico (para cada select)
+document.querySelectorAll('.chart-type-select').forEach(select => {
+  select.addEventListener('change', function() {
+    const chartId = this.dataset.chartId;
+    const tipo = this.value;
+    const data = dadosGraficos[chartId];
+    const options = JSON.parse(JSON.stringify(optionsBasicas));
+
+    // Ajuste para gráficos tipo pizza/donut remover eixos e mostrar legenda
+    if (tipo === 'pie' || tipo === 'doughnut') {
+      delete options.scales;
+      options.plugins.legend.display = true;
+    }
+
+    criarGrafico(chartId, tipo, data, options);
+  });
+});
+
+// Inicializa mostrando o gráfico padrão selecionado e tipo padrão
+const selectGrafico = document.getElementById('selectGrafico');
+mostrarGraficoSelecionado(selectGrafico.value);
+
+// Ajusta o select de tipo para o gráfico inicial (exibe o tipo padrão selecionado)
+document.querySelectorAll('.chart-type-select').forEach(select => {
+  const chartId = select.dataset.chartId;
+  if (chartId === selectGrafico.value) {
+    select.value = tiposPadrao[chartId];
+  }
+});
+
+
+</script>
+
+
+
+
+{% endblock %}
+
