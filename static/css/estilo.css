@@ -158,6 +158,32 @@ hr {
         display: block;
         text-align: left;
     }
+
+  .resumo-totais {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+  }
+  .resumo-totais .linha {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    white-space: nowrap;
+  }
+  .resumo-totais .linha.total {
+    border-top: 1px dashed #ced4da;
+    margin-top: 6px;
+    padding-top: 8px;
+    font-weight: 700;
+  }
+  .resumo-totais .valor {
+    font-variant-numeric: tabular-nums;
+  }
+
+
 }
 
 .destaque {

@@ -1,19 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-
 {% block content %}
 
 <!-- Cabeçalho / Ações -->
 <div class="container-fluid px-0">
   <div class="row g-2 align-items-start mb-3">
-    <!-- ESQUERDA: Título + Nova despesa + Intervalo -->
     <div class="col-12 col-md-7">
       <h2 class="mb-2">Resumo de Despesas</h2>
       <a href="/despesas" class="btn btn-primary btn-sm mb-2">+ Nova Despesa</a>
-
+      <button type="button" id="btn-toggle-totais" class="btn btn-outline-secondary btn-sm mb-2">
+        <i class="bi bi-eye-slash"></i> Mostrar Totais
+      </button>
+      
       <div class="d-flex flex-wrap align-items-center gap-2">
         <label for="intervalo-atualizacao" class="fw-bold text-dark mb-0">Atualizar a cada:</label>
-        <select id="intervalo-atualizacao" class="form-select form-select-sm  w-auto">
+        <select id="intervalo-atualizacao" class="form-select form-select-sm w-auto">
           <option value="0">Nunca</option>
           <option value="10">10s</option>
           <option value="30">30s</option>
@@ -22,38 +23,41 @@
         </select>
       </div>
     </div>
-
-    <!-- DIREITA: Filtro de Mês + Saldo -->
+    
+    
+    
+    
+    
     <div class="col-12 col-md-5 text-md-end">
       <div class="d-flex flex-wrap gap-2 align-items-center justify-content-start justify-content-md-end">
         <label for="mes-selecionado" class="mb-0">Despesas do Mês:</label>
-        <select id="mes-selecionado" class="form-select form-select-sm w-100 w-auto"
-                onchange="window.location.href='?mes=' + this.value;">
-          {% for mes in colunas_meses_compradores %}
-            <option value="{{ mes }}" {% if mes == mes_selecionado %}selected{% endif %}>{{ mes }}</option>
-          {% endfor %}
-        </select>
-
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalSaldo">
-          Saldo
-        </button>
-      </div>
-    </div>
+        
+        <select id="mes-selecionado"
+        class="form-select form-select-sm w-100 w-auto"
+        onchange="window.location.href='?mes=' + this.value;">
+        {% for mes in colunas_meses_compradores %}
+        <option value="{{ mes }}" {% if mes == mes_selecionado %}selected{% endif %}>
+          {{ mes }}
+        </option>
+        {% endfor %}
+      </select>
+      
+      <button type="button"
+      class="btn btn-primary btn-sm"
+      data-bs-toggle="modal"
+      data-bs-target="#modalSaldo">
+      Saldo
+    </button>
   </div>
+</div>
+</div>
 </div>
 
 {% block dashboard_saldo %}
-<!-- Bootstrap CSS (caso o base.html não traga) -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-<!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-<!-- Bootstrap Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-
-<!-- Modal Saldo -->
 <div class="modal fade" id="modalSaldo" tabindex="-1" aria-labelledby="modalSaldoLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content">
@@ -61,50 +65,62 @@
         <h5 class="modal-title" id="modalSaldoLabel">Detalhes do Saldo — {{ mes_selecionado }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
-
+      
       <div class="modal-body">
         <h6 class="mb-2">Créditos</h6>
         <p><strong>Crédito do Salário:</strong> R$ {{ '%.2f'|format(total_creditos_mes|default(0)) }}</p>
         <p><strong>Crédito dos Compradores:</strong> R$ {{ '%.2f'|format(credito_compradores|default(0)) }}</p>
         <p><strong>Total de Créditos do Mês:</strong> R$ {{ '%.2f'|format(creditos_do_mes|default(0)) }}</p>
-
+        
         <hr class="my-3">
-
+        
         <h6 class="mb-2">Despesas</h6>
         <p><strong>Total Bandeiras (mês):</strong> R$ {{ '%.2f'|format(total_bandeiras_mes|default(0)) }}</p>
         <p><strong>Total Outros (mês):</strong> R$ {{ '%.2f'|format(total_outros_mes|default(0)) }}</p>
         <p><strong>Total das Despesas do Mês:</strong> R$ {{ '%.2f'|format(total_despesas_mes|default(0)) }}</p>
-
+        
         <hr class="my-3">
-
+        
         <h6 class="mb-2">Saldo</h6>
         <p><strong>Total Despesas do Mês:</strong> R$ {{ '%.2f'|format(total_despesas_mes|default(0)) }}</p>
         <p><strong>Total Créditos do Mês:</strong> R$ {{ '%.2f'|format(creditos_do_mes|default(0)) }}</p>
+        
         <p>
           <strong>Saldo:</strong>
-          <span class="{% if saldo_mes == 0 %}saldo-zero{% elif saldo_mes > 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}" style="font-weight:bold;">
-            R$ {{ '%.2f'|format(saldo_mes|default(0)) }}
-          </span>
-        </p>
-        <p><strong>Valor Pago:</strong> <span style="font-weight:bold; color:green;">R$ {{ '%.2f'|format(total_pago_mes|default(0)) }}</span></p>
-        <p>
-          <strong>Saldo Atualizado:</strong>
-          <span class="{% if saldo_mes_ajustado == 0 %}saldo-zero{% elif saldo_mes_ajustado > 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}" style="font-weight:bold;">
-            R$ {{ '%.2f'|format(saldo_mes_ajustado|default(0)) }}
-          </span>
-        </p>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div>
-    </div>
+          <span class="{% if saldo_mes == 0 %}saldo-zero{% elif saldo_mes > 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}"
+          style="font-weight:bold;">
+          R$ {{ '%.2f'|format(saldo_mes|default(0)) }}
+        </span>
+      </p>
+      
+      <p>
+        <strong>Valor Pago:</strong>
+        <span style="font-weight:bold; color:green;">
+          R$ {{ '%.2f'|format(total_pago_mes|default(0)) }}
+        </span>
+      </p>
+      
+      <p>
+        <strong>Saldo Atualizado:</strong>
+        <span class="{% if saldo_mes_ajustado == 0 %}saldo-zero{% elif saldo_mes_ajustado > 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}"
+        style="font-weight:bold;">
+        R$ {{ '%.2f'|format(saldo_mes_ajustado|default(0)) }}
+      </span>
+    </p>
+  </div>
+  
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
   </div>
 </div>
+</div>
+</div>
+
 <style>
-  .modal-body p { margin-bottom: 0.75rem; }
+  .modal-body p {
+    margin-bottom: 0.75rem;
+  }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock %}
 
 <style>
@@ -114,57 +130,115 @@
     height: 85vh;
     gap: 10px;
   }
-
+  
   .secao {
     overflow: auto;
     padding: 10px;
     border: 1px solid #ddd;
     background-color: #fdfdfd;
   }
-
-  .secao:not(.secao-parcelas):not(.secao-totais):not(.secao-totais-compradores):not(.secao-totais-outros) {
+  
+  .secao:not(.secao-parcelas):not(.secao-totais):not(.secao-totais-compradores):not(.secao-totais-outros):not(.secao-resumo):not(.secao-resumo-mes) {
     flex: 1;
   }
-
-  /* Altura fixa em desktop; em mobile será auto (ver @media) */
-  .secao-parcelas { height: 850px; overflow-y: auto; flex: none; }
-  .secao-totais   { height: 640px; overflow: auto; }
-  .secao-totais-compradores { height: 760px; overflow: auto; }
-  .secao-totais-outros { height: 450px; overflow: auto; }
-
+  
+  .secao-parcelas {
+    height: 850px;
+    overflow-y: auto;
+    flex: none;
+  }
+  
+  .secao-totais {
+    height: auto;
+    overflow: auto;
+    flex: none;
+  }
+  
+  .secao-totais-compradores {
+    height: auto;
+    overflow: auto;
+    flex: none;
+  }
+  
+  .secao-totais-outros {
+    height: auto;
+    overflow: auto;
+    flex: none;
+  }
+  
+  .secao-resumo {
+    height: auto;
+    overflow: auto;
+    flex: none;
+  }
+  
+  .secao-resumo .scroll-container th:first-child,
+  .secao-resumo .scroll-container td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    border-right: 1px solid #dee2e6;
+    min-width: 200px;
+    text-align: left !important;
+  }
+  
+  .secao-resumo .scroll-container thead th:first-child {
+    background-color: #343a40;
+    color: white;
+    z-index: 6;
+  }
+  
+  .secao-resumo .scroll-container td.total-cell {
+    text-align: right !important;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+  
+  .secao-resumo .scroll-container th:not(:first-child) {
+    text-align: right !important;
+    white-space: nowrap;
+  }
+  
+  .secao-resumo .scroll-container tbody tr:last-child td:first-child {
+    background-color: #e9ecef;
+  }
+  
   .pago {
     background-color: #d4edda !important;
     color: #155724 !important;
     font-weight: bold !important;
     cursor: pointer;
   }
+  
   .pago-azul {
     background-color: #cce5ff !important;
     color: #004085 !important;
     font-weight: bold !important;
     cursor: pointer;
   }
-
-  /* Scroll horizontal para tabelas */
+  
   .scroll-container {
     overflow-x: auto;
     width: 100%;
-    position: relative; /* necessário p/ sticky */
-    -webkit-overflow-scrolling: touch; /* iOS */
+    position: relative;
+    -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
   }
+  
   .scroll-container table {
     min-width: max-content;
     border-collapse: collapse;
   }
+  
   .scroll-container th,
   .scroll-container td {
     min-width: 120px;
     text-align: center;
     vertical-align: middle;
   }
-
-  /* Sticky colunas (desktop) */
+  
   .secao-totais .scroll-container th:first-child,
   .secao-totais .scroll-container td:first-child,
   .secao-totais-outros .scroll-container th:first-child,
@@ -175,48 +249,78 @@
     left: 0;
     background-color: white;
     z-index: 5;
-    border-right: 1px solid #dee2e6;
+    text-align: left !important;
   }
-
-  /* 2ª coluna sticky apenas em "totais outros" (desktop) */
+  
   .secao-totais-outros .scroll-container th:nth-child(2),
   .secao-totais-outros .scroll-container td:nth-child(2) {
     position: sticky;
-    left: 320px;
+    left: 305px;
     background-color: white;
     z-index: 4;
-    border-right: 1px solid #dee2e6;
+    border-right: 2px solid #dee2e6;
     min-width: 120px;
+    text-align: left !important;
   }
-
+  
   .table-sticky thead th:first-child {
     background-color: #343a40;
     color: white;
     z-index: 6;
   }
+  
   .table-sticky thead th:nth-child(2) {
     background-color: #343a40;
     color: white;
     z-index: 5;
   }
-
+  
   .nav-tabs .nav-link.active {
     background-color: #f8f9fa;
     font-weight: bold;
   }
-
-  #intervalo-atualizacao { min-width: 100px; }
-
-  .valor-oculto { opacity: 0; transition: opacity 0.3s ease; cursor: pointer; }
-  .valor-oculto:hover { opacity: 1; }
-
-  .saldo-zero { color: green !important; }
-  .saldo-positivo { color: blue !important; }
-  .saldo-negativo { color: red !important; }
-
-  table.espacada { border-collapse: separate !important; border-spacing: 0.35rem 0.35rem; }
-  table.espacada th, table.espacada td { padding-left: 1.25rem; padding-right: 1.25rem; }
-
+  
+  #intervalo-atualizacao {
+    min-width: 100px;
+  }
+  
+  .valor-oculto {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .valor-oculto:hover {
+    opacity: 1;
+  }
+  
+  body.mostrar-totais .valor-oculto {
+    opacity: 1 !important;
+  }
+  
+  .saldo-zero {
+    color: green !important;
+  }
+  
+  .saldo-positivo {
+    color: blue !important;
+  }
+  
+  .saldo-negativo {
+    color: red !important;
+  }
+  
+  table.espacada {
+    border-collapse: separate !important;
+    border-spacing: 0.35rem 0.35rem;
+  }
+  
+  table.espacada th,
+  table.espacada td {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+  
   .secao-totais-outros table th:nth-child(2),
   .secao-totais-outros table td:nth-child(2) {
     width: 210px;
@@ -224,137 +328,135 @@
     max-width: 210px;
     white-space: nowrap;
   }
-
+  
   .tabela-container {
     overflow-x: auto;
     max-width: 100%;
     position: relative;
   }
-
-  /* Abas responsivas: rolagem horizontal em telas pequenas */
+  
   .nav-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
   }
-  .nav-tabs .nav-item { flex: 0 0 auto; }
-
-  /* RESPONSIVO (telas pequenas) */
+  
+  .nav-tabs .nav-item {
+    flex: 0 0 auto;
+  }
+  
+  .secao-totais-compradores .scroll-container td.valor-mes-comprador,
+  .secao-totais-compradores .scroll-container td.valor-mes-comprador.text-center {
+    position: relative;
+    text-align: right !important;
+    padding-right: 30px;
+    white-space: nowrap;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+  
+  .secao-totais-compradores .scroll-container td.valor-mes-comprador .btn-check-comprador {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 20px !important;
+    height: 20px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    line-height: 1;
+  }
+  
+  .secao-totais-compradores .scroll-container td.valor-mes-comprador .btn-check-comprador i {
+    font-size: 16px;
+  }
+  
+  .secao-totais .scroll-container td.total-cell,
+  .secao-totais-outros .scroll-container td.total-cell {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+  
+  .secao-totais .scroll-container tbody td:last-child,
+  .secao-totais-outros .scroll-container tbody td:last-child {
+    text-align: right !important;
+  }
+  
+  .secao-totais .scroll-container tfoot th:not(:first-child),
+  .secao-totais-outros .scroll-container tfoot th:not(:first-child):not(:nth-child(2)) {
+    text-align: right !important;
+    white-space: nowrap;
+  }
+  
   @media (max-width: 768px) {
-    .dashboard-container { height: auto; }
+    .dashboard-container {
+      height: auto;
+    }
+    
     .secao,
     .secao-parcelas,
     .secao-totais,
     .secao-totais-compradores,
-    .secao-totais-outros {
+    .secao-totais-outros,
+    .secao-resumo,
+    .secao-resumo-mes {
       height: auto;
-      max-height: 65vh; /* permite rolar a seção sem estourar a viewport */
+      max-height: 65vh;
     }
-
-    /* Reduz largura mínima das colunas */
+    
     .scroll-container th,
     .scroll-container td {
       min-width: 90px;
       padding-left: 0.5rem;
       padding-right: 0.5rem;
     }
-
-    /* Desativa 2ª coluna sticky para evitar sobreposições no mobile */
+    
     .secao-totais-outros .scroll-container th:nth-child(2),
     .secao-totais-outros .scroll-container td:nth-child(2) {
       position: static !important;
       left: auto !important;
       z-index: auto !important;
     }
-
-    /* Selects ocupam 100% da largura */
+    
     #intervalo-atualizacao,
     #mes-selecionado {
       min-width: 0;
       width: 100%;
     }
-     }
-
-/* Por Comprador: alinhar valores à direita e fixar o botão à direita */
-.secao-totais-compradores .scroll-container td.valor-mes-comprador,
-.secao-totais-compradores .scroll-container td.valor-mes-comprador.text-center {
-  position: relative;
-  text-align: right !important;   /* anula .text-center e a regra global de td */
-  padding-right: 30px;            /* reserva espaço fixo pro botão */
-  white-space: nowrap;
-  vertical-align: middle;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-}
-
-/* Botão fixo na borda direita, fora do fluxo, não empurra o texto */
-.secao-totais-compradores .scroll-container td.valor-mes-comprador .btn-check-comprador {
-  position: absolute !important;
-  right: 8px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  width: 20px !important;
-  height: 20px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-  line-height: 1;
-}
-.secao-totais-compradores .scroll-container td.valor-mes-comprador .btn-check-comprador i {
-  font-size: 16px;
-}
-
-/* Totais por Bandeira (valores nas colunas de meses + coluna Total) */
-.secao-totais .scroll-container td.total-cell {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-}
-.secao-totais .scroll-container tbody td:last-child {
-  text-align: right !important;      /* coluna Total do corpo */
-}
-.secao-totais .scroll-container tfoot th:not(:first-child) {
-  text-align: right !important;      /* totais do rodapé, exceto "Total Geral" */
-  white-space: nowrap;
-}
-
-/* Totais Outros (valores nas colunas de meses + coluna Total) */
-.secao-totais-outros .scroll-container td.total-cell {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-}
-.secao-totais-outros .scroll-container tbody td:last-child {
-  text-align: right !important;      /* coluna Total do corpo */
-}
-.secao-totais-outros .scroll-container tfoot th:not(:first-child):not(:nth-child(2)) {
-  text-align: right !important;      /* meses + total no rodapé (pula 1ª e 2ª) */
-  white-space: nowrap;
-}
-
-
-
+  }
 </style>
 
-<!-- Abas -->
+<!-- ═══════════════ ABAS ═══════════════ -->
 <ul class="nav nav-tabs mb-3 flex-nowrap overflow-auto" id="dashboardTabs" role="tablist" style="white-space: nowrap;">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="resumo-tab" data-bs-toggle="tab" data-bs-target="#resumo" type="button" role="tab">
+      Resumo (Bandeiras + Outros)
+    </button>
+  </li>
+  
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="totais-tab" data-bs-toggle="tab" data-bs-target="#totais" type="button" role="tab">
       Totais por Bandeira
     </button>
   </li>
+  
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="outros-tab" data-bs-toggle="tab" data-bs-target="#outros" type="button" role="tab">
       Totais Outros
     </button>
   </li>
+  
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="compradores-tab" data-bs-toggle="tab" data-bs-target="#compradores" type="button" role="tab">
       Por Comprador
     </button>
   </li>
+  
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="parcelas-tab" data-bs-toggle="tab" data-bs-target="#parcelas" type="button" role="tab">
       Parcelas
@@ -362,238 +464,811 @@
   </li>
 </ul>
 
+<!-- ═══════════════ CONTEÚDO DAS ABAS ═══════════════ -->
 <div class="tab-content dashboard-container">
-
-  <!-- Parcelas Detalhadas -->
-  <div class="tab-pane fade" id="parcelas" role="tabpanel" aria-labelledby="parcelas-tab">
-    <div class="secao secao-parcelas">
-      <h5>Parcelas Detalhadas</h5>
+  
+  <!-- Resumo -->
+  <div class="tab-pane fade" id="resumo" role="tabpanel" aria-labelledby="resumo-tab">
+    <div class="secao secao-resumo">
+      <h5>Resumo por Mês — Bandeiras + Outros</h5>
+      
       <div class="scroll-container">
-        <table class="table table-bordered table-sm table-hover parcelas-detalhadas espacada">
-          <thead class="table-light">
+        <table class="table table-striped table-bordered table-sm table-sticky espacada">
+          <thead class="table-dark">
             <tr>
-              <th>Compra</th>
-              <th>Estabelecimento</th>
-              <th>Produto</th>
-              <th>Bandeira</th>
-              <th>Parcela</th>
-              <th>Vencimento</th>
-              <th>Valor da Parcela</th>
+              <th class="bg-dark text-white">Resumo</th>
+              {% for mes_ano in colunas_meses %}
+              <th>{{ mes_ano }}</th>
+              {% endfor %}
+              <th>Total</th>
             </tr>
           </thead>
+          
           <tbody>
-            {% for p in parcelas %}
             <tr>
-              <td>{{ p['data_compra'] }}</td>
-              <td>{{ p['estabelecimento'] }}</td>
-              <td>{{ p['produto_nome'] }}</td>
-              <td>{{ p['bandeira_nome'] }}</td>
-              <td>{{ p['numero_parcela'] }}/{{ p['total_parcelas'] }}</td>
-              <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
-              <td class="{% if p['parcela_alterada'] %}text-primary fw-bold{% endif %}">
-                R$ {{ '%.2f'|format(p['valor_parcela']) }}
-                {% if p['parcela_alterada'] %}
-                  <span title="Valor de parcela alterado">🟦</span>
-                {% endif %}
-              </td>
+              <td><strong>Total por Bandeira</strong></td>
+              {% set ns_band = namespace(total=0) %}
+              {% for mes_ano in colunas_meses %}
+              {% set v = totais_por_mes.get(mes_ano, 0) | float %}
+              {% set ns_band.total = ns_band.total + v %}
+              <td class="total-cell">R$ {{ '%.2f'|format(v) }}</td>
+              {% endfor %}
+              <td class="total-cell"><strong>R$ {{ '%.2f'|format(ns_band.total) }}</strong></td>
             </tr>
-            {% endfor %}
+            
+            <tr>
+              <td><strong>Total Outros</strong></td>
+              {% set ns_outros = namespace(total=0) %}
+              {% for mes_ano in colunas_meses %}
+              {% set v = totais_por_mes_outros.get(mes_ano, 0) | float %}
+              {% set ns_outros.total = ns_outros.total + v %}
+              <td class="total-cell">R$ {{ '%.2f'|format(v) }}</td>
+              {% endfor %}
+              <td class="total-cell"><strong>R$ {{ '%.2f'|format(ns_outros.total) }}</strong></td>
+            </tr>
+            
+            <tr style="background-color: #e9ecef;">
+              <td><strong>Total Geral do Mês</strong></td>
+              {% set ns_geral = namespace(total=0) %}
+              {% for mes_ano in colunas_meses %}
+              {% set vb = totais_por_mes.get(mes_ano, 0) | float %}
+              {% set vo = totais_por_mes_outros.get(mes_ano, 0) | float %}
+              {% set vt = vb + vo %}
+              {% set ns_geral.total = ns_geral.total + vt %}
+              <td class="total-cell"><strong>R$ {{ '%.2f'|format(vt) }}</strong></td>
+              {% endfor %}
+              <td class="total-cell"><strong>R$ {{ '%.2f'|format(ns_geral.total) }}</strong></td>
+            </tr>
+            <!-- NOVA LINHA: TOTAL PAGO -->
+            <tr class="table-success">
+              <td><strong>Total Pago</strong></td>
+              {% set ns_pago_resumo_geral = namespace(total=0) %}
+              {% for mes_ano in colunas_meses %}
+              {% set ns_pago_resumo_mes = namespace(total=0) %}
+              
+              {% for bandeira, valores in parcelas_por_mes.items() %}
+              {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+              {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+              {% if pago %}
+              {% set ns_pago_resumo_mes.total = ns_pago_resumo_mes.total + valor %}
+              {% endif %}
+              {% endfor %}
+              
+              {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+              {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+              {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+              {% if pago %}
+              {% set ns_pago_resumo_mes.total = ns_pago_resumo_mes.total + valor %}
+              {% endif %}
+              {% endfor %}
+              
+              {% set ns_pago_resumo_geral.total = ns_pago_resumo_geral.total + ns_pago_resumo_mes.total %}
+              <td class="total-cell">R$ {{ '%.2f'|format(ns_pago_resumo_mes.total) }}</td>
+              {% endfor %}
+              <td class="total-cell"><strong>R$ {{ '%.2f'|format(ns_pago_resumo_geral.total) }}</strong></td>
+            </tr>
+            
+            <!-- NOVA LINHA: TOTAL A PAGAR -->
+            <tr class="table-warning">
+              <td><strong>Total a Pagar</strong></td>
+              {% set ns_apagar_resumo_geral = namespace(total=0) %}
+              {% for mes_ano in colunas_meses %}
+              {% set ns_apagar_resumo_mes = namespace(total=0) %}
+              
+              {% for bandeira, valores in parcelas_por_mes.items() %}
+              {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+              {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+              {% if not pago %}
+              {% set ns_apagar_resumo_mes.total = ns_apagar_resumo_mes.total + valor %}
+              {% endif %}
+              {% endfor %}
+              
+              {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+              {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+              {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+              {% if not pago %}
+              {% set ns_apagar_resumo_mes.total = ns_apagar_resumo_mes.total + valor %}
+              {% endif %}
+              {% endfor %}
+              
+              {% set ns_apagar_resumo_geral.total = ns_apagar_resumo_geral.total + ns_apagar_resumo_mes.total %}
+              <td class="total-cell">R$ {{ '%.2f'|format(ns_apagar_resumo_mes.total) }}</td>
+              {% endfor %}
+              <td class="total-cell"><strong>R$ {{ '%.2f'|format(ns_apagar_resumo_geral.total) }}</strong></td>
+            </tr>
           </tbody>
         </table>
       </div>
     </div>
   </div>
-
+  
   <!-- Totais por Mês e Bandeira -->
   <div class="tab-pane fade show active" id="totais" role="tabpanel" aria-labelledby="totais-tab">
     <div class="secao secao-totais">
-      <h5>Totais por Mês e Bandeira</h5>
-      <div class="scroll-container">
-        <table class="table table-striped table-bordered table-sm table-sticky espacada">
-          <thead class="table-dark">
-            <tr>
-              <th class="bg-dark text-white">Cartões</th>
-              {% for mes_ano in colunas_meses %}
-              <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for bandeira, valores in parcelas_por_mes.items() %}
-            <tr>
-              <td>{{ bandeira }}</td>
-              {% for mes_ano in colunas_meses %}
-                {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
-                {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
-                <td role="button" tabindex="0"
-                    class="text-center total-cell {% if pago %}pago{% endif %}"
-                    data-bandeira="{{ bandeira }}" data-mes-ano="{{ mes_ano }}"
-                    onclick="handleClick(this)"
-                    ondblclick="handleDoubleClick(this)"
-                    onkeypress="if(event.key === 'Enter' || event.key === ' ') {event.preventDefault();handleClick(this);}"
-                    title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
-                    style="cursor:pointer;">
-                  R$ {{ '%.2f'|format(valor) }}
-                </td>
-              {% endfor %}
-              <td>
-                <strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}</span></strong>
-              </td>
-            </tr>
+      
+      {% set bandeiras_ativas = [] %}
+      {% set bandeiras_inativas = [] %}
+      {% set mes_idx_map = {} %}
+      
+      {% for mes_ano in colunas_meses %}
+      {% set _ = mes_idx_map.update({mes_ano: loop.index0}) %}
+      {% endfor %}
+      
+      {% set idx_mes_selecionado = mes_idx_map.get(mes_selecionado, 0) %}
+      
+      {% for bandeira, valores in parcelas_por_mes.items() %}
+      {% set ns_ativa = namespace(tem_valor=false) %}
+      
+      {% for mes_ano in colunas_meses %}
+      {% if mes_idx_map[mes_ano] >= idx_mes_selecionado %}
+      {% set v = (valores.get(mes_ano, 0) | float) %}
+      {% if v != 0 %}
+      {% set ns_ativa.tem_valor = true %}
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+      
+      {% if ns_ativa.tem_valor %}
+      {% set _ = bandeiras_ativas.append(bandeira) %}
+      {% else %}
+      {% set _ = bandeiras_inativas.append(bandeira) %}
+      {% endif %}
+      {% endfor %}
+      
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h5 class="mb-0">Totais por Mês e Bandeira</h5>
+        
+        <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+          <label class="mb-0 fw-semibold">Filtrar cartão:</label>
+          
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+            type="button"
+            id="dropdownBandeirasBtn"
+            data-bs-toggle="dropdown"
+            data-bs-auto-close="outside"
+            aria-expanded="false">
+            Todas
+          </button>
+          
+          <div class="dropdown-menu p-2"
+          aria-labelledby="dropdownBandeirasBtn"
+          style="min-width: 340px; max-height: 380px; overflow:auto;">
+          
+          <div class="d-flex gap-2 mb-2 flex-wrap">
+            <button type="button" class="btn btn-link btn-sm p-0" id="sel-todas-bandeiras">
+              Selecionar todas
+            </button>
+            <span class="text-muted">•</span>
+            <button type="button" class="btn btn-link btn-sm p-0" id="sel-nenhuma-bandeiras">
+              Limpar
+            </button>
+          </div>
+          
+          <div class="mb-2">
+            <input type="text"
+            class="form-control form-control-sm"
+            id="busca-bandeiras"
+            placeholder="Buscar bandeira...">
+          </div>
+          
+          <div id="lista-bandeiras">
+            {% for bandeira in bandeiras_ativas %}
+            <div class="form-check">
+              <input class="form-check-input chk-bandeira"
+              type="checkbox"
+              value="{{ bandeira }}"
+              id="chk_{{ loop.index }}"
+              checked>
+              <label class="form-check-label" for="chk_{{ loop.index }}">
+                {{ bandeira }}
+              </label>
+            </div>
             {% endfor %}
-          </tbody>
-          <tfoot class="table-light">
-            <tr>
-              <th>Total Geral</th>
-              {% for mes_ano in colunas_meses %}
-                <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}</span></th>
-              {% endfor %}
-              <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral) }}</span></strong></th>
-            </tr>
-          </tfoot>
-        </table>
+            
+            {% for bandeira in bandeiras_inativas %}
+            <div class="form-check">
+              <input class="form-check-input chk-bandeira"
+              type="checkbox"
+              value="{{ bandeira }}"
+              id="chk_{{ loop.index + bandeiras_ativas|length }}">
+              <label class="form-check-label" for="chk_{{ loop.index + bandeiras_ativas|length }}">
+                {{ bandeira }}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          
+        </div>
       </div>
     </div>
   </div>
+  
+  <div class="scroll-container">
+    <table class="table table-striped table-bordered table-sm table-sticky espacada">
+      <thead class="table-dark">
+        <tr>
+          <th class="bg-dark text-white">Cartões</th>
+          {% for mes_ano in colunas_meses %}
+          <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
+          {% endfor %}
+          <th>Total</th>
+        </tr>
+      </thead>
+      
+      <tbody>
+        {% for bandeira, valores in parcelas_por_mes.items() %}
+        <tr data-bandeira="{{ bandeira }}">
+          <td>{{ bandeira }}</td>
+          
+          {% for mes_ano in colunas_meses %}
+          {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+          {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+          
+          <td role="button"
+          tabindex="0"
+          class="text-center total-cell {% if pago %}pago{% endif %}"
+          data-bandeira="{{ bandeira }}"
+          data-mes-ano="{{ mes_ano }}"
+          onclick="handleClick(this)"
+          ondblclick="handleDoubleClick(this)"
+          onkeypress="if(event.key==='Enter'||event.key===' '){event.preventDefault();handleClick(this);}"
+          title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+          style="cursor:pointer;">
+          R$ {{ '%.2f'|format(valor) }}
+        </td>
+        {% endfor %}
+        
+        <td>
+          <strong>
+            <span class="valor-oculto">
+              R$ {{ '%.2f'|format(totais_por_linha[bandeira]) }}
+            </span>
+          </strong>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    
+    <tfoot class="table-light">
+      <tr>
+        <th>Total Geral</th>
+        {% for mes_ano in colunas_meses %}
+        <th>
+          <span class="valor-oculto">
+            R$ {{ '%.2f'|format(totais_por_mes.get(mes_ano, 0)) }}
+          </span>
+        </th>
+        {% endfor %}
+        <th>
+          <strong>
+            <span class="valor-oculto">
+              R$ {{ '%.2f'|format(total_geral) }}
+            </span>
+          </strong>
+        </th>
+      </tr>
+      <!-- NOVA LINHA: TOTAL PAGO -->
+      <tr class="table-success">
+        <th>Total Pago</th>
+        {% set ns_pago_geral = namespace(total=0) %}
+        {% for mes_ano in colunas_meses %}
+        {% set ns_pago_mes = namespace(total=0) %}
+        {% for bandeira, valores in parcelas_por_mes.items() %}
+        {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+        {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+        {% if pago %}
+        {% set ns_pago_mes.total = ns_pago_mes.total + valor %}
+        {% endif %}
+        {% endfor %}
+        {% set ns_pago_geral.total = ns_pago_geral.total + ns_pago_mes.total %}
+        <th>
+          <span class="valor-oculto">
+            R$ {{ '%.2f'|format(ns_pago_mes.total) }}
+          </span>
+        </th>
+        {% endfor %}
+        <th>
+          <strong>
+            <span class="valor-oculto">
+              R$ {{ '%.2f'|format(ns_pago_geral.total) }}
+            </span>
+          </strong>
+        </th>
+        <!-- NOVA LINHA: TOTAL A PAGAR -->
+        <tr class="table-warning">
+          <th>Total a Pagar</th>
+          {% set ns_apagar_geral = namespace(total=0) %}
+          {% for mes_ano in colunas_meses %}
+          {% set ns_apagar_mes = namespace(total=0) %}
+          {% for bandeira, valores in parcelas_por_mes.items() %}
+          {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+          {% set pago = pagamento_por_mes_bandeira.get(bandeira, {}).get(mes_ano, False) %}
+          {% if not pago %}
+          {% set ns_apagar_mes.total = ns_apagar_mes.total + valor %}
+          {% endif %}
+          {% endfor %}
+          {% set ns_apagar_geral.total = ns_apagar_geral.total + ns_apagar_mes.total %}
+          <th>
+            <span class="valor-oculto">
+              R$ {{ '%.2f'|format(ns_apagar_mes.total) }}
+            </span>
+          </th>
+          {% endfor %}
+          <th>
+            <strong>
+              <span class="valor-oculto">
+                R$ {{ '%.2f'|format(ns_apagar_geral.total) }}
+              </span>
+            </strong>
+          </th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  
+</div>
+</div>
 
-  <!-- Totais Outros -->
-  <div class="tab-pane fade" id="outros" role="tabpanel" aria-labelledby="outros-tab">
-    <div class="secao secao-totais-outros">
-      <h5>Totais por Mês e Bandeira (Outras Formas de Pagamento)</h5>
-      <div class="scroll-container">
-        <table class="table table-striped table-bordered table-sm table-sticky espacada">
-          <thead class="table-dark">
-            <tr>
-              <th class="bg-dark text-white">Despesas Fixas</th>
-              <th class="bg-dark text-white text-end">Tipo de Pagamento</th>
-              {% for mes_ano in colunas_meses %}
-              <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for bandeira, valores in parcelas_por_mes_outros.items() %}
-            <tr>
-              <td>{{ bandeira }}</td>
-              <td>{{ formas_pagamento_outros.get(bandeira, 'N/A') }}</td>
-              {% for mes_ano in colunas_meses %}
-                {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
-                {% set valor_float = valor | float %}
-                {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
-                <td role="button" tabindex="0" class="text-center total-cell {% if pago %}pago{% endif %}"
-                    data-bandeira="{{ bandeira }}" data-mes-ano="{{ mes_ano }}"
-                    onclick="togglePagamento(this)"
-                    onkeypress="if(event.key === 'Enter' || event.key === ' ') togglePagamento(this)"
-                    title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
-                    style="cursor:pointer;">
-                  R$ {{ '%.2f'|format(valor_float) }}
-                </td>
-              {% endfor %}
-              <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira]) }}</span></strong></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot class="table-light">
-            <tr>
-              <th>Total Geral</th>
-              <th></th>
-              {% for mes_ano in colunas_meses %}
-              <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}</span></th>
-              {% endfor %}
-              <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_outros) }}</span></strong></th>
-            </tr>
-          </tfoot>
-        </table>
+<!-- Totais Outros -->
+<div class="tab-pane fade" id="outros" role="tabpanel" aria-labelledby="outros-tab">
+  <div class="secao secao-totais-outros">
+    
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <h5 class="mb-0">Totais por Mês e Bandeira (Outras Formas de Pagamento)</h5>
+      
+      <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+        <label class="mb-0 fw-semibold">Filtrar despesa:</label>
+        
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+          type="button"
+          id="dropdownOutrosBtn"
+          data-bs-toggle="dropdown"
+          data-bs-auto-close="outside"
+          aria-expanded="false">
+          Todas
+        </button>
+        
+        <div class="dropdown-menu p-2"
+        aria-labelledby="dropdownOutrosBtn"
+        style="min-width: 340px; max-height: 380px; overflow:auto;">
+        
+        <div class="d-flex gap-2 mb-2 flex-wrap">
+          <button type="button" class="btn btn-link btn-sm p-0" id="sel-todos-outros">
+            Selecionar todas
+          </button>
+          <span class="text-muted">•</span>
+          <button type="button" class="btn btn-link btn-sm p-0" id="sel-nenhum-outros">
+            Limpar
+          </button>
+        </div>
+        
+        <div class="mb-2">
+          <input type="text"
+          class="form-control form-control-sm"
+          id="busca-outros"
+          placeholder="Buscar despesa...">
+        </div>
+        
+        <div id="lista-outros">
+          {% for bandeira in parcelas_por_mes_outros.keys() %}
+          <div class="form-check">
+            <input class="form-check-input chk-outros"
+            type="checkbox"
+            value="{{ bandeira }}"
+            id="chk_outros_{{ loop.index }}"
+            checked>
+            <label class="form-check-label" for="chk_outros_{{ loop.index }}">
+              {{ bandeira }}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Compradores -->
-  <div class="tab-pane fade" id="compradores" role="tabpanel" aria-labelledby="compradores-tab">
-    <div class="secao secao-totais-compradores">
-      <h5>Totais por Comprador por Mês</h5>
-      <div class="scroll-container">
-        <table class="table table-striped table-bordered table-sm table-sticky espacada">
-          <thead class="table-dark">
-            <tr>
-              <th class="bg-dark text-white">Compradores</th>
-              {% for mes in colunas_meses_compradores %}
-              <th id="coluna_{{ mes }}">{{ mes }}</th>
-              {% endfor %}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for comprador, valores in totais_por_comprador_mes.items() %}
-            <tr>
-              <td>{{ comprador }}</td>
-              {% for mes in colunas_meses_compradores %}
-                {% set valor = valores.get(mes, 0) %}
-                {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
-                <td class="valor-mes-comprador text-center {% if pago %}pago-azul{% endif %}"
-                    data-comprador="{{ comprador }}" data-mes="{{ mes }}" style="cursor:pointer;"
-                    title="{% if pago %}simPago{% else %}Não pago{% endif %}">
-                  R$ {{ '%.2f'|format(valor) }}
-                  <!-- Botão de marcação visual -->
-                  <button type="button"
-                        class="btn btn-sm btn-link p-0 ms-2 btn-check-comprador"
-                        title="Marcar como pago (visual)"
-                        data-comprador="{{ comprador }}"
-                        data-mes="{{ mes }}"
-                        aria-label="Marcar {{ comprador }} em {{ mes }}">
-                   <i class="bi bi-circle text-muted" aria-hidden="true"></i>
-                   </button>
-                </td>
-              {% endfor %}
-              <td><strong><span class="valor-oculto">R$ {{ '%.2f'|format(valores.values() | sum) }}</span></strong></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot class="table-light">
-            <tr>
-              <th>Total Geral</th>
-              {% for mes in colunas_meses_compradores %}
-              <th><span class="valor-oculto">R$ {{ '%.2f'|format(totais_por_mes_comprador.get(mes, 0)) }}</span></th>
-              {% endfor %}
-              <th><strong><span class="valor-oculto">R$ {{ '%.2f'|format(total_geral_compradores) }}</span></strong></th>
-            </tr>
-          </tfoot>
-        </table>
+<div class="scroll-container">
+  <table class="table table-striped table-bordered table-sm table-sticky espacada">
+    <thead class="table-dark">
+      <tr>
+        <th class="bg-dark text-white">Despesas Fixas</th>
+        <th class="bg-dark text-white text-end">Tipo de Pagamento</th>
+        {% for mes_ano in colunas_meses %}
+        <th id="coluna_{{ mes_ano }}">{{ mes_ano }}</th>
+        {% endfor %}
+        <th>Total</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+      <tr data-outros="{{ bandeira }}">
+        <td>{{ bandeira }}</td>
+        <td>{{ formas_pagamento_outros.get(bandeira, 'N/A') }}</td>
+        
+        {% for mes_ano in colunas_meses %}
+        {% set valor = valores[mes_ano] if mes_ano in valores else 0 %}
+        {% set valor_float = valor | float %}
+        {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+        
+        <td role="button"
+        tabindex="0"
+        class="text-center total-cell {% if pago %}pago{% endif %}"
+        data-bandeira="{{ bandeira }}"
+        data-mes-ano="{{ mes_ano }}"
+        onclick="togglePagamento(this)"
+        onkeypress="if(event.key==='Enter'||event.key===' ') togglePagamento(this)"
+        title="{% if pago %}Marcado como pago{% else %}Clique para marcar como pago{% endif %}"
+        style="cursor:pointer;">
+        R$ {{ '%.2f'|format(valor_float) }}
+      </td>
+      {% endfor %}
+      
+      <td>
+        <strong>
+          <span class="valor-oculto">
+            R$ {{ '%.2f'|format(totais_por_linha_outros[bandeira]) }}
+          </span>
+        </strong>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  
+  <tfoot class="table-light">
+    <tr>
+      <th>Total Geral</th>
+      <th></th>
+      {% for mes_ano in colunas_meses %}
+      <th>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(totais_por_mes_outros.get(mes_ano, 0)) }}
+        </span>
+      </th>
+      {% endfor %}
+      <th>
+        <strong>
+          <span class="valor-oculto">
+            R$ {{ '%.2f'|format(total_geral_outros) }}
+          </span>
+        </strong>
+      </th>
+    </tr>
+    
+    <!-- NOVA LINHA: TOTAL PAGO -->
+    <tr class="table-success">
+      <th>Total Pago</th>
+      <th></th>
+      {% set ns_pago_geral_outros = namespace(total=0) %}
+      {% for mes_ano in colunas_meses %}
+      {% set ns_pago_mes_outros = namespace(total=0) %}
+      {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+      {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+      {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+      {% if pago %}
+      {% set ns_pago_mes_outros.total = ns_pago_mes_outros.total + valor %}
+      {% endif %}
+      {% endfor %}
+      {% set ns_pago_geral_outros.total = ns_pago_geral_outros.total + ns_pago_mes_outros.total %}
+      <th>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(ns_pago_mes_outros.total) }}
+        </span>
+      </th>
+      {% endfor %}
+      <th>
+        <strong>
+          <span class="valor-oculto">
+            R$ {{ '%.2f'|format(ns_pago_geral_outros.total) }}
+          </span>
+        </strong>
+      </th>
+    </tr>
+    
+    <!-- NOVA LINHA: TOTAL A PAGAR -->
+    <tr class="table-warning">
+      <th>Total a Pagar</th>
+      <th></th>
+      {% set ns_apagar_geral_outros = namespace(total=0) %}
+      {% for mes_ano in colunas_meses %}
+      {% set ns_apagar_mes_outros = namespace(total=0) %}
+      {% for bandeira, valores in parcelas_por_mes_outros.items() %}
+      {% set valor = (valores[mes_ano] | float) if mes_ano in valores else 0 %}
+      {% set pago = pagamento_por_mes_bandeira_outros.get(bandeira, {}).get(mes_ano, False) %}
+      {% if not pago %}
+      {% set ns_apagar_mes_outros.total = ns_apagar_mes_outros.total + valor %}
+      {% endif %}
+      {% endfor %}
+      {% set ns_apagar_geral_outros.total = ns_apagar_geral_outros.total + ns_apagar_mes_outros.total %}
+      <th>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(ns_apagar_mes_outros.total) }}
+        </span>
+      </th>
+      {% endfor %}
+      <th>
+        <strong>
+          <span class="valor-oculto">
+            R$ {{ '%.2f'|format(ns_apagar_geral_outros.total) }}
+          </span>
+        </strong>
+      </th>
+    </tr>
+  </tfoot>
+</table>
+</div>
+
+</div>
+</div>
+
+<!-- Compradores -->
+<div class="tab-pane fade" id="compradores" role="tabpanel" aria-labelledby="compradores-tab">
+  <div class="secao secao-totais-compradores">
+    
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <h5 class="mb-0">Totais por Comprador por Mês</h5>
+      
+      <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+        <label class="mb-0 fw-semibold">Filtrar comprador:</label>
+        
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+          type="button"
+          id="dropdownCompradoresBtn"
+          data-bs-toggle="dropdown"
+          data-bs-auto-close="outside"
+          aria-expanded="false">
+          Todos
+        </button>
+        
+        <div class="dropdown-menu p-2"
+        aria-labelledby="dropdownCompradoresBtn"
+        style="min-width: 340px; max-height: 380px; overflow:auto;">
+        
+        <div class="d-flex gap-2 mb-2 flex-wrap">
+          <button type="button" class="btn btn-link btn-sm p-0" id="sel-todos-compradores">
+            Selecionar todos
+          </button>
+          <span class="text-muted">•</span>
+          <button type="button" class="btn btn-link btn-sm p-0" id="sel-nenhum-compradores">
+            Limpar
+          </button>
+        </div>
+        
+        <div class="mb-2">
+          <input type="text"
+          class="form-control form-control-sm"
+          id="busca-compradores"
+          placeholder="Buscar comprador...">
+        </div>
+        
+        <div id="lista-compradores">
+          {% for comprador in totais_por_comprador_mes.keys() %}
+          <div class="form-check">
+            <input class="form-check-input chk-comprador-filtro"
+            type="checkbox"
+            value="{{ comprador }}"
+            id="chk_comprador_{{ loop.index }}"
+            checked>
+            <label class="form-check-label" for="chk_comprador_{{ loop.index }}">
+              {{ comprador }}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        
       </div>
     </div>
   </div>
+</div>
 
-</div> <!-- fim tab-content -->
+<div class="scroll-container">
+  <table class="table table-striped table-bordered table-sm table-sticky espacada">
+    <thead class="table-dark">
+      <tr>
+        <th class="bg-dark text-white">Compradores</th>
+        {% for mes in colunas_meses_compradores %}
+        <th id="coluna_{{ mes }}">{{ mes }}</th>
+        {% endfor %}
+        <th>Total</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      {% for comprador, valores in totais_por_comprador_mes.items() %}
+      <tr data-comprador="{{ comprador }}">
+        <td>{{ comprador }}</td>
+        
+        {% for mes in colunas_meses_compradores %}
+        {% set valor = valores.get(mes, 0) %}
+        {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
+        
+        <td class="valor-mes-comprador text-center {% if pago %}pago-azul{% endif %}"
+        data-comprador="{{ comprador }}"
+        data-mes="{{ mes }}"
+        style="cursor:pointer;"
+        title="{% if pago %}simPago{% else %}Não pago{% endif %}">
+        R$ {{ '%.2f'|format(valor) }}
+        
+        <button type="button"
+        class="btn btn-sm btn-link p-0 ms-2 btn-check-comprador"
+        title="Marcar como pago (visual)"
+        data-comprador="{{ comprador }}"
+        data-mes="{{ mes }}"
+        aria-label="Marcar {{ comprador }} em {{ mes }}">
+        <i class="bi bi-circle text-muted" aria-hidden="true"></i>
+      </button>
+    </td>
+    {% endfor %}
+    
+    <td>
+      <strong>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(valores.values() | sum) }}
+        </span>
+      </strong>
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+<tfoot class="table-light">
+  <tr>
+    <th>Total Geral</th>
+    {% for mes in colunas_meses_compradores %}
+    <th>
+      <span class="valor-oculto">
+        R$ {{ '%.2f'|format(totais_por_mes_comprador.get(mes, 0)) }}
+      </span>
+    </th>
+    {% endfor %}
+    <th>
+      <strong>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(total_geral_compradores) }}
+        </span>
+      </strong>
+    </th>
+  </tr>
+  <!-- NOVA LINHA: TOTAL PAGO -->
+  <tr class="table-success">
+    <th>Total Pago</th>
+    {% set ns_pago_geral_comp = namespace(total=0) %}
+    {% for mes in colunas_meses_compradores %}
+    {% set ns_pago_mes_comp = namespace(total=0) %}
+    {% for comprador, valores in totais_por_comprador_mes.items() %}
+    {% set valor = valores.get(mes, 0) | float %}
+    {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
+    {% if pago %}
+    {% set ns_pago_mes_comp.total = ns_pago_mes_comp.total + valor %}
+    {% endif %}
+    {% endfor %}
+    {% set ns_pago_geral_comp.total = ns_pago_geral_comp.total + ns_pago_mes_comp.total %}
+    <th>
+      <span class="valor-oculto">
+        R$ {{ '%.2f'|format(ns_pago_mes_comp.total) }}
+      </span>
+    </th>
+    {% endfor %}
+    <th>
+      <strong>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(ns_pago_geral_comp.total) }}
+        </span>
+      </strong>
+    </th>
+  </tr>
+  
+  <!-- NOVA LINHA: TOTAL A PAGAR -->
+  <tr class="table-warning">
+    <th>Total a Pagar</th>
+    {% set ns_apagar_geral_comp = namespace(total=0) %}
+    {% for mes in colunas_meses_compradores %}
+    {% set ns_apagar_mes_comp = namespace(total=0) %}
+    {% for comprador, valores in totais_por_comprador_mes.items() %}
+    {% set valor = valores.get(mes, 0) | float %}
+    {% set pago = pagamento_por_mes_comprador.get(comprador, {}).get(mes, False) %}
+    {% if not pago %}
+    {% set ns_apagar_mes_comp.total = ns_apagar_mes_comp.total + valor %}
+    {% endif %}
+    {% endfor %}
+    {% set ns_apagar_geral_comp.total = ns_apagar_geral_comp.total + ns_apagar_mes_comp.total %}
+    <th>
+      <span class="valor-oculto">
+        R$ {{ '%.2f'|format(ns_apagar_mes_comp.total) }}
+      </span>
+    </th>
+    {% endfor %}
+    <th>
+      <strong>
+        <span class="valor-oculto">
+          R$ {{ '%.2f'|format(ns_apagar_geral_comp.total) }}
+        </span>
+      </strong>
+    </th>
+  </tr>
+</tfoot>
+</table>
+</div>
+</div>
+</div>
+
+<!-- Parcelas Detalhadas -->
+<div class="tab-pane fade" id="parcelas" role="tabpanel" aria-labelledby="parcelas-tab">
+  <div class="secao secao-parcelas">
+    <h5>Parcelas Detalhadas</h5>
+    
+    <div class="scroll-container">
+      <table class="table table-bordered table-sm table-hover parcelas-detalhadas espacada">
+        <thead class="table-light">
+          <tr>
+            <th>Compra</th>
+            <th>Estabelecimento</th>
+            <th>Produto</th>
+            <th>Bandeira</th>
+            <th>Parcela</th>
+            <th>Vencimento</th>
+            <th>Valor da Parcela</th>
+          </tr>
+        </thead>
+        
+        <tbody>
+          {% for p in parcelas %}
+          <tr>
+            <td>{{ p['data_compra'] }}</td>
+            <td>{{ p['estabelecimento'] }}</td>
+            <td>{{ p['produto_nome'] }}</td>
+            <td>{{ p['bandeira_nome'] }}</td>
+            <td>{{ p['numero_parcela'] }}/{{ p['total_parcelas'] }}</td>
+            <td>{{ p['data_vencimento'].strftime('%d/%m/%Y') }}</td>
+            
+            <td class="{% if p['parcela_alterada'] %}text-primary fw-bold{% endif %}">
+              R$ {{ '%.2f'|format(p['valor_parcela']) }}
+              {% if p['parcela_alterada'] %}
+              <span title="Valor de parcela alterado">🟦</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+  </div>
+</div>
+
+</div>
 
 <script>
   const csrfToken = "{{ csrf_token }}";
-
+  
   function togglePagamento(cell) {
     const bandeira = cell.dataset.bandeira;
     const mesAno = cell.dataset.mesAno;
-
+    
     fetch('/toggle_pagamento', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken
       },
-      body: JSON.stringify({ bandeira: bandeira, mes_ano: mesAno })
+      body: JSON.stringify({
+        bandeira,
+        mes_ano: mesAno
+      })
     })
     .then(r => r.json())
     .then(data => {
       if (data.success) {
-        const allCells = document.querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`);
-        allCells.forEach(c => {
-          if (data.pago) {
-            c.classList.add('pago');
-            c.title = 'Marcado como pago';
-          } else {
-            c.classList.remove('pago');
-            c.title = 'Clique para marcar como pago';
-          }
+        document
+        .querySelectorAll(`td.total-cell[data-bandeira="${bandeira}"][data-mes-ano="${mesAno}"]`)
+        .forEach(c => {
+          c.classList.toggle('pago', data.pago);
+          c.title = data.pago ? 'Marcado como pago' : 'Clique para marcar como pago';
         });
       } else {
         alert('Erro ao atualizar pagamento: ' + (data.error || ''));
@@ -601,31 +1276,50 @@
     })
     .catch(() => alert('Erro na comunicação com o servidor'));
   }
-
+  
   function mostrarDetalhesCompras(cell) {
     const bandeira = cell.dataset.bandeira;
     const mesAno = cell.dataset.mesAno;
+    
     if (!bandeira || !mesAno) return;
-
+    
     fetch('/detalhes_compras', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken
       },
-      body: JSON.stringify({ bandeira, mes_ano: mesAno })
+      body: JSON.stringify({
+        bandeira,
+        mes_ano: mesAno
+      })
     })
-    .then(response => {
-      if (!response.ok) throw new Error("Erro ao buscar detalhes.");
-      return response.json();
+    .then(r => {
+      if (!r.ok) throw new Error('Erro ao buscar detalhes.');
+      return r.json();
     })
     .then(data => {
-      document.getElementById('modalDetalhesComprasLabel').textContent = `Detalhes da bandeira "${bandeira}" - ${mesAno}`;
-      document.getElementById('totalMes').textContent = `Total do mês: R$ ${data.total_mes.toFixed(2)}`;
+      document.getElementById('modalDetalhesComprasLabel').textContent =
+      `Detalhes da bandeira "${bandeira}" - ${mesAno}`;
+      
+      document.getElementById('totalMes').textContent =
+      `Total do mês: R$ ${data.total_mes.toFixed(2)}`;
+      
       const tbody = document.getElementById('tbodyDetalhesCompras');
       tbody.innerHTML = '';
-      data.detalhes.forEach(item => {
+      
+      const detalhesOrdenados = [...(data.detalhes || [])].sort((a, b) => {
+        const toDate = s => new Date(s.split('/').reverse().join('-'));
+        return toDate(b.data_compra) - toDate(a.data_compra);
+      });
+      
+      detalhesOrdenados.forEach((item, index) => {
+        const pagas = item.parcelas_pagas ?? 0;
+        const total = item.quantidade_parcelas ?? 0;
         const tr = document.createElement('tr');
+        
+        if (index === 0) tr.className = 'fw-bold';
+        
         tr.innerHTML = `
           <td>${item.estabelecimento || '-'}</td>
           <td>${item.data_compra}</td>
@@ -636,233 +1330,489 @@
           <td>R$ ${item.valor_parcela_atual.toFixed(2)}</td>
           <td>${item.data_vencimento}</td>
           <td>${item.pago ? 'Sim' : 'Não'}</td>
+          <td>
+            <div class="d-flex justify-content-between align-items-center">
+              <span>${pagas}/${total}</span>
+              <span class="badge ${pagas === 0 ? 'bg-secondary' : pagas === total ? 'bg-primary' : 'bg-success'} text-center" style="min-width:90px;">
+                ${pagas === 0 ? '0 pagas' : pagas === total ? 'Quitado' : `${pagas} ${pagas === 1 ? 'paga' : 'pagas'}`}
+              </span>
+            </div>
+          </td>
         `;
+        
         tbody.appendChild(tr);
       });
-
-      const modalElement = document.getElementById('modalDetalhesCompras');
-      const modal = new bootstrap.Modal(modalElement);
-      modal.show();
+      
+      new bootstrap.Modal(document.getElementById('modalDetalhesCompras')).show();
     })
-    .catch(error => {
-      alert("Erro ao buscar detalhes da compra.");
-      console.error(error);
-    });
+    .catch(() => alert('Erro ao buscar detalhes da compra.'));
   }
-
+  
   function confirmarPagamento(cell) {
-    const bandeira = cell.dataset.bandeira;
-    const mesAno = cell.dataset.mesAno;
-    const confirmacao = confirm(`Deseja realizar o pagamento da bandeira "${bandeira}" do mês ${mesAno}?`);
-    if (confirmacao) togglePagamento(cell);
+    if (confirm(`Deseja realizar o pagamento da bandeira "${cell.dataset.bandeira}" do mês ${cell.dataset.mesAno}?`)) {
+      togglePagamento(cell);
+    }
   }
-
-  // Scroll para o mês atual
+  
   function scrollParaMesAtualPorTexto(seletorSecao, colunasFixasInteiras = 2, colunasFixasParciais = 0) {
     const hoje = new Date();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const ano = hoje.getFullYear();
-    const mesAno = `${mes}/${ano}`;
-
+    const mesAno = `${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+    
     const scrollContainer = document.querySelector(`${seletorSecao} .scroll-container`);
     if (!scrollContainer) return;
+    
     const tabela = scrollContainer.querySelector('table');
     if (!tabela) return;
-
+    
     const ths = tabela.querySelectorAll('thead th');
     let thAtual = null;
-    ths.forEach(th => { if (th.textContent.trim() === mesAno) thAtual = th; });
+    
+    ths.forEach(th => {
+      if (th.textContent.trim() === mesAno) thAtual = th;
+    });
+    
     if (!thAtual) return;
-
+    
     let larguraColunasFixas = 0;
+    
     for (let i = 0; i < colunasFixasInteiras; i++) {
       if (ths[i]) larguraColunasFixas += ths[i].offsetWidth || 0;
     }
-    if (colunasFixasParciais > 0 && (colunasFixasInteiras < ths.length)) {
+    
+    if (colunasFixasParciais > 0 && colunasFixasInteiras < ths.length) {
       larguraColunasFixas += (ths[colunasFixasInteiras]?.offsetWidth || 0) * colunasFixasParciais;
     }
-
+    
     const containerRect = scrollContainer.getBoundingClientRect();
     const thRect = thAtual.getBoundingClientRect();
-    const deslocamento = scrollContainer.scrollLeft + (thRect.left - containerRect.left) - larguraColunasFixas;
+    
+    const deslocamento =
+    scrollContainer.scrollLeft +
+    (thRect.left - containerRect.left) -
+    larguraColunasFixas;
+    
     scrollContainer.scrollLeft = deslocamento > 0 ? deslocamento : 0;
   }
-
+  
   document.addEventListener('DOMContentLoaded', () => {
-    const tabTotais = document.querySelector('#totais-tab');
-    const tabOutros = document.querySelector('#outros-tab');
-    const tabCompradores = document.querySelector('#compradores-tab');
-
     scrollParaMesAtualPorTexto('.secao-totais', 1, 0.04);
-    scrollParaMesAtualPorTexto('.secao-totais-outros', 1, 0.87);
+    scrollParaMesAtualPorTexto('.secao-totais-outros', 1, 1.0);
     scrollParaMesAtualPorTexto('.secao-totais-compradores', 1);
-
-    tabTotais?.addEventListener('shown.bs.tab', () => scrollParaMesAtualPorTexto('.secao-totais', 1, 0.05));
-    tabOutros?.addEventListener('shown.bs.tab', () => scrollParaMesAtualPorTexto('.secao-totais-outros', 1, 0.87));
-    tabCompradores?.addEventListener('shown.bs.tab', () => scrollParaMesAtualPorTexto('.secao-totais-compradores', 1));
-  });
-
-  // Atualização automática (opcional)
-  const tempoAtualizacao = {{ tempo_atualizacao | default(0) }} * 1000;
-  if (tempoAtualizacao > 0) {
-    setInterval(() => { atualizarDados(); }, tempoAtualizacao);
-  } else {
-    console.log("Atualização automática desabilitada (Nunca selecionado)");
-  }
-  function atualizarDados() {
-    console.log("Atualizando dados...");
-    fetch('/rota_de_atualizacao')
-      .then(response => response.json())
-      .then(data => { /* atualize elementos */ })
-      .catch(console.error);
-  }
-
-  // Persistência do intervalo no localStorage
-  const selectAtualizacao = document.getElementById('intervalo-atualizacao');
-  const valorSalvo = localStorage.getItem('tempoAtualizacao') || "0";
-  selectAtualizacao.value = valorSalvo;
-
-  let intervalo = null;
-  function iniciarAtualizacao(tempoSegundos) {
-    if (intervalo) clearInterval(intervalo);
-    if (tempoSegundos > 0) {
-      intervalo = setInterval(() => { location.reload(); }, tempoSegundos * 1000);
-    }
-  }
-  iniciarAtualizacao(parseInt(valorSalvo));
-
-  selectAtualizacao.addEventListener('change', () => {
-    const novoValor = selectAtualizacao.value;
-    localStorage.setItem('tempoAtualizacao', novoValor);
-    const url = new URL(window.location);
-    url.searchParams.set('tempo_atualizacao', novoValor);
-    window.location.href = url.toString();
-  });
-
-  // Clique e duplo clique
-  let clickTimeout;
-  function handleClick(element) {
-    if (clickTimeout) { clearTimeout(clickTimeout); clickTimeout = null; }
-    clickTimeout = setTimeout(() => {
-      clickTimeout = null;
-      mostrarDetalhesCompras(element);
-    }, 300);
-  }
-  function handleDoubleClick(element) {
-    if (clickTimeout) { clearTimeout(clickTimeout); clickTimeout = null; }
-    confirmarPagamento(element);
-  }
-  window.handleClick = handleClick;
-  window.handleDoubleClick = handleDoubleClick;
-
-
-  // Marcação visual por comprador e mês
-(function () {
-  const keyFor = (comprador, mes) =>
-    `${(comprador || '').trim()}__${(mes || '').trim()}`;
-
-  function setIcon(btn, checked) {
-    const icon = btn.querySelector('i');
-    if (!icon) return;
-    icon.classList.toggle('bi-check-circle-fill', checked);
-    icon.classList.toggle('text-success', checked);
-    icon.classList.toggle('bi-circle', !checked);
-    icon.classList.toggle('text-muted', !checked);
-    btn.title = checked ? 'Marcado como pago (visual)' : 'Marcar como pago (visual)';
-    btn.dataset.checked = checked ? '1' : '0';
-  }
-  const isChecked = (btn) => btn.dataset.checked === '1';
-
-  async function loadMarks() {
-    try {
-      const r = await fetch('/marcas_comprador_mes', {
-        method: 'GET',
-        headers: {
-          'X-CSRFToken': csrfToken,
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'same-origin',     // envia cookie de sessão
-        cache: 'no-store'
-      });
-      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()));
-      const { marks } = await r.json();
-
-      document.querySelectorAll('.btn-check-comprador').forEach((btn) => {
-        const key = keyFor(btn.dataset.comprador, btn.dataset.mes);
-        setIcon(btn, !!(marks && marks[key]));
-      });
-    } catch (e) {
-      console.error('Falha ao carregar marcações dos compradores', e);
-      document.querySelectorAll('.btn-check-comprador').forEach((btn) => setIcon(btn, false));
-    }
-  }
-
-  async function toggleMark(btn) {
-    const comprador = btn.dataset.comprador || '';
-    const mes = btn.dataset.mes || '';
-    const next = !isChecked(btn);
-
-    btn.disabled = true;
-    const previous = isChecked(btn);
-    setIcon(btn, next); // UI otimista
-
-    try {
-      const r = await fetch('/marcas_comprador_mes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'same-origin',     // envia cookie de sessão
-        body: JSON.stringify({ comprador, mes, marcado: next ? 1 : 0 })
-      });
-      if (!r.ok) {
-        console.error('POST marcas HTTP', r.status, await r.text());
-        setIcon(btn, previous); // reverte se falhar
-      }
-    } catch (e) {
-      console.error('Falha ao salvar marcação', e);
-      setIcon(btn, previous);
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    loadMarks();
-    document.querySelectorAll('.btn-check-comprador').forEach((btn) => {
-      btn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        toggleMark(btn);
-      });
+    scrollParaMesAtualPorTexto('.secao-resumo', 1, 0.04);
+    
+    document.querySelector('#totais-tab')?.addEventListener('shown.bs.tab', () => {
+      scrollParaMesAtualPorTexto('.secao-totais', 1, 0.05);
+    });
+    
+    document.querySelector('#outros-tab')?.addEventListener('shown.bs.tab', () => {
+      scrollParaMesAtualPorTexto('.secao-totais-outros', 1, 1.02);
+    });
+    
+    document.querySelector('#compradores-tab')?.addEventListener('shown.bs.tab', () => {
+      scrollParaMesAtualPorTexto('.secao-totais-compradores', 1);
+    });
+    
+    document.getElementById('resumo-tab')?.addEventListener('shown.bs.tab', () => {
+      scrollParaMesAtualPorTexto('.secao-resumo', 1, 0.04);
     });
   });
-})();
-
+  
+  let clickTimeout;
+  
+  function handleClick(el) {
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+    
+    clickTimeout = setTimeout(() => {
+      clickTimeout = null;
+      mostrarDetalhesCompras(el);
+    }, 300);
+  }
+  
+  function handleDoubleClick(el) {
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+    
+    confirmarPagamento(el);
+  }
+  
+  window.handleClick = handleClick;
+  window.handleDoubleClick = handleDoubleClick;
+  
+  const selectAtualizacao = document.getElementById('intervalo-atualizacao');
+  
+  if (selectAtualizacao) {
+    const valorSalvo = localStorage.getItem('tempoAtualizacao') || '0';
+    selectAtualizacao.value = valorSalvo;
+    
+    let intervalo = null;
+    
+    function iniciarAtualizacao(seg) {
+      if (intervalo) clearInterval(intervalo);
+      if (seg > 0) intervalo = setInterval(() => location.reload(), seg * 1000);
+    }
+    
+    iniciarAtualizacao(parseInt(valorSalvo, 10));
+    
+    selectAtualizacao.addEventListener('change', () => {
+      const v = selectAtualizacao.value;
+      
+      localStorage.setItem('tempoAtualizacao', v);
+      
+      const url = new URL(window.location);
+      url.searchParams.set('tempo_atualizacao', v);
+      
+      window.location.href = url.toString();
+    });
+  }
+  
+  // Marca visual de pagamento por comprador/mês
+  (function () {
+    const keyFor = (c, m) => `${(c || '').trim()}__${(m || '').trim()}`;
+    
+    function setIcon(btn, checked) {
+      const icon = btn.querySelector('i');
+      
+      if (!icon) return;
+      
+      icon.classList.toggle('bi-check-circle-fill', checked);
+      icon.classList.toggle('text-success', checked);
+      icon.classList.toggle('bi-circle', !checked);
+      icon.classList.toggle('text-muted', !checked);
+      
+      btn.title = checked ? 'Marcado como pago (visual)' : 'Marcar como pago (visual)';
+      btn.dataset.checked = checked ? '1' : '0';
+    }
+    
+    const isChecked = btn => btn.dataset.checked === '1';
+    
+    async function loadMarks() {
+      try {
+        const r = await fetch('/marcas_comprador_mes', {
+          method: 'GET',
+          headers: {
+            'X-CSRFToken': csrfToken
+          },
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        
+        const { marks } = await r.json();
+        
+        document.querySelectorAll('.btn-check-comprador').forEach(btn => {
+          setIcon(btn, !!(marks && marks[keyFor(btn.dataset.comprador, btn.dataset.mes)]));
+        });
+      } catch (e) {
+        console.error('Falha ao carregar marcações', e);
+        
+        document.querySelectorAll('.btn-check-comprador').forEach(btn => {
+          setIcon(btn, false);
+        });
+      }
+    }
+    
+    async function toggleMark(btn) {
+      const comprador = btn.dataset.comprador || '';
+      const mes = btn.dataset.mes || '';
+      
+      const next = !isChecked(btn);
+      const prev = isChecked(btn);
+      
+      btn.disabled = true;
+      setIcon(btn, next);
+      
+      try {
+        const r = await fetch('/marcas_comprador_mes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            comprador,
+            mes,
+            marcado: next ? 1 : 0
+          })
+        });
+        
+        if (!r.ok) {
+          console.error('POST marcas HTTP', r.status);
+          setIcon(btn, prev);
+        }
+      } catch (e) {
+        console.error('Falha ao salvar marcação', e);
+        setIcon(btn, prev);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      loadMarks();
+      
+      document.querySelectorAll('.btn-check-comprador').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          toggleMark(btn);
+        });
+      });
+    });
+  })();
+  
+  // Filtros genéricos com dropdown, checkbox, busca, selecionar todas e limpar
+  (function () {
+    function normalizarTextoFiltro(s) {
+      return (s || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    }
+    
+    function criarFiltroDropdown(config) {
+      const {
+        storageKey,
+        buttonSelector,
+        listSelector,
+        checkboxSelector,
+        searchSelector,
+        selectAllSelector,
+        clearSelector,
+        tableBodySelector,
+        rowSelector,
+        rowDatasetKey,
+        labelAll = 'Todas'
+      } = config;
+      
+      const button = document.querySelector(buttonSelector);
+      const list = document.querySelector(listSelector);
+      const tbody = document.querySelector(tableBodySelector);
+      
+      if (!button || !list || !tbody) return;
+      
+      const menu = button.nextElementSibling;
+      
+      if (menu && !menu.dataset.stopClickConfigured) {
+        menu.addEventListener('click', e => e.stopPropagation());
+        menu.dataset.stopClickConfigured = '1';
+      }
+      
+      const getChecks = () => Array.from(document.querySelectorAll(checkboxSelector));
+      
+      const getCheckedValues = () => {
+        return getChecks()
+        .filter(c => c.checked)
+        .map(c => (c.value || '').trim())
+        .filter(Boolean);
+      };
+      
+      const salvar = values => {
+        localStorage.setItem(storageKey, JSON.stringify(values));
+      };
+      
+      const carregar = () => {
+        try {
+          const values = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          return Array.isArray(values) ? values : [];
+        } catch {
+          return [];
+        }
+      };
+      
+      const setChecked = values => {
+        const selected = new Set(values.map(v => (v || '').trim()));
+        
+        getChecks().forEach(c => {
+          c.checked = selected.has((c.value || '').trim());
+        });
+      };
+      
+      const atualizarTextoBotao = values => {
+        const total = getChecks().length;
+        
+        if (!values.length || values.length === total) {
+          button.textContent = labelAll;
+        } else if (values.length === 1) {
+          button.textContent = values[0];
+        } else {
+          button.textContent = `${values.length} selecionadas`;
+        }
+      };
+      
+      const aplicarFiltro = values => {
+        const selected = new Set(values.map(normalizarTextoFiltro));
+        const semFiltro = selected.size === 0;
+        
+        tbody.querySelectorAll(rowSelector).forEach(tr => {
+          const valorLinha = tr.dataset[rowDatasetKey] || '';
+          const mostrar = semFiltro || selected.has(normalizarTextoFiltro(valorLinha));
+          
+          tr.style.display = mostrar ? '' : 'none';
+        });
+        
+        atualizarTextoBotao(values);
+      };
+      
+      const inicializarEstado = () => {
+        const salvo = carregar();
+        
+        if (salvo.length) {
+          setChecked(salvo);
+        } else {
+          const marcadosHtml = getCheckedValues();
+          salvar(marcadosHtml);
+        }
+        
+        aplicarFiltro(getCheckedValues());
+      };
+      
+      inicializarEstado();
+      
+      if (!list.dataset.filterConfigured) {
+        list.addEventListener('change', e => {
+          if (e.target && e.target.matches(checkboxSelector)) {
+            const values = getCheckedValues();
+            salvar(values);
+            aplicarFiltro(values);
+          }
+        });
+        
+        list.dataset.filterConfigured = '1';
+      }
+      
+      const selectAllBtn = document.querySelector(selectAllSelector);
+      
+      if (selectAllBtn && !selectAllBtn.dataset.filterConfigured) {
+        selectAllBtn.addEventListener('click', e => {
+          e.preventDefault();
+          
+          getChecks().forEach(c => {
+            c.checked = true;
+          });
+          
+          const values = getCheckedValues();
+          salvar(values);
+          aplicarFiltro(values);
+        });
+        
+        selectAllBtn.dataset.filterConfigured = '1';
+      }
+      
+      const clearBtn = document.querySelector(clearSelector);
+      
+      if (clearBtn && !clearBtn.dataset.filterConfigured) {
+        clearBtn.addEventListener('click', e => {
+          e.preventDefault();
+          
+          getChecks().forEach(c => {
+            c.checked = false;
+          });
+          
+          salvar([]);
+          aplicarFiltro([]);
+        });
+        
+        clearBtn.dataset.filterConfigured = '1';
+      }
+      
+      const search = document.querySelector(searchSelector);
+      
+      if (search && !search.dataset.filterConfigured) {
+        search.addEventListener('input', () => {
+          const termo = normalizarTextoFiltro(search.value);
+          
+          list.querySelectorAll('.form-check').forEach(item => {
+            const texto = normalizarTextoFiltro(item.textContent);
+            item.style.display = !termo || texto.includes(termo) ? '' : 'none';
+          });
+        });
+        
+        search.dataset.filterConfigured = '1';
+      }
+    }
+    
+    function inicializarFiltrosDashboard() {
+      criarFiltroDropdown({
+        storageKey: 'filtroBandeiras_v2',
+        buttonSelector: '#dropdownBandeirasBtn',
+        listSelector: '#lista-bandeiras',
+        checkboxSelector: '#lista-bandeiras .chk-bandeira',
+        searchSelector: '#busca-bandeiras',
+        selectAllSelector: '#sel-todas-bandeiras',
+        clearSelector: '#sel-nenhuma-bandeiras',
+        tableBodySelector: '#totais table tbody',
+        rowSelector: 'tr[data-bandeira]',
+        rowDatasetKey: 'bandeira',
+        labelAll: 'Todas'
+      });
+      
+      criarFiltroDropdown({
+        storageKey: 'filtroOutros_v1',
+        buttonSelector: '#dropdownOutrosBtn',
+        listSelector: '#lista-outros',
+        checkboxSelector: '#lista-outros .chk-outros',
+        searchSelector: '#busca-outros',
+        selectAllSelector: '#sel-todos-outros',
+        clearSelector: '#sel-nenhum-outros',
+        tableBodySelector: '#outros table tbody',
+        rowSelector: 'tr[data-outros]',
+        rowDatasetKey: 'outros',
+        labelAll: 'Todas'
+      });
+      
+      criarFiltroDropdown({
+        storageKey: 'filtroCompradores_v2',
+        buttonSelector: '#dropdownCompradoresBtn',
+        listSelector: '#lista-compradores',
+        checkboxSelector: '#lista-compradores .chk-comprador-filtro',
+        searchSelector: '#busca-compradores',
+        selectAllSelector: '#sel-todos-compradores',
+        clearSelector: '#sel-nenhum-compradores',
+        tableBodySelector: '#compradores table tbody',
+        rowSelector: 'tr[data-comprador]',
+        rowDatasetKey: 'comprador',
+        labelAll: 'Todos'
+      });
+    }
+    
+    document.addEventListener('DOMContentLoaded', inicializarFiltrosDashboard);
+    
+    document.getElementById('totais-tab')?.addEventListener('shown.bs.tab', inicializarFiltrosDashboard);
+    document.getElementById('outros-tab')?.addEventListener('shown.bs.tab', inicializarFiltrosDashboard);
+    document.getElementById('compradores-tab')?.addEventListener('shown.bs.tab', inicializarFiltrosDashboard);
+  })();
+  
+  (function () {
+    const btn = document.getElementById('btn-toggle-totais');
+    if (!btn) return;
+    
+    const icon = btn.querySelector('i');
+    
+    function aplicarEstado(mostrar) {
+      document.body.classList.toggle('mostrar-totais', mostrar);
+      btn.innerHTML = mostrar
+      ? '<i class="bi bi-eye"></i> Ocultar Totais'
+      : '<i class="bi bi-eye-slash"></i> Mostrar Totais';
+    }
+    
+    const salvo = localStorage.getItem('mostrarTotais') === '1';
+    aplicarEstado(salvo);
+    
+    btn.addEventListener('click', () => {
+      const novoEstado = !document.body.classList.contains('mostrar-totais');
+      localStorage.setItem('mostrarTotais', novoEstado ? '1' : '0');
+      aplicarEstado(novoEstado);
+    });
+  })();
+  
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 {% endblock %}

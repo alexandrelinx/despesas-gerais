@@ -48,8 +48,10 @@ from util.helpers import (calcular_parcelas, calcular_totais_por_mes, converter_
 
 app = Flask(__name__)
 #app.jinja_env.filters['real'] = real
+def print(*args, **kwargs):
+    pass
 init_app(app)
-app.config['SECRET_KEY'] = 'despesas'  
+app.config['SECRET_KEY'] = 'despesas'
 csrf = CSRFProtect(app)
 
 
@@ -119,61 +121,32 @@ def toggle_pagamento_ajax():
 
 @app.route('/')
 def dashboard():
-    tempo_atualizacao_segundos = 15   
-# Simulando que você recebeu do frontend (ex: via POST, GET, cookie, etc)
-    tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)  # ou POST
+    tempo_atualizacao_segundos = 15
+
+    # Simulando que você recebeu do frontend: via GET
+    tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)
 
     if tempo_atualizacao_usuario is not None:
         try:
             tempo_atualizacao_segundos = int(tempo_atualizacao_usuario)
+
             if tempo_atualizacao_segundos == 0:
-            # Desliga atualização automática
-               tempo_atualizacao_segundos = None
+                # Desliga atualização automática
+                tempo_atualizacao_segundos = None
+
         except ValueError:
-             pass
-
-
+            pass
 
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
+    from collections import defaultdict
+
     conn = get_db_connection()
 
     # Obter mês selecionado da query string, padrão mês atual
     mes_selecionado = request.args.get('mes', datetime.now().strftime("%m/%Y"))
-    # Totais por comprador e mês (para nova seção)
-    comprador_mes_raw = conn.execute("""
-        SELECT 
-            COALESCE(C.nome, 'Não especificado') AS comprador,
-            strftime('%m/%Y', 
-                substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
-            ) AS mes_ano,
-            SUM(D.valor_compra) AS total
-        FROM despesas D
-        LEFT JOIN comprador C ON D.comprador_id = C.id
-        WHERE D.data_compra IS NOT NULL
-            AND length(D.data_compra) = 10
-            AND UPPER(COALESCE(C.nome, 'Não especificado')) != 'ALEXANDRE'                               
-        GROUP BY comprador, mes_ano
-        ORDER BY comprador, mes_ano
-    """).fetchall()
 
-    # Converter para dicionário: {comprador: {mes: total}}
-    from collections import defaultdict
-    totais_por_comprador_mes = defaultdict(dict)
-    meses_compradores = set()
-
-    for row in comprador_mes_raw:
-        comprador = row['comprador']
-        mes = row['mes_ano']
-        total = float(row['total'])
-        totais_por_comprador_mes[comprador][mes] = total
-        if mes is not None:
-            meses_compradores.add(mes)
-
-    # Ordenar os meses para usar no template
-    colunas_meses_compradores = sorted(meses_compradores, key=lambda x: datetime.strptime(x, "%m/%Y"))
-    
     # Ajuste aqui conforme seu ID real de forma_pagamento que representa cartão de crédito
     CARTAO_CREDITO_ID = 2
 
@@ -199,15 +172,17 @@ def dashboard():
         LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
         LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
         LEFT JOIN COMPRADOR C ON D.comprador_id = C.id 
-        ORDER BY  B.vencimento_dia  DESC
+        ORDER BY B.vencimento_dia DESC
     """).fetchall()
 
     despesas = [dict(row) for row in despesas]
 
-    parcelas_por_mes = defaultdict(lambda: defaultdict(float))  # Todas as despesas
+    parcelas_por_mes = defaultdict(lambda: defaultdict(float))
     parcelas_status_pagamento = defaultdict(lambda: defaultdict(list))
-    parcelas_por_mes_outros = defaultdict(lambda: defaultdict(float))  # Formas != cartão
+
+    parcelas_por_mes_outros = defaultdict(lambda: defaultdict(float))
     parcelas_status_pagamento_outros = defaultdict(lambda: defaultdict(list))
+
     formas_pagamento_outros = {}
 
     meses_set = set()
@@ -223,14 +198,6 @@ def dashboard():
         bandeira_nome = despesa['bandeira_nome']
         vencimento_bandeira = despesa['vencimento_bandeira']
         melhor_dia_compra = despesa['melhor_dia_compra']
-           
-        
-        # Gera a lista de todos os meses para colunas de compradores
-        meses_compradores = set()
-        for valores in totais_por_comprador_mes.values():
-            meses_compradores.update(valores.keys())
-
-        colunas_meses_compradores = sorted(meses_compradores, key=lambda x: datetime.strptime(x, "%m/%Y"))
 
         chave_bandeira = f"{bandeira_nome} - {vencimento_bandeira}"
 
@@ -242,10 +209,12 @@ def dashboard():
                 melhor_dia_compra,
                 bandeira_nome
             )
+
             valor_parcela = valor_total / quantidade_parcelas
+
         else:
             valor_parcela = float(despesa['valor_parcela_despesa'])
-            datas_parcelas = []
+
             parcelas_no_banco = conn.execute("""
                 SELECT id, data_vencimento, pago
                 FROM parcelas 
@@ -256,31 +225,38 @@ def dashboard():
         if bandeira_nome.lower() == 'neon':
             for idx, dt_vencimento in enumerate(datas_parcelas, start=1):
                 mes_ano = dt_vencimento.strftime("%m/%Y")
+
                 comprador_nome = (despesa.get('comprador_nome') or "Não especificado").strip()
+
                 if comprador_nome.upper() != 'ALEXANDRE':
                     totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
+
                 meses_set.add(mes_ano)
 
                 parcela_db = conn.execute("""
-                    SELECT id, pago FROM parcelas
-                    WHERE despesa_id = ? AND numero_parcela = ?
+                    SELECT id, pago 
+                    FROM parcelas
+                    WHERE despesa_id = ? 
+                      AND numero_parcela = ?
                 """, (despesa['despesa_id'], idx)).fetchone()
+
                 pago_parcela = int(parcela_db['pago'] if parcela_db else 0)
 
                 chave_bandeira = f"{bandeira_nome} - {vencimento_bandeira}"
 
-                # Adiciona ao total geral
                 if forma_pagamento_id == CARTAO_CREDITO_ID:
                     parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
                     parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
 
-                else:  # Adiciona ao total filtrado (formas de pagamento diferentes de cartão)
+                else:
                     parcelas_por_mes_outros[chave_bandeira][mes_ano] += valor_parcela
                     parcelas_status_pagamento_outros[chave_bandeira][mes_ano].append(pago_parcela)
 
-                    # Guardar forma de pagamento
                     if chave_bandeira not in formas_pagamento_outros:
-                        formas_pagamento_outros[chave_bandeira] = nome_forma_pagamento(forma_pagamento_id, conn)
+                        formas_pagamento_outros[chave_bandeira] = nome_forma_pagamento(
+                            forma_pagamento_id,
+                            conn
+                        )
 
                 parcelas_exibidas.append({
                     "id": despesa['despesa_id'],
@@ -293,29 +269,38 @@ def dashboard():
                     "bandeira_nome": bandeira_nome,
                     "estabelecimento": despesa['estabelecimento'],
                     "data_compra": despesa['data_compra'],
+                    "comprador_nome": comprador_nome,
                     "pago": pago_parcela
                 })
+
         else:
             for idx, parcela in enumerate(parcelas_no_banco, start=1):
                 vencimento_str = parcela['data_vencimento']
                 dt_vencimento = datetime.strptime(vencimento_str, "%d/%m/%Y")
                 mes_ano = dt_vencimento.strftime("%m/%Y")
+
                 comprador_nome = (despesa.get('comprador_nome') or "Não especificado").strip()
+
                 if comprador_nome.upper() != 'ALEXANDRE':
                     totais_por_comprador_mes[comprador_nome][mes_ano] += valor_parcela
+
                 meses_set.add(mes_ano)
 
                 pago_parcela = int(parcela['pago'] or 0)
-                
+
                 if forma_pagamento_id == CARTAO_CREDITO_ID:
                     parcelas_por_mes[chave_bandeira][mes_ano] += valor_parcela
                     parcelas_status_pagamento[chave_bandeira][mes_ano].append(pago_parcela)
+
                 else:
                     parcelas_por_mes_outros[chave_bandeira][mes_ano] += valor_parcela
                     parcelas_status_pagamento_outros[chave_bandeira][mes_ano].append(pago_parcela)
-                    
+
                     if chave_bandeira not in formas_pagamento_outros:
-                        formas_pagamento_outros[chave_bandeira] = nome_forma_pagamento(forma_pagamento_id, conn)
+                        formas_pagamento_outros[chave_bandeira] = nome_forma_pagamento(
+                            forma_pagamento_id,
+                            conn
+                        )
 
                 parcelas_exibidas.append({
                     "id": despesa['despesa_id'],
@@ -328,9 +313,29 @@ def dashboard():
                     "bandeira_nome": bandeira_nome,
                     "estabelecimento": despesa['estabelecimento'],
                     "data_compra": despesa['data_compra'],
-                    "comprador_nome": despesa['comprador_nome'],
+                    "comprador_nome": comprador_nome,
                     "pago": pago_parcela
                 })
+
+    # =====================================================================
+    # AJUSTE CORRETO:
+    # Este bloco fica FORA do for despesa in despesas.
+    # Ele só deve ser executado depois que todas as despesas forem processadas.
+    # =====================================================================
+
+    meses_compradores = set()
+
+    for valores in totais_por_comprador_mes.values():
+        meses_compradores.update(valores.keys())
+
+    colunas_meses_compradores = sorted(
+        meses_compradores,
+        key=lambda x: datetime.strptime(x, "%m/%Y")
+    )
+
+    # =====================================================================
+    # Daqui para baixo continua o restante do dashboard normalmente
+    # =====================================================================
 
     pagamento_por_mes_bandeira = {
         bandeira: {
@@ -339,7 +344,6 @@ def dashboard():
         }
         for bandeira, meses in parcelas_status_pagamento.items()
     }
-    print("pagamento_por_mes_bandeira:", pagamento_por_mes_bandeira)
 
     pagamento_por_mes_bandeira_outros = {
         bandeira: {
@@ -349,32 +353,44 @@ def dashboard():
         for bandeira, meses in parcelas_status_pagamento_outros.items()
     }
 
-    colunas_meses = sorted(meses_set, key=lambda x: datetime.strptime(x, "%m/%Y"))
-    totais_por_mes, total_geral = calcular_totais_por_mes(parcelas_por_mes, colunas_meses)
-    totais_por_mes_outros, total_geral_outros = calcular_totais_por_mes(parcelas_por_mes_outros, colunas_meses)
+    colunas_meses = sorted(
+        meses_set,
+        key=lambda x: datetime.strptime(x, "%m/%Y")
+    )
 
+    totais_por_mes, total_geral = calcular_totais_por_mes(
+        parcelas_por_mes,
+        colunas_meses
+    )
 
-    # ADICIONE:
+    totais_por_mes_outros, total_geral_outros = calcular_totais_por_mes(
+        parcelas_por_mes_outros,
+        colunas_meses
+    )
+
     total_bandeiras_mes = float(totais_por_mes.get(mes_selecionado, 0.0))
     total_outros_mes = float(totais_por_mes_outros.get(mes_selecionado, 0.0))
 
+    totais_por_linha = calcular_totais_linhas(
+        parcelas_por_mes,
+        colunas_meses
+    )
 
-    # Aí você insere esse novo cálculo para totais por linha
-    totais_por_linha = {}
-    for bandeira, meses in parcelas_por_mes.items():
-        soma_bandeira = 0.0
-        for mes in colunas_meses:
-            valor = meses.get(mes, 0.0)
-            soma_bandeira += valor
-        totais_por_linha[bandeira] = soma_bandeira
+    totais_por_linha_outros = calcular_totais_linhas(
+        parcelas_por_mes_outros,
+        colunas_meses
+    )
 
-    totais_por_linha = calcular_totais_linhas(parcelas_por_mes, colunas_meses)
-    totais_por_linha_outros = calcular_totais_linhas(parcelas_por_mes_outros, colunas_meses)
+    totais_por_coluna, total_geral_colunas = calcular_totais_por_coluna(
+        parcelas_por_mes,
+        colunas_meses
+    )
 
-    totais_por_coluna, total_geral_colunas = calcular_totais_por_coluna(parcelas_por_mes, colunas_meses)
-    totais_por_coluna_outros, total_geral_colunas_outros = calcular_totais_por_coluna(parcelas_por_mes_outros, colunas_meses)
+    totais_por_coluna_outros, total_geral_colunas_outros = calcular_totais_por_coluna(
+        parcelas_por_mes_outros,
+        colunas_meses
+    )
 
-    # Depois de montar totais_por_comprador_mes, antes do return render_template:
     totais_por_mes_comprador = defaultdict(float)
 
     for comprador, meses in totais_por_comprador_mes.items():
@@ -388,12 +404,17 @@ def dashboard():
     cursor = conn.execute("""
         SELECT SUM(VALOR_SALARIO) as total
         FROM salario_mes
-        WHERE strftime('%m/%Y', substr(DATA_DO_CREDITO, 7, 4) || '-' || substr(DATA_DO_CREDITO, 4, 2) || '-' || substr(DATA_DO_CREDITO, 1, 2)) = ?
+        WHERE strftime(
+            '%m/%Y',
+            substr(DATA_DO_CREDITO, 7, 4) || '-' || 
+            substr(DATA_DO_CREDITO, 4, 2) || '-' || 
+            substr(DATA_DO_CREDITO, 1, 2)
+        ) = ?
     """, (mes_atual,))
+
     resultado = cursor.fetchone()
     total_creditos_mes = float(resultado["total"] or 0.0)
 
-    # Função interna para somar parcelas por mês
     def somar_parcelas(parcelas1, parcelas2):
         resultado = defaultdict(float)
 
@@ -407,79 +428,95 @@ def dashboard():
 
         return dict(resultado)
 
-    totais_por_mes_soma = somar_parcelas(parcelas_por_mes, parcelas_por_mes_outros)
+    totais_por_mes_soma = somar_parcelas(
+        parcelas_por_mes,
+        parcelas_por_mes_outros
+    )
 
-    # Atualizar o total de despesas para o mês selecionado
     total_despesas_mes = totais_por_mes_soma.get(mes_selecionado, 0.0)
 
     cursor = conn.execute("""
         SELECT SUM(VALOR_SALARIO) as total
         FROM salario_mes
-        WHERE strftime('%m/%Y', substr(DATA_DO_CREDITO, 7, 4) || '-' || substr(DATA_DO_CREDITO, 4, 2) || '-' || substr(DATA_DO_CREDITO, 1, 2)) = ?
+        WHERE strftime(
+            '%m/%Y',
+            substr(DATA_DO_CREDITO, 7, 4) || '-' || 
+            substr(DATA_DO_CREDITO, 4, 2) || '-' || 
+            substr(DATA_DO_CREDITO, 1, 2)
+        ) = ?
     """, (mes_selecionado,))
+
     resultado = cursor.fetchone()
     total_creditos_mes = float(resultado["total"] or 0.0)
-    credito_compradores = totais_por_mes_comprador.get(mes_selecionado, 0.0)
 
+    credito_compradores = totais_por_mes_comprador.get(
+        mes_selecionado,
+        0.0
+    )
 
-    # saldo_mes = total_creditos_mes - total_despesas_mes
     saldo_mes = (total_creditos_mes + credito_compradores) - total_despesas_mes
 
-    # Aqui você insere a consulta para o valor pago:
     valor_pago_mes = conn.execute("""
         SELECT SUM(P.valor_parcela) as total_pago
         FROM parcelas P
         JOIN despesas D ON P.despesa_id = D.id
         WHERE P.pago = 1
-          AND strftime('%m/%Y', substr(P.data_vencimento, 7, 4) || '-' || substr(P.data_vencimento, 4, 2) || '-' || substr(P.data_vencimento, 1, 2)) = ?
+          AND strftime(
+              '%m/%Y',
+              substr(P.data_vencimento, 7, 4) || '-' || 
+              substr(P.data_vencimento, 4, 2) || '-' || 
+              substr(P.data_vencimento, 1, 2)
+          ) = ?
     """, (mes_selecionado,)).fetchone()
 
     total_pago_mes = float(valor_pago_mes['total_pago'] or 0.0)
-  
-    # Cálculo do saldo
-    #saldo_mes_ajustado = total_pago_mes - total_despesas_mes  
+
     saldo_mes_ajustado = total_despesas_mes - total_pago_mes
 
-
     csrf_token = generate_csrf()
+
     conn.close()
 
-    # Corrige arredondamento de zero
     if abs(saldo_mes) < 0.01:
-     saldo_mes = 0.0
+        saldo_mes = 0.0
+
     if abs(saldo_mes_ajustado) < 0.01:
-     saldo_mes_ajustado = 0.0
+        saldo_mes_ajustado = 0.0
+
     if abs(total_pago_mes) < 0.01:
-     total_pago_mes = 0.0
+        total_pago_mes = 0.0
 
+    credito_compradores = totais_por_mes_comprador.get(
+        mes_selecionado,
+        0.0
+    )
 
-   # credito_compradores = valor_compradores  # já existe esse valor
-    credito_compradores = totais_por_mes_comprador.get(mes_selecionado, 0.0)
- 
     creditos_do_mes = total_creditos_mes + credito_compradores
-# NOVO: Montar se todas as parcelas de cada comprador em cada mês estão pagas
-    pagamento_por_mes_comprador = {
-       comprador: {
-        mes: all(
-            parcela.get("pago", 0) == 1
+
+    def comprador_mes_esta_pago(comprador, mes):
+        parcelas_do_comprador_mes = [
+            parcela
             for parcela in parcelas_exibidas
             if parcela["data_vencimento"].strftime("%m/%Y") == mes
             and (parcela.get('comprador_nome') or "Não especificado").strip() == comprador
+        ]
+
+        if not parcelas_do_comprador_mes:
+            return False
+
+        return all(
+            int(parcela.get("pago", 0)) == 1
+            for parcela in parcelas_do_comprador_mes
         )
-        for mes in colunas_meses_compradores
+
+    pagamento_por_mes_comprador = {
+        comprador: {
+            mes: comprador_mes_esta_pago(comprador, mes)
+            for mes in colunas_meses_compradores
+        }
+        for comprador in totais_por_comprador_mes
     }
-    for comprador in totais_por_comprador_mes
-}
 
-
-
-
-    for comprador, meses in pagamento_por_mes_comprador.items():
-      for mes, pago in meses.items():
-        print(f"Comprador: {comprador} | Mês: {mes} | Pago: {pago} | Valores: {pagamento_por_mes_comprador[comprador][mes]}")
-
-
-    #print('totais_por_mes_comprador:', totais_por_mes_comprador)
     return render_template(
         'dashboard.html',
         tempo_atualizacao=tempo_atualizacao_segundos,
@@ -497,13 +534,13 @@ def dashboard():
         total_geral_colunas_outros=total_geral_colunas_outros,
         total_geral=total_geral,
         total_geral_outros=total_geral_outros,
-         total_bandeiras_mes=total_bandeiras_mes,
-         total_outros_mes=total_outros_mes,
+        total_bandeiras_mes=total_bandeiras_mes,
+        total_outros_mes=total_outros_mes,
         credito_compradores=credito_compradores,
         creditos_do_mes=creditos_do_mes,
         pagamento_por_mes_bandeira=pagamento_por_mes_bandeira,
         pagamento_por_mes_bandeira_outros=pagamento_por_mes_bandeira_outros,
-        pagamento_por_mes_comprador=pagamento_por_mes_comprador,     
+        pagamento_por_mes_comprador=pagamento_por_mes_comprador,
         formas_pagamento_outros=formas_pagamento_outros,
         totais_por_comprador_mes=totais_por_comprador_mes,
         colunas_meses_compradores=colunas_meses_compradores,
@@ -522,6 +559,132 @@ def dashboard():
 def rota_de_atualizacao():
     # código para retornar alguma resposta
     return "Rota de atualização funcionando"
+def converter_valor_float(valor):
+    """
+    Converte valores como:
+    15,26
+    1.234,56
+    R$ 15,26
+    para float.
+    """
+    if valor is None or valor == "":
+        return 0.0
+
+    if isinstance(valor, (int, float)):
+        return float(valor)
+
+    valor = str(valor).strip()
+
+    valor = (
+        valor
+        .replace("R$", "")
+        .replace(" ", "")
+    )
+
+    # Formato brasileiro: 1.234,56
+    if "," in valor:
+        valor = valor.replace(".", "")
+        valor = valor.replace(",", ".")
+
+    return float(valor)
+
+
+def converter_valor_brasileiro(valor):
+    """
+    Converte valores como:
+    10,50
+    1.500,00
+    1500.00
+    para float.
+    """
+    if valor is None:
+        return None
+
+    valor = str(valor).strip()
+
+    if not valor:
+        return None
+
+    try:
+        if ',' in valor:
+            valor = valor.replace('.', '').replace(',', '.')
+        return float(valor)
+    except ValueError:
+        return None
+
+
+def converter_data_filtro(data, inicio=True):
+    """
+    Aceita:
+    dd/mm/aaaa
+    aaaa-mm-dd
+    mm/aaaa
+    aaaa
+
+    Retorna data no formato aaaaMMdd para comparação no SQLite.
+    """
+    if not data:
+        return None
+
+    data = data.strip()
+
+    try:
+        if len(data) == 10 and '/' in data:
+            dt = datetime.strptime(data, '%d/%m/%Y')
+
+        elif len(data) == 10 and '-' in data:
+            dt = datetime.strptime(data, '%Y-%m-%d')
+
+        elif len(data) == 7 and '/' in data:
+            mes, ano = data.split('/')
+            if inicio:
+                return f'{ano}{mes}01'
+
+            ultimo_dia = calendar.monthrange(int(ano), int(mes))[1]
+            return f'{ano}{mes}{ultimo_dia:02d}'
+
+        elif len(data) == 4:
+            ano = int(data)
+
+            if inicio:
+                return f'{ano}0101'
+
+            return f'{ano}1231'
+
+        else:
+            return None
+
+        return dt.strftime('%Y%m%d')
+
+    except ValueError:
+        return None
+    
+    
+def normalizar_data_banco(data):
+    """
+    Converte dd/mm/yyyy ou yyyy-mm-dd para yyyymmdd.
+    O formato yyyymmdd permite comparação correta no SQLite.
+    """
+    if not data:
+        return None
+
+    data = data.strip()
+
+    try:
+        if '/' in data:
+            dia, mes, ano = data.split('/')
+            return f'{ano}{mes.zfill(2)}{dia.zfill(2)}'
+
+        if '-' in data:
+            ano, mes, dia = data.split('-')
+            return f'{ano}{mes.zfill(2)}{dia.zfill(2)}'
+
+    except ValueError:
+        return None
+
+    return None
+
+
 
 @app.route('/dashboard_analytics')
 def dashboard_analytics():
@@ -530,119 +693,563 @@ def dashboard_analytics():
 
     conn = get_db_connection()
 
-    # Parâmetro para tempo de atualização (em segundos), default 15
     tempo_atualizacao_segundos = 15
-    tempo_atualizacao_usuario = request.args.get('tempo_atualizacao', None)
+
+    tempo_atualizacao_usuario = request.args.get(
+        'tempo_atualizacao',
+        None
+    )
+
     if tempo_atualizacao_usuario is not None:
         try:
-            tempo_atualizacao_segundos = int(tempo_atualizacao_usuario)
+            tempo_atualizacao_segundos = int(
+                tempo_atualizacao_usuario
+            )
+
             if tempo_atualizacao_segundos == 0:
-                tempo_atualizacao_segundos = None  # desliga atualização automática
+                tempo_atualizacao_segundos = None
+
         except ValueError:
             pass
 
-    # Buscar estabelecimentos para o filtro, com id e nome
+    # Estabelecimentos do select
     estabelecimentos = conn.execute("""
-        SELECT id, COALESCE(nome, 'Não especificado') AS nome
+        SELECT
+            id,
+            COALESCE(nome, 'Não especificado') AS nome
         FROM estabelecimento
-        ORDER BY nome
+        ORDER BY nome COLLATE NOCASE
     """).fetchall()
 
-    # Consultas agregadas (totais por Estabelecimento, Produto, Bandeira, Comprador e Mês)
+    # Produtos do select
+    produtos = conn.execute("""
+        SELECT
+            id,
+            COALESCE(nome, 'Não especificado') AS nome
+        FROM produto
+        ORDER BY nome COLLATE NOCASE
+    """).fetchall()
 
-    # Totais por Estabelecimento
+    # Bandeiras do select
+    bandeiras = conn.execute("""
+        SELECT
+            id,
+            COALESCE(nome, 'Não especificado') AS nome
+        FROM bandeira
+        ORDER BY nome COLLATE NOCASE
+    """).fetchall()
+
+    # Totais por estabelecimento
     totais_estab = conn.execute("""
         SELECT
             E.id AS estabelecimento_id,
             COALESCE(E.nome, 'Não especificado') AS estabelecimento,
-            SUM(D.valor_compra) AS total
+            COALESCE(SUM(D.valor_compra), 0) AS total
         FROM despesas D
-        LEFT JOIN estabelecimento E ON D.estabelecimento_id = E.id
-        GROUP BY E.id, estabelecimento
+        LEFT JOIN estabelecimento E
+            ON D.estabelecimento_id = E.id
+        GROUP BY E.id, E.nome
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por Produto
-    produtos = conn.execute("""
+    # Totais por produto
+    totais_produtos = conn.execute("""
         SELECT
             P.id AS produto_id,
             COALESCE(P.nome, 'Não especificado') AS produto,
-            SUM(D.valor_compra) AS total
+            COALESCE(SUM(D.valor_compra), 0) AS total
         FROM despesas D
-        LEFT JOIN produto P ON D.produto_id = P.id
-        GROUP BY P.id, produto
+        LEFT JOIN produto P
+            ON D.produto_id = P.id
+        GROUP BY P.id, P.nome
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por Bandeira
-    bandeiras = conn.execute("""
+    # Totais por bandeira
+    totais_bandeiras = conn.execute("""
         SELECT
             B.id AS bandeira_id,
             COALESCE(B.nome, 'Não especificado') AS bandeira,
-            SUM(D.valor_compra) AS total
+            COALESCE(SUM(D.valor_compra), 0) AS total
         FROM despesas D
-        LEFT JOIN bandeira B ON D.bandeira_id = B.id
-        GROUP BY B.id, bandeira
+        LEFT JOIN bandeira B
+            ON D.bandeira_id = B.id
+        GROUP BY B.id, B.nome
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por Comprador
+    # Totais por comprador
     compradores = conn.execute("""
         SELECT
             C.id AS comprador_id,
             COALESCE(C.nome, 'Não especificado') AS comprador,
-            SUM(D.valor_compra) AS total
+            COALESCE(SUM(D.valor_compra), 0) AS total
         FROM despesas D
-        LEFT JOIN comprador C ON D.comprador_id = C.id
-        GROUP BY C.id, comprador
+        LEFT JOIN comprador C
+            ON D.comprador_id = C.id
+        GROUP BY C.id, C.nome
         ORDER BY total DESC
     """).fetchall()
 
-    # Totais por Mês (formatado MM/YYYY)
+    # Totais por mês
     meses = conn.execute("""
         SELECT
-            strftime('%m/%Y', substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)) AS mes_ano,
-            SUM(D.valor_compra) AS total
+            strftime(
+                '%m/%Y',
+                substr(D.data_compra, 7, 4) || '-' ||
+                substr(D.data_compra, 4, 2) || '-' ||
+                substr(D.data_compra, 1, 2)
+            ) AS mes_ano,
+            COALESCE(SUM(D.valor_compra), 0) AS total
         FROM despesas D
-        WHERE D.data_compra IS NOT NULL AND length(D.data_compra) = 10
+        WHERE D.data_compra IS NOT NULL
+          AND length(D.data_compra) = 10
         GROUP BY mes_ano
-        ORDER BY mes_ano
+        ORDER BY
+            substr(mes_ano, 4, 4),
+            substr(mes_ano, 1, 2)
     """).fetchall()
 
     conn.close()
 
-    # Preparar dados para o template (convertendo rows em listas de dicts)
-    def to_dict_list_with_id(rows, id_key, name_key):
-        # id_key: coluna de id (ex: 'estabelecimento_id'), name_key: coluna de nome (ex: 'estabelecimento' ou 'nome')
-        return [
-            { id_key: row[id_key], name_key: row[name_key], 'total': float(row['total'] or 0) }
-            for row in rows
-        ]
-
+    # Conversão para objetos simples usados pelo template
     estabelecimentos_lista = [
-        {'id': row['id'], 'nome': row['nome']}
-        for row in estabelecimentos
+        {
+            'id': item['id'],
+            'nome': item['nome']
+        }
+        for item in estabelecimentos
     ]
 
-    totais_estab_data = to_dict_list_with_id(totais_estab, 'estabelecimento_id', 'estabelecimento')
-    produtos_data = to_dict_list_with_id(produtos, 'produto_id', 'produto')
-    bandeiras_data = to_dict_list_with_id(bandeiras, 'bandeira_id', 'bandeira')
-    compradores_data = to_dict_list_with_id(compradores, 'comprador_id', 'comprador')
-    meses_data = [
-        {'mes_ano': row['mes_ano'], 'total': float(row['total'] or 0)}
-        for row in meses
+    produtos_lista = [
+        {
+            'id': item['id'],
+            'nome': item['nome']
+        }
+        for item in produtos
+    ]
+
+    bandeiras_lista = [
+        {
+            'id': item['id'],
+            'nome': item['nome']
+        }
+        for item in bandeiras
+    ]
+
+    totais_estab_lista = [
+        {
+            'id': item['estabelecimento_id'],
+            'nome': item['estabelecimento'],
+            'total': float(item['total'] or 0)
+        }
+        for item in totais_estab
+    ]
+
+    totais_produtos_lista = [
+        {
+            'id': item['produto_id'],
+            'nome': item['produto'],
+            'total': float(item['total'] or 0)
+        }
+        for item in totais_produtos
+    ]
+
+    totais_bandeiras_lista = [
+        {
+            'id': item['bandeira_id'],
+            'nome': item['bandeira'],
+            'total': float(item['total'] or 0)
+        }
+        for item in totais_bandeiras
+    ]
+
+    compradores_lista = [
+        {
+            'id': item['comprador_id'],
+            'nome': item['comprador'],
+            'total': float(item['total'] or 0)
+        }
+        for item in compradores
+    ]
+
+    meses_lista = [
+        {
+            'mes_ano': item['mes_ano'],
+            'total': float(item['total'] or 0)
+        }
+        for item in meses
     ]
 
     return render_template(
         'dashboard_analytics.html',
         tempo_atualizacao=tempo_atualizacao_segundos,
+
         estabelecimentos=estabelecimentos_lista,
-        totais_estab=totais_estab_data,
-        produtos=produtos_data,
-        bandeiras=bandeiras_data,
-        compradores=compradores_data,
-        meses=meses_data,
+        produtos=produtos_lista,
+        bandeiras=bandeiras_lista,
+
+        totais_estab=totais_estab_lista,
+        totais_produtos=totais_produtos_lista,
+        totais_bandeiras=totais_bandeiras_lista,
+
+        compradores=compradores_lista,
+        meses=meses_lista
     )
+@app.route('/analytics/dados', methods=['GET'])
+def analytics_dados():
+    if 'user_id' not in session:
+        return jsonify({
+            'erro': 'Não autorizado'
+        }), 401
+
+    estabelecimento_id = request.args.get(
+        'estabelecimento_id',
+        type=int
+    )
+
+    produto_id = request.args.get(
+        'produto_id',
+        type=int
+    )
+
+    bandeira_id = request.args.get(
+        'bandeira_id',
+        type=int
+    )
+
+    operador_valor = request.args.get(
+        'operador_valor',
+        ''
+    ).strip()
+
+    valor_compra = converter_valor_brasileiro(
+        request.args.get('valor_compra')
+    )
+
+    data_inicio = request.args.get(
+        'data_inicio',
+        ''
+    ).strip()
+
+    data_fim = request.args.get(
+        'data_fim',
+        ''
+    ).strip()
+
+    tipo_analise = request.args.get(
+        'tipo_analise',
+        ''
+    ).strip()
+
+    grafico = request.args.get(
+        'grafico',
+        ''
+    ).strip()
+
+    data_inicio_sql = normalizar_data_banco(data_inicio)
+    
+
+    data_fim_sql = normalizar_data_banco(data_fim)
+    
+
+    params = []
+    filtros = ["1 = 1"]
+
+    # A data armazenada é dd/mm/yyyy.
+    # Esta expressão converte para yyyy-mm-dd.
+    data_compra_normalizada = """
+        (
+            substr(trim(D.data_compra), 7, 4) || 
+            substr(trim(D.data_compra), 4, 2) || 
+            substr(trim(D.data_compra), 1, 2)
+        )
+    """
+
+    if estabelecimento_id:
+        filtros.append("D.estabelecimento_id = ?")
+        params.append(estabelecimento_id)
+
+    if produto_id:
+        filtros.append("D.produto_id = ?")
+        params.append(produto_id)
+
+    if bandeira_id:
+        filtros.append("D.bandeira_id = ?")
+        params.append(bandeira_id)
+
+    if data_inicio_sql:
+        filtros.append(
+            f"{data_compra_normalizada} >= ?"
+        )
+        params.append(data_inicio_sql)
+
+    if data_fim_sql:
+        filtros.append(
+            f"{data_compra_normalizada} <= ?"
+        )
+        params.append(data_fim_sql)
+
+    if valor_compra is not None:
+        if operador_valor not in (
+            'igual',
+            'maior',
+            'menor'
+        ):
+            return jsonify({
+                'erro': 'Operador de valor inválido'
+            }), 400
+
+        if operador_valor == 'igual':
+            filtros.append("D.valor_compra = ?")
+
+        elif operador_valor == 'maior':
+            filtros.append("D.valor_compra > ?")
+
+        elif operador_valor == 'menor':
+            filtros.append("D.valor_compra < ?")
+
+        params.append(valor_compra)
+
+    where_sql = " AND ".join(filtros)
+
+    conn = get_db_connection()
+
+    try:
+        query = f"""
+            WITH dados_base AS (
+                SELECT
+                    D.id AS despesa_id,
+                    D.estabelecimento_id AS estabelecimento_id,
+                    D.produto_id AS produto_id,
+                    D.bandeira_id AS bandeira_id,
+
+                    COALESCE(E.nome, 'Não especificado')
+                        AS estabelecimento,
+
+                    COALESCE(PR.nome, 'Não especificado')
+                        AS produto,
+
+                    COALESCE(B.nome, 'Não especificado')
+                        AS bandeira,
+
+                    COALESCE(CAT.nome, 'Não especificada')
+                        AS categoria,
+
+                    D.valor_compra,
+                    D.data_compra,
+
+                    COALESCE(QP.quantidade, 0)
+                        AS parcelas,
+
+                    COALESCE(D.valor_parcela, 0)
+                        AS valor_parcela,
+
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN P.id IS NOT NULL
+                                     AND P.pago = 1
+                                THEN 1
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS parcelas_pagas,
+
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN P.id IS NOT NULL
+                                     AND (
+                                         P.pago = 0
+                                         OR P.pago IS NULL
+                                     )
+                                THEN 1
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS parcelas_abertas
+
+                FROM despesas AS D
+
+                LEFT JOIN estabelecimento AS E
+                    ON E.id = D.estabelecimento_id
+
+                LEFT JOIN produto AS PR
+                    ON PR.id = D.produto_id
+
+                LEFT JOIN bandeira AS B
+                    ON B.id = D.bandeira_id
+
+                LEFT JOIN categoria AS CAT
+                    ON CAT.id = D.categoria_id
+
+                LEFT JOIN quantidade_parcelas AS QP
+                    ON QP.id = D.quantidade_parcelas_id
+
+                LEFT JOIN parcelas AS P
+                    ON P.despesa_id = D.id
+
+                GROUP BY
+                    D.id,
+                    D.estabelecimento_id,
+                    D.produto_id,
+                    D.bandeira_id,
+                    E.nome,
+                    PR.nome,
+                    B.nome,
+                    CAT.nome,
+                    D.valor_compra,
+                    D.data_compra,
+                    QP.quantidade,
+                    D.valor_parcela
+            )
+
+            SELECT *
+            FROM dados_base AS D
+            WHERE {where_sql}
+            ORDER BY
+                (
+                    substr(trim(D.data_compra), 7, 4) || 
+                    substr(trim(D.data_compra), 4, 2) ||
+                    substr(trim(D.data_compra), 1, 2)
+                ) DESC,
+                D.estabelecimento ASC
+        """
+
+        despesas = conn.execute(
+            query,
+            params
+        ).fetchall()
+
+    except Exception as erro:
+        app.logger.exception(
+            'Erro na rota /analytics/dados'
+        )
+
+        return jsonify({
+            'erro': 'Erro ao consultar os dados de analytics',
+            'detalhes': str(erro)
+        }), 500
+
+    finally:
+        conn.close()
+
+    despesas_lista = [
+        {
+            'despesa_id': item['despesa_id'],
+            'estabelecimento': item['estabelecimento'],
+            'produto': item['produto'],
+            'bandeira': item['bandeira'],
+            'categoria': item['categoria'],
+            'valor_compra': converter_valor_float(
+                item['valor_compra'] or 0
+            ),
+            'data_compra': item['data_compra'],
+            'parcelas': int(
+                item['parcelas'] or 0
+            ),
+            'valor_parcela': converter_valor_float(
+                item['valor_parcela'] or 0
+            ),
+            'parcelas_pagas': int(
+                item['parcelas_pagas'] or 0
+            ),
+            'parcelas_abertas': int(
+                item['parcelas_abertas'] or 0
+            )
+        }
+        for item in despesas
+    ]
+
+    total_transacoes = len(despesas_lista)
+
+    valor_total = sum(
+        item['valor_compra']
+        for item in despesas_lista
+    )
+
+    quantidade_estabelecimentos = len({
+        item['estabelecimento']
+        for item in despesas_lista
+    })
+
+    quantidade_produtos = len({
+        item['produto']
+        for item in despesas_lista
+    })
+
+    agrupamento = {}
+
+    if tipo_analise == 'estabelecimento':
+        campo_agrupamento = 'estabelecimento'
+
+    elif tipo_analise == 'produto':
+        campo_agrupamento = 'produto'
+
+    elif tipo_analise == 'bandeira':
+        campo_agrupamento = 'bandeira'
+
+    else:
+        campo_agrupamento = 'estabelecimento'
+
+    for item in despesas_lista:
+        chave = item[campo_agrupamento]
+
+        if chave not in agrupamento:
+            agrupamento[chave] = {
+                'quantidade': 0,
+                'valor_total': 0
+            }
+
+        agrupamento[chave]['quantidade'] += 1
+        agrupamento[chave]['valor_total'] += (
+            item['valor_compra']
+        )
+
+    grafico_dados = [
+        {
+            'label': chave,
+            'quantidade': valores['quantidade'],
+            'valor_total': round(
+                valores['valor_total'],
+                2
+            )
+        }
+        for chave, valores in agrupamento.items()
+    ]
+
+    return jsonify({
+        'filtros': {
+            'estabelecimento_id': estabelecimento_id,
+            'produto_id': produto_id,
+            'bandeira_id': bandeira_id,
+            'operador_valor': operador_valor,
+            'valor_compra': valor_compra,
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'tipo_analise': tipo_analise,
+            'grafico': grafico
+        },
+        'cards': {
+            'quantidade_transacoes': total_transacoes,
+            'quantidade_estabelecimentos':
+                quantidade_estabelecimentos,
+            'quantidade_produtos':
+                quantidade_produtos,
+            'valor_total': round(valor_total, 2),
+            'periodo': {
+                'inicio': data_inicio or 'Não informado',
+                'fim': data_fim or 'Não informado'
+            }
+        },
+        'grafico': grafico_dados,
+        'despesas': despesas_lista
+    })
+
+
 
 @app.route('/analytics/despesas_por_estabelecimento', methods=['GET'])
 def despesas_por_estabelecimento():
@@ -2471,28 +3078,111 @@ def nova_manutencao():
     )
 
 # ===================== CONSULTAR MANUTENÇÕES ===================== #
-@app.route('/cadastro/manutencao')
+# @app.route('/cadastro/manutencao')
+# def consultar_manutencao():
+#     conn = get_db_connection()
+#     try:
+#         manutencoes = conn.execute("""
+#             SELECT M.*, 
+#                    E.nome AS estabelecimento_nome, 
+#                    P.nome AS produto_nome, 
+#                    T.nome AS tipo_nome
+#             FROM MANUTENCAO_AUTO M
+#             LEFT JOIN ESTABELECIMENTO E ON M.estabelecimento_id = E.id
+#             LEFT JOIN PRODUTO P ON M.produto_id = P.id
+#             LEFT JOIN TIPO T ON M.tipo_id = T.id
+#             ORDER BY M.data DESC
+#         """).fetchall()
+#     except Exception as e:
+#         manutencoes = []
+#         flash(f"Erro ao consultar manutenções: {str(e)}", "danger")
+#     finally:
+#         conn.close()
+
+#     return render_template('consultar_manutencao.html', manutencoes=manutencoes)
+@app.route('/cadastro/manutencao', methods=['GET'])
 def consultar_manutencao():
     conn = get_db_connection()
+
+    # Se no futuro você quiser filtros, já deixo o padrão aqui:
+    # tipo_filtro = request.args.get('tipo', '').strip()
+    # data_inicio = request.args.get('data_inicio', '').strip()
+    # data_fim = request.args.get('data_fim', '').strip()
+    # estabelecimento_filtro = request.args.get('estabelecimento', '').strip()
+    # produto_filtro = request.args.get('produto', '').strip()
+
+    # Para destacar uma manutenção alterada (igual alterada_id em despesas)
+    alterada_id = request.args.get('alterada_id')
+    print("alterada_id recebido na rota consultar_manutencao:", alterada_id)
+
     try:
-        manutencoes = conn.execute("""
-            SELECT M.*, 
-                   E.nome AS estabelecimento_nome, 
-                   P.nome AS produto_nome, 
-                   T.nome AS tipo_nome
+        query = """
+            SELECT 
+                M.id,
+                M.data,
+                M.data_aplicacao,
+                M.quilometragem,
+                M.valor,
+                M.observacao,
+                M.fabricante,
+                E.nome AS estabelecimento_nome, 
+                P.nome AS produto_nome, 
+                T.nome AS tipo_nome
             FROM MANUTENCAO_AUTO M
             LEFT JOIN ESTABELECIMENTO E ON M.estabelecimento_id = E.id
             LEFT JOIN PRODUTO P ON M.produto_id = P.id
             LEFT JOIN TIPO T ON M.tipo_id = T.id
-            ORDER BY M.data DESC
-        """).fetchall()
+            WHERE 1=1
+        """
+        params = []
+
+        # Se quiser filtros, adicionar como nas despesas:
+        # if estabelecimento_filtro:
+        #     query += " AND E.id = ?"
+        #     params.append(estabelecimento_filtro)
+        #
+        # if produto_filtro:
+        #     query += " AND P.id = ?"
+        #     params.append(produto_filtro)
+        #
+        # if data_inicio:
+        #     query += """
+        #         AND (
+        #             substr(M.data, 7, 4) || substr(M.data, 4, 2) || substr(M.data, 1, 2)
+        #         ) >= ?
+        #     """
+        #     params.append(data_inicio.replace("-", ""))
+        #
+        # if data_fim:
+        #     query += """
+        #         AND (
+        #             substr(M.data, 7, 4) || substr(M.data, 4, 2) || substr(M.data, 1, 2)
+        #         ) <= ?
+        #     """
+        #     params.append(data_fim.replace("-", ""))
+
+        # Ordenação desc por data (mesma lógica de despesas)
+        query += """
+            ORDER BY substr(M.data, 7, 4) || substr(M.data, 4, 2) || substr(M.data, 1, 2) DESC
+        """
+
+        print("Query SQL manutencao:", query)
+        print("Parâmetros:", params)
+
+        manutencoes = conn.execute(query, params).fetchall()
+
     except Exception as e:
         manutencoes = []
         flash(f"Erro ao consultar manutenções: {str(e)}", "danger")
     finally:
         conn.close()
 
-    return render_template('consultar_manutencao.html', manutencoes=manutencoes)
+    return render_template(
+        'consultar_manutencao.html',
+        manutencoes=manutencoes,
+        alterada_id=alterada_id,
+        request=request
+    )
 
 @app.route('/manutencoes')
 def listar_manutencoes():
@@ -2832,6 +3522,16 @@ def detalhes_comprador_mes():
 
         if parcela_atual is None:
             parcela_atual = 1
+            
+            
+            
+       
+        print(f"   Comprador: {p['comprador']}")
+        print(f"   Total parcelas encontradas: {total_parcelas}")
+        print(f"   Parcelas pagas: {parcelas_pagas}")
+        print(f"   Lista de parcelas: {[par['data_vencimento'] + ' (pago=' + str(par['pago']) + ')' for par in todas_parcelas_ordenadas]}")
+        print("   " + "="*50)
+        print(f"   Parcela atual: {parcela_atual} de {total_parcelas} (data vencimento: {p['data_vencimento']}, pago: {p['pago']})")
 
         resultado.append({
             "comprador": p["comprador"],
@@ -2858,9 +3558,8 @@ def detalhes_comprador_mes():
         "detalhes": resultado
     })
 
-@app.route('/detalhes_compras',methods=['GET', 'POST'], strict_slashes=False)
+@app.route('/detalhes_compras', methods=['GET', 'POST'], strict_slashes=False)
 def detalhes_compras():
-
     if request.method == 'POST':
         data = request.get_json()
         bandeira = data.get('bandeira') if data else None
@@ -2869,105 +3568,274 @@ def detalhes_compras():
         bandeira = request.args.get('bandeira')
         mes_ano = request.args.get('mes_ano')
 
-    # DEBUG
-    print("Recebido bandeira:", bandeira)
-    print("Recebido mes_ano:", mes_ano)
+    # Corrige a bandeira principal
+    bandeira_principal = bandeira.split(' - ')[0] if bandeira else None
+
+    print("\n" + "=" * 80)
+    print("🔎 INÍCIO /detalhes_compras")
+    print(f"Recebido bandeira: {bandeira}")
+    print(f"Recebido mes_ano: {mes_ano}")
+    print(f"Bandeira principal usada na query: {bandeira_principal}")
+    print("=" * 80)
 
     if not bandeira or not mes_ano:
+        print("❌ Parâmetros inválidos: bandeira ou mes_ano ausente")
         return jsonify({'error': 'Parâmetros inválidos'}), 400
 
     try:
         datetime.strptime(mes_ano, "%m/%Y")
     except ValueError:
+        print(f"❌ Formato de data inválido: {mes_ano}")
         return jsonify({'error': 'Formato de data inválido (esperado MM/YYYY)'}), 400
-    
-    try:
-         mes, ano = mes_ano.split('/')
-    except ValueError:
-        return jsonify({'error': 'Formato de data inválido (esperado MM/YYYY)'}), 400
-    
 
     conn = get_db_connection()
+
     try:
-      
-      query = """
-      SELECT 
-         E.nome AS estabelecimento,
-         D.data_compra,
-         D.valor_compra,
-         FP.nome AS forma_pagamento,
-         B.nome AS bandeira,
-         QP.quantidade AS quantidade_parcelas,
-         P.data_vencimento,
-         P.valor_parcela AS valor_parcela,
-         P.pago
-      FROM PARCELAS P
-      JOIN DESPESAS D ON P.despesa_id = D.id
-      LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
-      LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
-      LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-      LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
-      WHERE UPPER(B.nome) LIKE UPPER(?) || '%'
-      AND substr(P.data_vencimento, 4, 7) = ?
-      ORDER BY 
-         substr(D.data_compra, 7, 4) || '-' || substr(D.data_compra, 4, 2) || '-' || substr(D.data_compra, 1, 2)
-      """
-# Ajusta o parâmetro bandeira para só o texto principal, sem o "- 6"
-      bandeira_principal = bandeira.split(' - ')[0]  # Pega só 'TORRA TORRA'
+        query = """
+        SELECT 
+            C.nome AS comprador,
+            E.nome AS estabelecimento,
+            D.data_compra,
+            D.valor_compra,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira,
+            QP.quantidade AS quantidade_parcelas,
+            P.data_vencimento,
+            P.valor_parcela AS valor_parcela,
+            P.pago,
+            D.id AS despesa_id
+        FROM PARCELAS P
+        JOIN DESPESAS D ON P.despesa_id = D.id
+        JOIN COMPRADOR C ON D.comprador_id = C.id
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        WHERE UPPER(B.nome) LIKE UPPER(?) || '%'
+        ORDER BY D.id, P.data_vencimento
+        """
 
-# Ajusta a bandeira para ignorar o sufixo " - 6" 
+        despesas = conn.execute(query, [bandeira_principal]).fetchall()
 
-      print("Bandeira principal usada na query:", bandeira_principal)
+        print(f"✅ Total de registros retornados pela query: {len(despesas)}")
 
-      despesas = conn.execute(query, [bandeira_principal, mes_ano]).fetchall()
+        for i, d in enumerate(despesas[:10], start=1):
+            print(
+                f"[QUERY {i}] despesa_id={d['despesa_id']} | "
+                f"comprador={d['comprador']} | "
+                f"vencimento={d['data_vencimento']} | "
+                f"valor_parcela={d['valor_parcela']} | "
+                f"pago={d['pago']}"
+            )
 
-
-     #despesas = conn.execute(query, [bandeira, mes_ano]).fetchall()
-      print(f"Despesas encontradas para bandeira {bandeira}: {len(despesas)}")
- 
     finally:
-      conn.close()
+        conn.close()
 
     if not despesas:
-        return jsonify({'error': 'Nenhuma despesa encontrada para essa bandeira e mês.'}), 404
+        print(f"❌ Nenhuma despesa encontrada para a bandeira: {bandeira_principal}")
+        return jsonify({'error': 'Nenhuma despesa encontrada para essa bandeira.'}), 404
 
-    total_mes = sum(float(d["valor_parcela"]) for d in despesas if d["valor_parcela"])
-    quantidade_parcelas = sum(d["quantidade_parcelas"] or 0 for d in despesas)
+    # Filtra somente as parcelas do mês solicitado
+    #parcelas_do_mes = [p for p in despesas if p["data_vencimento"][3:] == mes_ano]
+    def dv_mes_ano(dv: str) -> str:
+        s = str(dv).strip()
+        # espera dd/mm/YYYY
+        return s[3:10]  # "mm/YYYY"
+
+    parcelas_do_mes = []
+    for p in despesas:
+        dv = str(p["data_vencimento"]).strip()
+        chave = dv_mes_ano(dv)
+        if chave == mes_ano.strip():
+          parcelas_do_mes.append(p)
+
+    print("🧪 DEBUG parcelas_do_mes (despesa_id, vencimento, chave):")
+    for p in parcelas_do_mes:
+     print(p["despesa_id"], repr(str(p["data_vencimento"])), dv_mes_ano(p["data_vencimento"]))
+
+
+    print(f"📆 Total de parcelas encontradas no mês {mes_ano}: {len(parcelas_do_mes)}")
+
+    if not parcelas_do_mes:
+        print(f"❌ Nenhuma parcela encontrada para o mês: {mes_ano}")
+        return jsonify({'error': f'Nenhuma parcela encontrada para {mes_ano}.'}), 404
+
+    from collections import defaultdict
+
+    # Agrupa todas as parcelas por despesa
+    parcelas_por_despesa = defaultdict(list)
+    for p in despesas:
+        parcelas_por_despesa[p["despesa_id"]].append(p)
+
+    print(f"📦 Total de despesas agrupadas: {len(parcelas_por_despesa)}")
 
     resultado = []
-    for d in despesas:
+
+    for d in parcelas_do_mes:
+        todas_parcelas = parcelas_por_despesa[d["despesa_id"]]
+        todas_parcelas_ordenadas = sorted(
+            todas_parcelas,
+            key=lambda x: datetime.strptime(x["data_vencimento"], "%d/%m/%Y")
+        )
+
+        total_parcelas = len(todas_parcelas_ordenadas)
+        parcelas_pagas = sum(1 for par in todas_parcelas_ordenadas if par["pago"])
+
+        data_vencimento_atual = datetime.strptime(d["data_vencimento"], "%d/%m/%Y")
+        parcela_atual = next(
+            (
+                i + 1 for i, par in enumerate(todas_parcelas_ordenadas)
+                if datetime.strptime(par["data_vencimento"], "%d/%m/%Y") == data_vencimento_atual
+            ),
+            None
+        )
+
+        if parcela_atual is None:
+            parcela_atual = 1
+
+        print("\n" + "-" * 80)
+        print(f"🔍 DESPESA ID: {d['despesa_id']}")
+        print(f"Comprador: {d['comprador']}")
+        print(f"Estabelecimento: {d['estabelecimento']}")
+        print(f"Data compra: {d['data_compra']}")
+        print(f"Data vencimento atual: {d['data_vencimento']}")
+        print(f"Total de parcelas encontradas: {total_parcelas}")
+        print(f"✅ Parcelas pagas calculadas: {parcelas_pagas}")
+        print(f"📌 Parcela atual: {parcela_atual}/{total_parcelas}")
+
+        print("📋 Lista completa das parcelas da despesa:")
+        for idx, par in enumerate(todas_parcelas_ordenadas, start=1):
+            print(
+                f"   Parcela {idx}: "
+                f"vencimento={par['data_vencimento']} | "
+                f"valor={par['valor_parcela']} | "
+                f"pago={par['pago']}"
+            )
+
         try:
-           data_vencimento_iso = datetime.strptime(d["data_vencimento"], "%d/%m/%Y").strftime("%Y-%m-%d")
-           data_compra_iso = datetime.strptime(d["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d")
+            data_vencimento_iso = datetime.strptime(
+                d["data_vencimento"], "%d/%m/%Y"
+            ).strftime("%Y-%m-%d")
         except Exception as e:
-           print(f"Erro ao converter datas:{e}")
-           data_vencimento_iso =d["data_vencimento"]
-           data_compra_iso =d["data_compra"]
+            print(f"⚠️ Erro convertendo data_vencimento: {e}")
+            data_vencimento_iso = d["data_vencimento"]
 
-        valor_raw = d["valor_compra"]
-        if isinstance(valor_raw, str):
-            valor_compra = float(valor_raw.replace(',', '.'))
-        else:
-            valor_compra = float(valor_raw)
+        try:
+            data_compra_iso = datetime.strptime(
+                d["data_compra"], "%d/%m/%Y"
+            ).strftime("%Y-%m-%d")
+        except Exception as e:
+            print(f"⚠️ Erro convertendo data_compra: {e}")
+            data_compra_iso = d["data_compra"]
 
+        try:
+            valor_compra = parse_float_br(d["valor_compra"])
+        except Exception as e:
+            print(f"⚠️ Erro convertendo valor_compra com parse_float_br: {e}")
+            valor_raw = d["valor_compra"]
+            if isinstance(valor_raw, str):
+                valor_compra = float(valor_raw.replace(',', '.'))
+            else:
+                valor_compra = float(valor_raw)
 
         resultado.append({
+            "comprador": d["comprador"],
             "estabelecimento": d["estabelecimento"],
             "data_compra": data_compra_iso,
-            "valor_compra":valor_compra,
-            "quantidade_parcelas": d["quantidade_parcelas"],
+            "valor_compra": valor_compra,
+            "quantidade_parcelas": total_parcelas,
             "forma_pagamento": d["forma_pagamento"],
             "bandeira": d["bandeira"],
             "valor_parcela_atual": float(d["valor_parcela"]),
             "data_vencimento": data_vencimento_iso,
-            "pago": d["pago"]
+            "pago": d["pago"],
+            "parcelas": f"{parcela_atual}/{total_parcelas}",
+            "parcelas_pagas": parcelas_pagas
         })
+
+    total_mes = sum(float(d["valor_parcela"]) for d in parcelas_do_mes)
+    quantidade_parcelas_total = len(parcelas_do_mes)
+
+    print("\n" + "=" * 80)
+    print("📊 RESUMO FINAL /detalhes_compras")
+    print(f"Bandeira: {bandeira}")
+    print(f"Mês/Ano: {mes_ano}")
+    print(f"Quantidade de parcelas no mês: {quantidade_parcelas_total}")
+    print(f"Total do mês: {round(total_mes, 2)}")
+    print(f"Quantidade de itens no resultado: {len(resultado)}")
+    print("=" * 80 + "\n")
 
     return jsonify({
         "bandeira": bandeira,
-        "total_mes": total_mes,
-        "quantidade_parcelas": quantidade_parcelas,
+        "mes_ano": mes_ano,
+        "total_mes": round(total_mes, 2),
+        "quantidade_parcelas": quantidade_parcelas_total,
         "detalhes": resultado
+    })
+
+
+@app.route('/detalhes_compras/<int:despesa_id>', methods=['GET'])
+def detalhes_compras_por_id(despesa_id):
+    print(f"🔍 CHAMADA: detalhes_compras/{despesa_id}")
+    
+    conn = get_db_connection()
+    try:
+        query = """
+        SELECT 
+            E.nome AS estabelecimento,
+            D.id AS despesa_id,
+            D.data_compra,
+            D.valor_compra,
+            FP.nome AS forma_pagamento,
+            B.nome AS bandeira,
+            QP.quantidade AS qtd_parcelas,
+            (SELECT COUNT(*) FROM PARCELAS pp 
+             WHERE pp.despesa_id = D.id AND pp.pago = 1) AS parcelas_pagas,
+            -- ✅ NOVA: pega a menor parcela não paga
+            (SELECT COALESCE(MIN(numero_parcela), 1) FROM PARCELAS pp
+             WHERE pp.despesa_id = D.id AND pp.pago = 0) AS parcela_atual,
+            -- ✅ NOVA: pega a data de vencimento da primeira parcela não paga
+            (SELECT COALESCE(MIN(data_vencimento), D.data_compra) FROM PARCELAS pp
+             WHERE pp.despesa_id = D.id AND pp.pago = 0) AS data_vencimento_proxima
+        FROM DESPESAS D
+        LEFT JOIN ESTABELECIMENTO E ON D.estabelecimento_id = E.id
+        LEFT JOIN FORMA_PAGAMENTO FP ON D.forma_pagamento_id = FP.id
+        LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
+        LEFT JOIN QUANTIDADE_PARCELAS QP ON D.quantidade_parcelas_id = QP.id
+        WHERE D.id = ?
+        """
+        
+        resultado = conn.execute(query, [despesa_id]).fetchone()
+        print(f"📊 RESULTADO: {resultado}")
+        
+    finally:
+        conn.close()
+
+    if not resultado:
+        print(f"❌ Compra {despesa_id} não encontrada")
+        return jsonify({'error': 'Compra não encontrada'}), 404
+
+    # ✅ CONVERTER DATAS PARA ISO
+    try:
+        data_compra_iso = datetime.strptime(resultado["data_compra"], "%d/%m/%Y").strftime("%Y-%m-%d")
+        data_vencimento_iso = datetime.strptime(resultado["data_vencimento_proxima"], "%d/%m/%Y").strftime("%Y-%m-%d")
+    except:
+        data_compra_iso = resultado["data_compra"]
+        data_vencimento_iso = resultado["data_vencimento_proxima"]
+
+    return jsonify({
+        "detalhes": [{
+            "estabelecimento": resultado["estabelecimento"] or '-',
+            "data_compra": data_compra_iso,
+            "valor_compra": float(resultado["valor_compra"] or 0),
+            "qtd_parcelas": resultado["qtd_parcelas"] or 1,
+            "forma_pagamento": resultado["forma_pagamento"] or '-',
+            "bandeira": resultado["bandeira"] or '-',
+            "parcela_atual": resultado["parcela_atual"] or 1,  # ✅ DINÂMICO
+            "data_vencimento": data_vencimento_iso,  # ✅ DINÂMICO
+            "pago": (resultado["parcelas_pagas"] or 0) >= (resultado["qtd_parcelas"] or 1),
+            "parcelas_pagas": int(resultado["parcelas_pagas"] or 0)  # ✅ AGORA FUNCIONA!
+        }]
     })
 
 @app.route('/api/buscar')
@@ -3025,40 +3893,165 @@ def combustivel():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-
-    # Filtros de mês/ano
     mes = request.args.get('mes') or datetime.today().strftime('%m')
     ano = request.args.get('ano') or datetime.today().strftime('%Y')
 
-    dados = obter_dados_por_mes(ano, mes)
+    # Traz os registros do mês filtrado (sua função atual)
+    dados = obter_dados_por_mes(ano, mes)  # precisa conter id, data_abastecimento, quantidade, kilometragem, valor_pago, consumo
+    dados = [dict(r) for r in dados] 
+    total_quantidade = sum(row['quantidade'] for row in dados) if dados else 0
+    total_km = sum(row['kilometragem'] for row in dados) if dados else 0
+    total_pago = sum(row['valor_pago'] for row in dados) if dados else 0
 
-    total_quantidade = sum(row['quantidade'] for row in dados)
-    total_km = sum(row['kilometragem'] for row in dados)
-    total_pago = sum(row['valor_pago'] for row in dados)
+    # Média simples de consumo (km/L) dos registros do mês
+    # media_consumo = round(
+    #     (sum(row['consumo'] for row in dados if row.get('consumo') is not None) /
+    #      max(1, sum(1 for r in dados if r.get('consumo') is not None))),
+    #     3
+    # ) if dados else 0
 
-    media_consumo = round(sum(row['consumo'] for row in dados) / len(dados), 2) if dados else 0
+    # Média simples de consumo (km/L) dos registros do mês — compatível com sqlite3.Row
+    if dados:
+       consumos_validos = [r['consumo'] for r in dados if ('consumo' in r.keys() and r['consumo'] is not None)]
+       media_consumo = round(sum(consumos_validos) / len(consumos_validos), 3) if consumos_validos else 0
+    else:
+        media_consumo = 0
+
+
+
+    # Carrega TODOS abastecimentos para calcular os dias entre um e outro (ordenação por data dd/mm/aaaa)
+    cursor.execute('''
+        SELECT id, data_abastecimento, quantidade, kilometragem, valor_pago
+        FROM combustivel
+        WHERE data_abastecimento IS NOT NULL
+        ORDER BY substr(data_abastecimento,7,4), substr(data_abastecimento,4,2), substr(data_abastecimento,1,2)
+    ''')
+    todos = cursor.fetchall()
+
+    def parse_br(s):
+        try:
+            return datetime.strptime(s, '%d/%m/%Y').date()
+        except:
+            return None
+
+    # Calcula métricas diárias do período (abastecimento anterior -> atual)
+    metrics_by_id = {}
+    prev_date = None
+    for row_all in todos:
+        curr_date = parse_br(row_all['data_abastecimento'])
+        if prev_date is None or curr_date is None:
+            metrics_by_id[row_all['id']] = {
+                'dias_periodo': None, 'km_dia': None, 'litros_dia': None, 'valor_dia': None
+            }
+        else:
+            dias = (curr_date - prev_date).days
+            if dias <= 0:
+                metrics_by_id[row_all['id']] = {
+                    'dias_periodo': dias, 'km_dia': None, 'litros_dia': None, 'valor_dia': None
+                }
+            else:
+                km = row_all['kilometragem'] or 0
+                lt = row_all['quantidade'] or 0
+                val = row_all['valor_pago'] or 0
+                metrics_by_id[row_all['id']] = {
+                    'dias_periodo': dias,
+                    'km_dia': round(km / dias, 2) if km else 0,
+                    'litros_dia': round(lt / dias, 2) if lt else 0,
+                    'valor_dia': round(val / dias, 2) if val else 0
+                }
+        if curr_date:
+            prev_date = curr_date
+
+    # Enriquecer os dados do mês com as métricas e calcular resumo mensal coerente (apenas onde dias > 0)
+    dados_enriquecidos = []
+    total_dias_periodo = 0
+    soma_km_periodos = 0.0
+    soma_litros_periodos = 0.0
+    soma_valor_periodos = 0.0
+
+    for row in dados:
+        m = metrics_by_id.get(row['id'], {})
+        dias = m.get('dias_periodo')
+
+        if isinstance(dias, int) and dias > 0:
+            total_dias_periodo += dias
+            soma_km_periodos += row['kilometragem'] or 0
+            soma_litros_periodos += row['quantidade'] or 0
+            soma_valor_periodos += row['valor_pago'] or 0
+
+        novo = dict(row)
+        novo.update({
+            'dias_periodo': dias,
+            'km_dia': m.get('km_dia'),
+            'litros_dia': m.get('litros_dia'),
+            'valor_dia': m.get('valor_dia'),
+        })
+        dados_enriquecidos.append(novo)
+
+    media_km_dia_mes = round(soma_km_periodos / total_dias_periodo, 2) if total_dias_periodo else 0
+    media_litros_dia_mes = round(soma_litros_periodos / total_dias_periodo, 2) if total_dias_periodo else 0
+    media_valor_dia_mes = round(soma_valor_periodos / total_dias_periodo, 2) if total_dias_periodo else 0
 
     # Totais do ano
     cursor.execute('''
-    SELECT 
-        SUM(quantidade),
-        SUM(kilometragem),
-        SUM(valor_pago)
-    FROM combustivel
-    WHERE data_abastecimento LIKE ? 
-    ''', (f'%/{ano}',))
-    total_ano = cursor.fetchone()
+        SELECT SUM(quantidade), SUM(kilometragem), SUM(valor_pago)
+        FROM combustivel
+        WHERE substr(data_abastecimento,7,4) = ?
+    ''', (ano,))
+    total_ano = cursor.fetchone() or (0, 0, 0)
+
     conn.close()
 
-    return render_template('combustivel.html',
-                           dados=dados,
-                           mes=mes,
-                           ano=ano,
-                           total_quantidade=total_quantidade,
-                           total_km=total_km,
-                           total_pago=total_pago,
-                           media_consumo=media_consumo,
-                           total_ano=total_ano)
+    return render_template(
+        'combustivel.html',
+        dados=dados_enriquecidos,
+        mes=mes, ano=ano,
+        total_quantidade=total_quantidade,
+        total_km=total_km,
+        total_pago=total_pago,
+        media_consumo=media_consumo,
+        total_ano=total_ano,
+        total_dias_periodo=total_dias_periodo,
+        media_km_dia_mes=media_km_dia_mes,
+        media_litros_dia_mes=media_litros_dia_mes,
+        media_valor_dia_mes=media_valor_dia_mes
+    )
+
+
+
+    # Filtros de mês/ano
+   # mes = request.args.get('mes') or datetime.today().strftime('%m')
+    # ano = request.args.get('ano') or datetime.today().strftime('%Y')
+
+    # dados = obter_dados_por_mes(ano, mes)
+
+    # total_quantidade = sum(row['quantidade'] for row in dados)
+    # total_km = sum(row['kilometragem'] for row in dados)
+    # total_pago = sum(row['valor_pago'] for row in dados)
+
+    # media_consumo = round(sum(row['consumo'] for row in dados) / len(dados), 2) if dados else 0
+
+    # # Totais do ano
+    # cursor.execute('''
+    # SELECT 
+    #     SUM(quantidade),
+    #     SUM(kilometragem),
+    #     SUM(valor_pago)
+    # FROM combustivel
+    # WHERE data_abastecimento LIKE ? 
+    # ''', (f'%/{ano}',))
+    # total_ano = cursor.fetchone()
+    # conn.close()
+
+    # return render_template('combustivel.html',
+    #                        dados=dados,
+    #                        mes=mes,
+    #                        ano=ano,
+    #                        total_quantidade=total_quantidade,
+    #                        total_km=total_km,
+    #                        total_pago=total_pago,
+    #                        media_consumo=media_consumo,
+    #                        total_ano=total_ano)
 
 @app.route('/grafico/consumo')
 def grafico_consumo():

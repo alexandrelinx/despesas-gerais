@@ -5,6 +5,7 @@
 <h2>Novo Endereço</h2>
 
 <form method="post">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% set reg = registro or {} %}
 
   <div class="mb-3">

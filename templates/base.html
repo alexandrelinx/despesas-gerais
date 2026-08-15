@@ -561,62 +561,138 @@
       });
     });
   </script>
-            
-             <!-- Modal.abrir-modal-detalhes-compras -->  
-  <script>
-    document.getElementById('abrirSaldoModalBtn').addEventListener('click', function () {
-      const saldoModal = new bootstrap.Modal(document.getElementById('saldoModal'));
-      saldoModal.show();
-    });
+  <!-- 🔥 MODAL DETALHES COMPRAS - CORRIGIDO FINAL -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".abrir-modal-detalhes-compras").forEach(btn => {
+    btn.addEventListener("click", async function (e) {
+      e.preventDefault();
 
-    document.addEventListener("DOMContentLoaded", function () {
-      // Listener para abrir o modal detalhes compras
-      document.querySelectorAll(".abrir-modal-detalhes-compras").forEach(el => {
-        el.addEventListener("click", function (e) {
-          e.preventDefault();
-          const compraId = this.dataset.id; // pegar o id da compra
+      const bandeira = this.dataset.bandeira;
+      const mesAno = this.dataset.mesAno;
 
-          fetch(`/detalhes_compras/${compraId}`) // seu endpoint para buscar detalhes da compra
-            .then(res => res.json())
-            .then(data => {
-              // Limpar corpo da tabela do modal
-              const tbody = document.getElementById("tbodyDetalhesCompras");
-              tbody.innerHTML = "";
+      console.log("🔍 Abrindo modal");
+      console.log("bandeira:", bandeira);
+      console.log("mesAno:", mesAno);
 
-              if (!data.detalhes || data.detalhes.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center">Nenhum dado encontrado.</td></tr>`;
-              } else {
-                // Popular tabela
-                data.detalhes.forEach(item => {
-                  const pago = item.pago ? 'Sim' : 'Não';
-                  const row = `
-                     <tr>
-                       <td>${item.estabelecimento || '-'}</td>
-                       <td>${new Date(item.data_compra).toLocaleDateString('pt-BR')}</td>
-                       <td>R$ ${item.valor_compra.toFixed(2)}</td>
-                       <td>${item.qtd_parcelas}</td>
-                       <td>${item.forma_pagamento || '-'}</td>
-                       <td>${item.bandeira || '-'}</td>
-                       <td>${item.parcela_atual}</td>
-                       <td>${new Date(item.data_vencimento).toLocaleDateString('pt-BR')}</td>
-                       <td>${pago}</td>
-                     </tr>
-                   `;
-                  tbody.insertAdjacentHTML("beforeend", row);
-                });
-              }
-              // Abrir modal
-              const modal = new bootstrap.Modal(document.getElementById('modalDetalhesCompras'));
-              modal.show();
-            })
-            .catch(err => {
-              console.error("Erro ao buscar detalhes da compra:", err);
-              alert("Erro ao carregar detalhes da compra.");
-            });
+      try {
+        const response = await fetch("/detalhes_compras", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            bandeira: bandeira,
+            mes_ano: mesAno
+          })
         });
-      });
+
+        const data = await response.json();
+        console.log("📦 Retorno completo:", data);
+
+        document.getElementById("modalDetalhesComprasLabel").textContent =
+          `Detalhes da bandeira "${bandeira}" - ${mesAno}`;
+
+        document.getElementById("totalMes").textContent =
+          `Total do mês: R$ ${Number(data.total_mes || 0).toFixed(2)}`;
+
+        const tbody = document.getElementById("tbodyDetalhesCompras");
+        tbody.innerHTML = "";
+
+        const itens = Array.isArray(data.detalhes) ? data.detalhes : [];
+
+        if (!itens.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="10" class="text-center text-muted">
+                Nenhum detalhe encontrado.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        itens.forEach((item, index) => {
+          const parcelasPagas = Number(item.parcelas_pagas ?? 0);
+          const totalParcelas = Number(item.quantidade_parcelas ?? 0);
+
+          let parcelaAtual = "-";
+          if (item.parcelas) {
+            const partes = String(item.parcelas).split("/");
+            parcelaAtual = partes[0] || "-";
+          }
+
+          const parcelasStr = `${parcelasPagas}/${totalParcelas}`;
+
+          console.log(`📊 Linha ${index + 1}`, {
+            estabelecimento: item.estabelecimento,
+            parcelas_pagas: item.parcelas_pagas,
+            quantidade_parcelas: item.quantidade_parcelas,
+            parcelas: item.parcelas,
+            parcelasStr: parcelasStr
+          });
+
+          const badgeClass =
+            parcelasPagas === totalParcelas
+              ? "bg-success"
+              : parcelasPagas > 0
+                ? "bg-warning text-dark"
+                : "bg-danger";
+
+          const pago = item.pago ? "Sim" : "Não";
+
+          const row = `
+            <tr>
+              <td>${item.estabelecimento || "-"}</td>
+              <td>${item.data_compra || "-"}</td>
+              <td>R$ ${Number(item.valor_compra || 0).toFixed(2)}</td>
+              <td>${totalParcelas}</td>
+              <td>${item.forma_pagamento || "-"}</td>
+              <td>${item.bandeira || "-"}</td>
+              <td>${item.parcelas || "-"}</td>
+              <td>${item.data_vencimento || "-"}</td>
+              <td>${pago}</td>
+              <td>
+                <span class="badge ${badgeClass}">
+                  ${parcelasStr}
+                </span>
+              </td>
+            </tr>
+          `;
+
+          tbody.insertAdjacentHTML("beforeend", row);
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById("modalDetalhesCompras"));
+        modal.show();
+
+      } catch (error) {
+        console.error("❌ ERRO ao carregar detalhes:", error);
+
+        document.getElementById("tbodyDetalhesCompras").innerHTML = `
+          <tr>
+            <td colspan="10" class="text-center text-danger">
+              Erro ao carregar os detalhes.
+            </td>
+          </tr>
+        `;
+      }
     });
-  </script>
+  });
+});
+</script>
+
+
+
+
+
+
+
+
+
+
+          
+ 
  
   <!-- Modal Detalhes Comprador/Mês -->
 
@@ -685,6 +761,7 @@
                 <th>Parcela Atual</th>
                 <th>Vencimento</th>
                 <th>Pago</th>
+                <th>Parcelas Pagas</th>
               </tr>
             </thead>
             <tbody id="tbodyDetalhesCompras">
