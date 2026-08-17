@@ -57,6 +57,25 @@
             margin: 6px 0 0;
         }
 
+       .header-actions {
+           display: flex;
+           align-items: center;
+           gap: 10px;
+          flex-wrap: wrap;
+        }
+
+       .header-actions .btn {
+           display: inline-flex;
+           align-items: center;
+           justify-content: center;
+           text-decoration: none;
+           white-space: nowrap;
+        }
+
+
+
+
+
         .panel {
             background: var(--card);
             border: 1px solid var(--border);
@@ -73,15 +92,7 @@
 
         .filters {
             display: grid;
-            grid-template-columns:
-                minmax(180px, 1fr)
-                minmax(180px, 1fr)
-                minmax(180px, 1fr)
-                minmax(150px, 0.8fr)
-                minmax(130px, 0.7fr)
-                minmax(150px, 0.8fr)
-                minmax(150px, 0.8fr)
-                auto;
+            grid-template-columns: repeat(6, 1fr);
             gap: 14px;
             align-items: end;
         }
@@ -136,6 +147,87 @@
         .radio-item input {
             width: auto;
             height: auto;
+        }
+
+        .form-group.radio-line {
+            grid-column: 1 / span 5;
+        }
+
+        .form-group.btn-line {
+            grid-column: 6 / span 1;
+        }
+
+        /* ===== Dropdown multi-seleção (produto) ===== */
+        .multi-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .multi-select-trigger {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0 11px;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .multi-select-trigger:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .multi-select-arrow {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .multi-select-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 20;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            padding: 6px;
+        }
+
+        .multi-select.open .multi-select-dropdown {
+            display: block;
+        }
+
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .multi-select-option:hover {
+            background: #f1f5f9;
+        }
+
+        .multi-select-option input {
+            width: auto;
+            height: auto;
+            margin: 0;
         }
 
         .btn {
@@ -313,7 +405,15 @@
 
         @media (max-width: 1300px) {
             .filters {
-                grid-template-columns: repeat(4, minmax(180px, 1fr));
+                grid-template-columns: repeat(3, minmax(180px, 1fr));
+            }
+
+            .form-group.radio-line {
+                grid-column: 1 / span 2;
+            }
+
+            .form-group.btn-line {
+                grid-column: 3 / span 1;
             }
 
             .cards {
@@ -333,6 +433,11 @@
 
             .filters {
                 grid-template-columns: 1fr;
+            }
+
+            .form-group.radio-line,
+            .form-group.btn-line {
+                grid-column: 1 / -1;
             }
 
             .cards {
@@ -367,12 +472,16 @@
             <p>Consulte e analise suas despesas por estabelecimento, produto, bandeira ou valor.</p>
         </div>
 
+         <div class="header-actions">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Voltar</a>
+
         <button
             type="button"
             class="btn btn-secondary"
             onclick="limparFiltros()">
             Limpar filtros
         </button>
+      </div>
     </header>
 
     <div id="mensagemErro" class="error"></div>
@@ -398,28 +507,43 @@
                 </div>
 
                 <div class="form-group">
-                     <label for="produto_id">Produto</label>
+                    <label for="produto_id">Produto</label>
 
-                     <select id="produto_id" name="produto_id">
-                          <option value="">Selecione</option>
+                    <div class="multi-select" id="produtoMultiselect">
+                        <button
+                            type="button"
+                            class="multi-select-trigger"
+                            id="produtoTrigger">
+                            <span class="multi-select-label" id="produtoTriggerLabel">
+                                Selecione
+                            </span>
+                            <span class="multi-select-arrow">▾</span>
+                        </button>
 
-                     {% for produto in produtos %}
-                         <option value="{{ produto.id }}">
-                            {{ produto.nome }}
-                     </option>
-                    {% endfor %}
-                 </select>
-               </div>
+                        <div class="multi-select-dropdown" id="produtoDropdown">
+                            {% for produto in produtos %}
+                                <label class="multi-select-option">
+                                    <input
+                                        type="checkbox"
+                                        value="{{ produto.id }}"
+                                        data-nome="{{ produto.nome }}">
+                                    {{ produto.nome }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="bandeira_id">Bandeira</label>
 
                     <select id="bandeira_id" name="bandeira_id">
-                          <option value="">Selecione</option>
+                        <option value="">Selecione</option>
 
-                          {% for bandeira in bandeiras %}
-                              <option value="{{ bandeira.id }}">
-                                 {{ bandeira.nome }}
-                              </option>
+                        {% for bandeira in bandeiras %}
+                            <option value="{{ bandeira.id }}">
+                                {{ bandeira.nome }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -436,6 +560,24 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="data_inicio">Data inicial</label>
+
+                    <input
+                        type="date"
+                        id="data_inicio"
+                        name="data_inicio">
+                </div>
+
+                <div class="form-group">
+                    <label for="data_fim">Data final</label>
+
+                    <input
+                        type="date"
+                        id="data_fim"
+                        name="data_fim">
+                </div>
+
+                <div class="form-group radio-line">
                     <label>Condição</label>
 
                     <div class="radio-group">
@@ -466,25 +608,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="data_inicio">Data inicial</label>
-
-                    <input
-                        type="date"
-                        id="data_inicio"
-                        name="data_inicio">
-                </div>
-
-                <div class="form-group">
-                    <label for="data_fim">Data final</label>
-
-                    <input
-                        type="date"
-                        id="data_fim"
-                        name="data_fim">
-                </div>
-
-                <div class="form-group">
+                <div class="form-group btn-line">
                     <button
                         type="submit"
                         class="btn btn-primary"
@@ -627,6 +751,9 @@
     const chartEmpty = document.getElementById('chartEmpty');
     const canvasGrafico = document.getElementById('analyticsChart');
 
+    const produtoMultiselect = document.getElementById('produtoMultiselect');
+    const produtoTrigger = document.getElementById('produtoTrigger');
+
     function formatarMoeda(valor) {
         const numero = Number(valor || 0);
 
@@ -664,9 +791,36 @@
         mensagemErro.style.display = 'none';
     }
 
+    /* ===== Funções auxiliares do multi-select de produtos ===== */
+    function obterProdutosSelecionados() {
+        return Array.from(
+            document.querySelectorAll(
+                '#produtoDropdown input[type="checkbox"]:checked'
+            )
+        ).map(input => input.value);
+    }
+
+    function atualizarLabelProdutos() {
+        const selecionados = Array.from(
+            document.querySelectorAll(
+                '#produtoDropdown input[type="checkbox"]:checked'
+            )
+        );
+
+        const label = document.getElementById('produtoTriggerLabel');
+
+        if (selecionados.length === 0) {
+            label.textContent = 'Selecione';
+        } else if (selecionados.length === 1) {
+            label.textContent = selecionados[0].dataset.nome;
+        } else {
+            label.textContent = `${selecionados.length} selecionados`;
+        }
+    }
+
     function obterTipoAnalise() {
         const estabelecimento = document.getElementById('estabelecimento_id').value;
-        const produto = document.getElementById('produto_id').value;
+        const temProduto = obterProdutosSelecionados().length > 0;
         const bandeira = document.getElementById('bandeira_id').value;
         const valor = document.getElementById('valor_compra').value.trim();
 
@@ -678,7 +832,7 @@
             return 'estabelecimento';
         }
 
-        if (produto) {
+        if (temProduto) {
             return 'produto';
         }
 
@@ -717,9 +871,6 @@
         const estabelecimentoId =
             document.getElementById('estabelecimento_id').value;
 
-        const produtoId =
-            document.getElementById('produto_id').value;
-
         const bandeiraId =
             document.getElementById('bandeira_id').value;
 
@@ -727,9 +878,10 @@
             parametros.append('estabelecimento_id', estabelecimentoId);
         }
 
-        if (produtoId) {
-            parametros.append('produto_id', produtoId);
-        }
+        // Envia todos os produtos selecionados
+        obterProdutosSelecionados().forEach(id => {
+            parametros.append('produto_id[]', id);
+        });
 
         if (bandeiraId) {
             parametros.append('bandeira_id', bandeiraId);
@@ -1114,6 +1266,8 @@
     function limparFiltros() {
         document.getElementById('formFiltros').reset();
 
+        atualizarLabelProdutos();
+
         document.getElementById('tipo_analise').value = '';
         document.getElementById('tipo_grafico').value = '';
 
@@ -1142,14 +1296,6 @@
             }
         });
 
-    document.getElementById('produto_id')
-        .addEventListener('change', function() {
-            if (this.value) {
-                document.getElementById('tipo_analise').value =
-                    'produto';
-            }
-        });
-
     document.getElementById('bandeira_id')
         .addEventListener('change', function() {
             if (this.value) {
@@ -1166,6 +1312,31 @@
             }
         });
 
+    /* ===== Eventos do multi-select de produtos ===== */
+    produtoTrigger.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        produtoMultiselect.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!produtoMultiselect.contains(e.target)) {
+            produtoMultiselect.classList.remove('open');
+        }
+    });
+
+    document.querySelectorAll('#produtoDropdown input[type="checkbox"]')
+        .forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                atualizarLabelProdutos();
+
+                if (obterProdutosSelecionados().length > 0) {
+                    document.getElementById('tipo_analise').value =
+                        'produto';
+                }
+            });
+        });
+
     formFiltros.addEventListener('submit', consultarDados);
     btnExibirGrafico.addEventListener('click', exibirGrafico);
 
@@ -1175,6 +1346,11 @@
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             const elementoAtivo = document.activeElement;
+
+            // Ignora os checkboxes do multiselect para não disparar a consulta
+            if (elementoAtivo.type === 'checkbox') {
+                return;
+            }
 
             if (
                 elementoAtivo.tagName === 'INPUT' ||
