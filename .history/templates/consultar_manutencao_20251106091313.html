@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Manutenção{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Manutenções</h3>
+
+    <a href="{{ url_for('nova_manutencao') }}" class="btn btn-primary mb-3">Nova Manutenção</a>
+
+    <table class="table table-bordered" id="tabelaManutencoes">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Estabelecimento</th>
+                <th>Tipo</th>
+                <th>Produto</th>
+                <th>Fabricante</th>
+                <th>Valor (R$)</th>
+                <th>Data Aplicação</th>
+                <th>Km</th>
+                <th>Observação</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in manutencoes %}
+            <tr>
+                <td>{{ m.id }}</td>
+                <td>{{ m.data }}</td>
+                <td>{{ m.estabelecimento_nome }}</td>
+                <td>{{ m.tipo_nome }}</td>
+                <td>{{ m.produto_nome }}</td>
+                <td>{{ m.fabricante }}</td>
+                <td>{{ "%.2f"|format(m.valor) if m.valor else "" }}</td>
+                <td>{{ m.data_aplicacao }}</td>
+                <td>{{ m.quilometragem }}</td>
+                <td>{{ m.observacao }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('editar_manutencao', id=m.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="{{ url_for('excluir_manutencao', id=m.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta manutenção?');">
+                        <button type="submit" name="csrf_token" value="{{ csrf_token() }}" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables -->
+<script>
+    $(document).ready(function() {
+        $('#tabelaManutencoes').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            },
+            "order": [[1, "desc"]]  // Ordena por data (coluna 2)
+        });
+    });
+</script>
+{% endblock %}

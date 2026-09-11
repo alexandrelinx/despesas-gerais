@@ -132,35 +132,35 @@
     text-align: right;
   }
 
-<!-- Mantém a coluna "Ações" centralizada (você já usa .text-center) -->
+<!-- Mantém a coluna "Ações" centralizada (você já usa .text-center) */
   table.espacada th:nth-child(11),
   table.espacada td:nth-child(11) {
     text-align: center;
   }
 
-  <!-- Opcional: dígitos alinhados verticalmente (melhora leitura de números) -->
+  /* Opcional: dígitos alinhados verticalmente (melhora leitura de números) */
   table.espacada td,
   table.espacada th {
     font-variant-numeric: tabular-nums;
   }
 
-<!-- Faz a tabela respeitar larguras definidas no <colgroup> -->
+  /* Faz a tabela respeitar larguras definidas no <colgroup> */
   table.espacada {
     table-layout: fixed;
     width: 100%;
   }
 
-  <!-- Evita quebra “feia” quando o texto é maior que a célula -->
+  /* Evita quebra “feia” quando o texto é maior que a célula */
   table.espacada th,
   table.espacada td {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-variant-numeric: tabular-nums;
-   <!-- mantém alinhamento visual dos números -->
+    /* mantém alinhamento visual dos números */
   }
 
-  <!-- OPCIONAL: se quiser a coluna Ações um pouco mais larga que botões -->
+  /* OPCIONAL: se quiser a coluna Ações um pouco mais larga que botões */
   :root {
     --largura-acoes: 120px;
   }
