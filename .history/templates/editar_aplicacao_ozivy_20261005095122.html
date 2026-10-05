@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  {% if registro %}Editar Evolução Ozivy{% else %}Nova Evolução Ozivy{% endif %}
+{% endblock %}
+
+{% block content %}
+<h2>
+  {% if registro %}Editar Evolução Ozivy{% else %}Nova Evolução Ozivy{% endif %}
+</h2>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="data_registro" class="form-label">Data do registro</label>
+        <input
+            type="date"
+            id="data_registro"
+            name="data_registro"
+            class="form-control"
+            value="{{ registro.data_registro if registro else '' }}"
+        >
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="peso" class="form-label">Peso (kg)</label>
+            <input
+                type="number" id="peso" name="peso" class="form-control"
+                step="any" min="0"
+                value="{{ registro.peso if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="altura" class="form-label">Altura (m)</label>
+            <input
+                type="number" id="altura" name="altura" class="form-control"
+                step="any" min="0"
+                value="{{ registro.altura if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="imc" class="form-label">IMC</label>
+            <input
+                type="number" id="imc" name="imc" class="form-control"
+                step="any" min="0"
+                value="{{ registro.imc if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="gordura_corporal" class="form-label">Gordura corporal (%)</label>
+            <input
+                type="number" id="gordura_corporal" name="gordura_corporal"
+                class="form-control" step="any" min="0"
+                value="{{ registro.gordura_corporal if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="gordura_visceral" class="form-label">Gordura visceral</label>
+            <input
+                type="number" id="gordura_visceral" name="gordura_visceral"
+                class="form-control" step="any" min="0"
+                value="{{ registro.gordura_visceral if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="idade_corporal" class="form-label">Idade corporal</label>
+            <input
+                type="number" id="idade_corporal" name="idade_corporal"
+                class="form-control" step="1" min="0"
+                value="{{ registro.idade_corporal if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="musculo_esqueletico" class="form-label">Músculo esquelético (%)</label>
+            <input
+                type="number" id="musculo_esqueletico" name="musculo_esqueletico"
+                class="form-control" step="any" min="0"
+                value="{{ registro.musculo_esqueletico if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="metabolismo_basal" class="form-label">Metabolismo basal (kcal)</label>
+            <input
+                type="number" id="metabolismo_basal" name="metabolismo_basal"
+                class="form-control" step="any" min="0"
+                value="{{ registro.metabolismo_basal if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="pressao_arterial_sistolica" class="form-label">
+                Pressão arterial sistólica (mmHg)
+            </label>
+            <input
+                type="number" id="pressao_arterial_sistolica"
+                name="pressao_arterial_sistolica" class="form-control"
+                step="1" min="0"
+                value="{{ registro.pressao_arterial_sistolica if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="pressao_arterial_diastolica" class="form-label">
+                Pressão arterial diastólica (mmHg)
+            </label>
+            <input
+                type="number" id="pressao_arterial_diastolica"
+                name="pressao_arterial_diastolica" class="form-control"
+                step="1" min="0"
+                value="{{ registro.pressao_arterial_diastolica if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="frequencia_cardiaca" class="form-label">
+                Frequência cardíaca (bpm)
+            </label>
+            <input
+                type="number" id="frequencia_cardiaca" name="frequencia_cardiaca"
+                class="form-control" step="1" min="0"
+                value="{{ registro.frequencia_cardiaca if registro else '' }}"
+            >
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="glicemia" class="form-label">Glicemia (mg/dL)</label>
+            <input
+                type="number" id="glicemia" name="glicemia" class="form-control"
+                step="any" min="0"
+                value="{{ registro.glicemia if registro else '' }}"
+            >
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-secondary">Voltar</a>
+</form>
+{% endblock %}

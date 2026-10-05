@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Consultar Evolução Ozivy{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Consultar Evolução Ozivy</h3>
+
+    <a href="{{ url_for('nova_evolucao_ozivy') }}" class="btn btn-primary mb-3">
+        Novo registro
+    </a>
+
+      
+  
+        <div class="mt-2">
+            <a href="{{ url_for('nova_evolucao_ozivy') }}" class="btn btn-primary">
+                Nova aplicação
+            </a>
+            <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-secondary">
+                Consultar Evolução Ozivy
+            </a>
+        </div>
+
+
+
+
+
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped" id="tabelaEvolucaoOzivy">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Data</th>
+                    <th>Peso (kg)</th>
+                    <th>Altura (m)</th>
+                    <th>IMC</th>
+                    <th>Gordura corporal (%)</th>
+                    <th>Gordura visceral</th>
+                    <th>Idade corporal</th>
+                    <th>Músculo esquelético (%)</th>
+                    <th>Metabolismo basal (kcal)</th>
+                    <th>Pressão sistólica (mmHg)</th>
+                    <th>Pressão diastólica (mmHg)</th>
+                    <th>Frequência cardíaca (bpm)</th>
+                    <th>Glicemia (mg/dL)</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                <tr>
+                    <td>{{ registro.id }}</td>
+                    <td>{{ registro.data_registro or '—' }}</td>
+                    <td>{{ registro.peso if registro.peso is not none else '—' }}</td>
+                    <td>{{ registro.altura if registro.altura is not none else '—' }}</td>
+                    <td>{{ registro.imc if registro.imc is not none else '—' }}</td>
+                    <td>{{ registro.gordura_corporal if registro.gordura_corporal is not none else '—' }}</td>
+                    <td>{{ registro.gordura_visceral if registro.gordura_visceral is not none else '—' }}</td>
+                    <td>{{ registro.idade_corporal if registro.idade_corporal is not none else '—' }}</td>
+                    <td>{{ registro.musculo_esqueletico if registro.musculo_esqueletico is not none else '—' }}</td>
+                    <td>{{ registro.metabolismo_basal if registro.metabolismo_basal is not none else '—' }}</td>
+                    <td>{{ registro.pressao_arterial_sistolica if registro.pressao_arterial_sistolica is not none else '—' }}</td>
+                    <td>{{ registro.pressao_arterial_diastolica if registro.pressao_arterial_diastolica is not none else '—' }}</td>
+                    <td>{{ registro.frequencia_cardiaca if registro.frequencia_cardiaca is not none else '—' }}</td>
+                    <td>{{ registro.glicemia if registro.glicemia is not none else '—' }}</td>
+                    <td class="text-center text-nowrap">
+                        <a href="{{ url_for('editar_evolucao_ozivy', id=registro.id) }}"
+                           class="btn btn-sm btn-warning">
+                            Editar
+                        </a>
+
+                        <form action="{{ url_for('excluir_evolucao_ozivy', id=registro.id) }}"
+                              method="POST"
+                              style="display:inline;"
+                              onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                Excluir
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#tabelaEvolucaoOzivy').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+            },
+            "order": [[1, "desc"]],
+            "scrollX": true
+        });
+    });
+</script>
+{% endblock %}

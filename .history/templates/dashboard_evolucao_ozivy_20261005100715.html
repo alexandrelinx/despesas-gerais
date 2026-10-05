@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Evolutivo Ozivy{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+        <div>
+            <h2>Dashboard Evolutivo Ozivy</h2>
+            <p class="text-muted mb-0">
+                Comparação de cada registro com a aplicação seguinte, em ordem cronológica.
+            </p>
+        </div>
+
+        <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-secondary mt-2">
+            Voltar aos registros
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-2">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Registros cadastrados</div>
+                    <div class="h3 mb-0">{{ registros|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-2">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Comparações entre registros</div>
+                    <div class="h3 mb-0">{{ transicoes|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-2">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Registro mais recente</div>
+                    <div class="h3 mb-0">
+                        {% if registros %}
+                            {{ registros[-1].data_registro or 'Data não informada' }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not registros %}
+        <div class="alert alert-info">
+            Ainda não há registros de evolução Ozivy para exibir.
+        </div>
+    {% elif not transicoes %}
+        <div class="alert alert-info">
+            Há apenas um registro. Cadastre outro para visualizar a comparação evolutiva.
+        </div>
+    {% else %}
+        <p class="small text-muted">
+            A variação é calculada como valor do próximo registro menos valor do registro atual.
+            Campos sem valor nos dois registros não geram variação.
+        </p>
+
+        {% for campo, nome, unidade in metricas %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>{{ nome }}</strong>
+                {% if unidade %}<span class="text-muted">({{ unidade }})</span>{% endif %}
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Registro atual</th>
+                            <th>Próximo registro</th>
+                            <th>Valor atual</th>
+                            <th>Valor seguinte</th>
+                            <th>Variação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transicao in transicoes %}
+                            {% set item = transicao.variacoes[campo] %}
+                            <tr>
+                                <td>{{ transicao.data_atual or '—' }}</td>
+                                <td>{{ transicao.data_proxima or '—' }}</td>
+                                <td>
+                                    {% if item.atual is not none %}
+                                        {{ '%.2f'|format(item.atual|float) }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.proximo is not none %}
+                                        {{ '%.2f'|format(item.proximo|float) }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.variacao is not none %}
+                                        {{ '%+.2f'|format(item.variacao) }}
+                                        {% if unidade %}{{ unidade }}{% endif %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

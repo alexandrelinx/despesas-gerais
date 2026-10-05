@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h2>Incluir Abastecimento</h2>
+  <form method="post" class="row g-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <div class="col-md-3">
+        <label for="data" class="form-label">Data do Abastecimento</label>
+        <input type="text" class="form-control" name="data_abastecimento" placeholder="dd/mm/aaaa" id="data_abastecimento" required>
+     </div>
+     <div class="col-md-3">
+         <label class="form-label" for="kilometragem">Kilometragem (km)</label>
+         <input type="number" step="0.001" class="form-control" name="kilometragem" id="kilometragem" required>
+     </div>
+     <div class="col-md-3">
+      <label class="form-label" for="quantidade">Quantidade de Combustivel Abastecida(L)</label>
+      <input type="number" step="0.001" class="form-control" name="quantidade" id="quantidade" required>
+     </div>
+     <div class="col-md-3">
+         <label class="form-label" for="preco_litro">Preço por Litro (R$)</label>
+       <input type="number" step="0.001" class="form-control" name="preco_litro" id="preco_litro" required>
+     </div>
+     <div class="col-auto">
+       <button type="submit" class="btn btn-success">Salvar</button>
+       <a href="{{ url_for('combustivel') }}" class="btn btn-secondary">Cancelar</a>
+        <a href="{{ url_for('consultar_despesas') }}" class="btn btn-secondary">Voltar</a>
+     </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("data_abastecimento");
+    input.addEventListener("input", function () {
+        let value = input.value.replace(/\D/g, '');
+        if (value.length >= 2) value = value.slice(0,2) + '/' + value.slice(2);
+        if (value.length >= 5) value = value.slice(0,5) + '/' + value.slice(5,9);
+        input.value = value;
+    });
+});
+</script>
+{% endblock %}

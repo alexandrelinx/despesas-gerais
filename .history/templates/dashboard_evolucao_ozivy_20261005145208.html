@@ -1,0 +1,477 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Evolução Ozivy{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h2 class="mb-1">Dashboard de Evolução Ozivy</h2>
+      <p class="text-muted mb-0">
+        Acompanhe a evolução de cada métrica entre as aplicações, em ordem cronológica.
+      </p>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('nova_evolucao_ozivy') }}" class="btn btn-success">
+        <i class="fa-solid fa-plus"></i> Nova aplicação
+      </a>
+      <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-outline-secondary">
+        Consultar aplicações
+      </a>
+     
+    <a href="{{ url_for('relatorio_pdf_variacao_evolucao_ozivy') }}" class="btn btn-outline-danger">
+      <i class="fa-regular fa-file-pdf"></i> Exportar PDF
+     </a>
+</div>
+
+  {% if registros %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-5 col-md-7">
+          <label for="seletorMetrica" class="form-label">
+            Métrica para exibir
+          </label>
+          <select id="seletorMetrica" class="form-select">
+            {% for campo, nome, unidade in metricas %}
+            <option value="{{ campo }}">
+              {{ nome }}{% if unidade %} ({{ unidade }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-lg-7 col-md-5">
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-primary" onclick="alterarTipo('bar')">
+              Barras
+            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="alterarTipo('line')">
+              Linha
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="alterarTipo('pie')">
+              Pizza
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="alterarTipo('doughnut')">
+              Rosca
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="resetarZoom()">
+              🔍 Redefinir zoom
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="visual-card mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h4 id="tituloGrafico" class="mb-1"></h4>
+        <small class="text-muted">
+          Cada ponto ou barra representa uma aplicação, exibida pela data do registro.
+        </small>
+      </div>
+    </div>
+
+    <div class="grafico-container">
+      <canvas id="graficoEvolucao"></canvas>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+      <strong>Registros cadastrados</strong>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Data</th>
+            {% for campo, nome, unidade in metricas %}
+            <th class="text-end">
+              {{ nome }}{% if unidade %} ({{ unidade }}){% endif %}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for registro in registros %}
+          <tr>
+            <td>{{ registro.get('data_registro', '-') }}</td>
+            {% for campo, nome, unidade in metricas %}
+            <td class="text-end">
+              {% if registro.get(campo) is not none %}
+                {{ registro.get(campo) }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if transicoes %}
+  <h4 class="mb-3">Variação entre aplicações consecutivas</h4>
+
+  {% for transicao in transicoes %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-light">
+      <strong>
+        {{ transicao.data_atual }} → {{ transicao.data_proxima }}
+      </strong>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th class="text-end">Valor atual</th>
+            <th class="text-end">Valor seguinte</th>
+            <th class="text-end">Variação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for campo, nome, unidade in metricas %}
+          {% set item = transicao.variacoes.get(campo, {}) %}
+          <tr>
+            <td>{{ nome }}{% if unidade %} ({{ unidade }}){% endif %}</td>
+            <td class="text-end">{{ item.get('atual') if item.get('atual') is not none else '-' }}</td>
+            <td class="text-end">{{ item.get('proximo') if item.get('proximo') is not none else '-' }}</td>
+            <td class="text-end">
+              {% if item.get('variacao') is not none %}
+                {% if item.get('variacao') > 0 %}+{% endif %}
+                {{ '%.2f'|format(item.get('variacao')) }}{% if unidade == '%' %} %{% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% else %}
+  <div class="alert alert-info">
+    Ainda não há aplicações cadastradas para exibir no dashboard.
+    <a href="{{ url_for('nova_evolucao_ozivy') }}" class="alert-link">Cadastrar nova aplicação</a>.
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .visual-card {
+    background: #fff;
+    border: 1px solid #e9e9e9;
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .grafico-container {
+    position: relative;
+    width: 100%;
+    height: 430px;
+  }
+
+  .table th,
+  .table td {
+    vertical-align: middle;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 576px) {
+    .grafico-container {
+      height: 340px;
+    }
+  }
+</style>
+
+{% if registros %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<script>
+  const registrosOzivy = {{ registros|tojson }};
+  const metricasOzivy = {{ metricas|tojson }};
+
+  const coresOzivy = [
+    '#118DFF', '#12239E', '#E66C37', '#6B007B',
+    '#E044A7', '#744EC2', '#D9B300', '#D64550',
+    '#197278', '#1AAB40', '#3B3B3B', '#5F6B6D'
+  ];
+
+  if (window.Chart) {
+    const zoomPlugin = window.ChartZoom || window.chartjsPluginZoom ||
+                       window['chartjs-plugin-zoom'];
+
+    if (zoomPlugin) {
+      Chart.register(zoomPlugin);
+    }
+
+    if (window.ChartDataLabels) {
+      Chart.register(window.ChartDataLabels);
+    }
+
+    Chart.defaults.font.family = "'Segoe UI', 'Roboto', sans-serif";
+    Chart.defaults.color = '#666';
+  }
+
+  function dataDaAplicacao(valor) {
+    if (!valor) {
+      return null;
+    }
+
+    const texto = String(valor).trim();
+
+    // Formato ISO: AAAA-MM-DD
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      return new Date(
+        Number(iso[1]),
+        Number(iso[2]) - 1,
+        Number(iso[3])
+      );
+    }
+
+    // Formato brasileiro: DD/MM/AAAA
+    const br = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (br) {
+      return new Date(
+        Number(br[3]),
+        Number(br[2]) - 1,
+        Number(br[1])
+      );
+    }
+
+    return null;
+  }
+
+  function formatarData(valor) {
+    const data = dataDaAplicacao(valor);
+
+    if (!data || Number.isNaN(data.getTime())) {
+      return valor || '-';
+    }
+
+    return data.toLocaleDateString('pt-BR');
+  }
+
+  // Ordena pela data da aplicação, preservando a sequência cronológica.
+  const registrosOrdenados = [...registrosOzivy].sort((a, b) => {
+    const dataA = dataDaAplicacao(a.data_registro);
+    const dataB = dataDaAplicacao(b.data_registro);
+
+    if (!dataA && !dataB) {
+      return Number(a.id || 0) - Number(b.id || 0);
+    }
+    if (!dataA) return 1;
+    if (!dataB) return -1;
+
+    const diferenca = dataA.getTime() - dataB.getTime();
+    return diferenca || Number(a.id || 0) - Number(b.id || 0);
+  });
+
+  const seletorMetrica = document.getElementById('seletorMetrica');
+  const canvas = document.getElementById('graficoEvolucao');
+  const contexto = canvas.getContext('2d');
+
+  let graficoEvolucao = null;
+  let tipoGraficoAtual = 'bar';
+
+  function obterMetricaSelecionada() {
+    const campo = seletorMetrica.value;
+    return metricasOzivy.find(metrica => metrica[0] === campo);
+  }
+
+  function valorNumerico(valor) {
+    if (valor === null || valor === undefined || valor === '') {
+      return null;
+    }
+
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
+  function criarGrafico() {
+    const metrica = obterMetricaSelecionada();
+
+    if (!metrica) {
+      return;
+    }
+
+    const [campo, nome, unidade] = metrica;
+    const labels = registrosOrdenados.map(registro =>
+      formatarData(registro.data_registro)
+    );
+    const valores = registrosOrdenados.map(registro =>
+      valorNumerico(registro[campo])
+    );
+
+    document.getElementById('tituloGrafico').textContent =
+      `${nome}${unidade ? ` (${unidade})` : ''}`;
+
+    if (graficoEvolucao) {
+      graficoEvolucao.destroy();
+    }
+
+    const cor = coresOzivy[metricasOzivy.findIndex(item => item[0] === campo) % coresOzivy.length];
+    const graficoCircular = tipoGraficoAtual === 'pie' ||
+                            tipoGraficoAtual === 'doughnut';
+
+    graficoEvolucao = new Chart(contexto, {
+      type: tipoGraficoAtual,
+      data: {
+        labels: labels,
+        datasets: [{
+          label: `${nome}${unidade ? ` (${unidade})` : ''}`,
+          data: valores,
+          backgroundColor: graficoCircular
+            ? labels.map((_, indice) => coresOzivy[indice % coresOzivy.length])
+            : tipoGraficoAtual === 'bar'
+              ? cor + 'B3'
+              : 'rgba(17, 141, 255, 0.16)',
+          borderColor: graficoCircular
+            ? '#FFFFFF'
+            : cor,
+          borderWidth: graficoCircular ? 2 : 2.5,
+          borderRadius: tipoGraficoAtual === 'bar' ? 6 : 0,
+          maxBarThickness: 48,
+          fill: tipoGraficoAtual === 'line',
+          tension: tipoGraficoAtual === 'line' ? 0.35 : 0,
+          pointBackgroundColor: '#FFFFFF',
+          pointBorderColor: cor,
+          pointBorderWidth: 2.5,
+          pointRadius: tipoGraficoAtual === 'line' ? 5 : 0,
+          pointHoverRadius: 7,
+          hoverOffset: graficoCircular ? 10 : 0,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+
+layout: {
+    padding: {
+      top: 20
+    }
+  },
+
+
+
+
+        cutout: tipoGraficoAtual === 'doughnut' ? '58%' : 0,
+        plugins: {
+          legend: {
+            display: graficoCircular,
+            position: 'right'
+          },
+          tooltip: {
+            backgroundColor: '#fff',
+            titleColor: '#333',
+            bodyColor: '#666',
+            borderColor: '#e6e6e6',
+            borderWidth: 1,
+            padding: 10,
+            callbacks: {
+              label: function(contextoTooltip) {
+                const valor = contextoTooltip.parsed;
+                if (valor === null || valor === undefined) {
+                  return ' Sem valor';
+                }
+
+                return ` ${nome}: ${Number(valor).toFixed(2)}${unidade ? ` ${unidade}` : ''}`;
+              }
+            }
+          },
+          datalabels: {
+            display: true,
+            color: tipoGraficoAtual === 'pie' ||
+                   tipoGraficoAtual === 'doughnut'
+              ? '#FFFFFF'
+              : '#555',
+            anchor: tipoGraficoAtual === 'bar' ? 'end' : 'center',
+            align: tipoGraficoAtual === 'bar' ? 'end' : 'top',
+            font: {
+              size: 11,
+              weight: '600'
+            },
+            formatter: function(valor) {
+              return valor === null ? '' : Number(valor).toFixed(2);
+            }
+          },
+          zoom: graficoCircular ? {} : {
+            pan: {
+              enabled: true,
+              mode: 'x'
+            },
+            zoom: {
+              wheel: {
+                enabled: true
+              },
+              pinch: {
+                enabled: true
+              },
+              mode: 'x'
+            }
+          }
+        },
+        scales: graficoCircular ? {} : {
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              padding: 8,
+              autoSkip: false
+            }
+          },
+          y: {
+            beginAtZero: false,
+            grid: {
+              color: '#E6E6E6'
+            },
+            ticks: {
+              padding: 8,
+              callback: function(valor) {
+                return `${valor}${unidade ? ` ${unidade}` : ''}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function alterarTipo(tipo) {
+    tipoGraficoAtual = tipo;
+    criarGrafico();
+  }
+
+  function resetarZoom() {
+    if (graficoEvolucao && typeof graficoEvolucao.resetZoom === 'function') {
+      graficoEvolucao.resetZoom();
+    }
+  }
+
+  seletorMetrica.addEventListener('change', criarGrafico);
+
+  criarGrafico();
+</script>
+{% endif %}
+{% endblock %}

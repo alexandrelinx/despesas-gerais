@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Evolutivo Ozivy{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+        <div>
+            <h2>Dashboard Evolutivo Ozivy</h2>
+            <p class="text-muted mb-0">
+                Comparação de cada registro com a aplicação seguinte, em ordem cronológica.
+            </p>
+        </div>
+
+        <div class="mt-2">
+            <a href="{{ url_for('nova_evolucao_ozivy') }}" class="btn btn-primary">
+                Nova aplicação
+            </a>
+            <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-secondary">
+                Voltar aos registros
+            </a>
+            <a href="{{ url_for('relatorio_pdf_variacao_evolucao_ozivy') }}" class="btn btn-outline-danger">
+                <i class="fa-regular fa-file-pdf"></i> Exportar PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-2">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Registros cadastrados</div>
+                    <div class="h3 mb-0">{{ registros|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-2">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Comparações entre registros</div>
+                    <div class="h3 mb-0">{{ transicoes|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-2">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Registro mais recente</div>
+                    <div class="h3 mb-0">
+                        {% if registros %}
+                            {{ registros[-1].data_registro or 'Data não informada' }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not registros %}
+        <div class="alert alert-info">
+            Ainda não há registros de evolução Ozivy para exibir.
+        </div>
+    {% elif not transicoes %}
+        <div class="alert alert-info">
+            Há apenas um registro. Cadastre outro para visualizar a comparação evolutiva.
+        </div>
+    {% else %}
+        <p class="small text-muted">
+            A variação é calculada como valor do próximo registro menos valor do registro atual.
+            Campos sem valor nos dois registros não geram variação.
+        </p>
+
+        <h3 class="mb-3">Gráficos de evolução</h3>
+        <div class="row" id="graficosEvolucaoOzivy"></div>
+
+        <script>
+            const registrosOzivy = {{ registros|tojson }};
+            const metricasOzivy = {{ metricas|tojson }};
+            const containerGraficos = document.getElementById('graficosEvolucaoOzivy');
+
+            function criarGraficoEvolucao(campo, nome, unidade) {
+                const dados = registrosOzivy
+                    .map((registro, indice) => ({
+                        indice,
+                        data: registro.data_registro || 'Data não informada',
+                        valor: registro[campo] === null || registro[campo] === undefined
+                            ? null
+                            : Number(registro[campo])
+                    }))
+                    .filter(item => Number.isFinite(item.valor));
+
+                const coluna = document.createElement('div');
+                coluna.className = 'col-lg-6 mb-4';
+
+                const card = document.createElement('div');
+                card.className = 'card h-100';
+
+                const corpo = document.createElement('div');
+                corpo.className = 'card-body';
+
+                const titulo = document.createElement('h5');
+                titulo.className = 'card-title';
+                titulo.textContent = unidade ? `${nome} (${unidade})` : nome;
+                corpo.appendChild(titulo);
+
+                if (dados.length === 0) {
+                    const aviso = document.createElement('p');
+                    aviso.className = 'text-muted mb-0';
+                    aviso.textContent = 'Não há valores registrados para esta métrica.';
+                    corpo.appendChild(aviso);
+                } else {
+                    const largura = 800;
+                    const altura = 280;
+                    const margem = { topo: 20, direita: 24, baixo: 48, esquerda: 62 };
+                    const areaLargura = largura - margem.esquerda - margem.direita;
+                    const areaAltura = altura - margem.topo - margem.baixo;
+                    const valores = dados.map(item => item.valor);
+                    let minimo = Math.min(...valores);
+                    let maximo = Math.max(...valores);
+
+                    if (minimo === maximo) {
+                        minimo -= 1;
+                        maximo += 1;
+                    } else {
+                        const folga = (maximo - minimo) * 0.1;
+                        minimo -= folga;
+                        maximo += folga;
+                    }
+
+                    const posicaoX = item => dados.length === 1
+                        ? margem.esquerda + areaLargura / 2
+                        : margem.esquerda + (item.indice / Math.max(registrosOzivy.length - 1, 1)) * areaLargura;
+
+                    const posicaoY = valor =>
+                        margem.topo + ((maximo - valor) / (maximo - minimo)) * areaAltura;
+
+                    const svgNS = 'http://www.w3.org/2000/svg';
+                    const svg = document.createElementNS(svgNS, 'svg');
+                    svg.setAttribute('viewBox', `0 0 ${largura} ${altura}`);
+                    svg.setAttribute('role', 'img');
+                    svg.setAttribute('aria-label', `Gráfico de evolução: ${nome}`);
+                    svg.style.width = '100%';
+                    svg.style.height = 'auto';
+
+                    for (let linha = 0; linha <= 4; linha++) {
+                        const y = margem.topo + (areaAltura / 4) * linha;
+                        const valor = maximo - ((maximo - minimo) / 4) * linha;
+
+                        const grade = document.createElementNS(svgNS, 'line');
+                        grade.setAttribute('x1', margem.esquerda);
+                        grade.setAttribute('x2', largura - margem.direita);
+                        grade.setAttribute('y1', y);
+                        grade.setAttribute('y2', y);
+                        grade.setAttribute('stroke', '#dee2e6');
+                        svg.appendChild(grade);
+
+                        const rotulo = document.createElementNS(svgNS, 'text');
+                        rotulo.setAttribute('x', margem.esquerda - 8);
+                        rotulo.setAttribute('y', y + 4);
+                        rotulo.setAttribute('text-anchor', 'end');
+                        rotulo.setAttribute('font-size', '12');
+                        rotulo.setAttribute('fill', '#6c757d');
+                        rotulo.textContent = valor.toFixed(2);
+                        svg.appendChild(rotulo);
+                    }
+
+                    if (dados.length > 1) {
+                        const linha = document.createElementNS(svgNS, 'polyline');
+                        linha.setAttribute(
+                            'points',
+                            dados.map(item => `${posicaoX(item)},${posicaoY(item.valor)}`).join(' ')
+                        );
+                        linha.setAttribute('fill', 'none');
+                        linha.setAttribute('stroke', '#0d6efd');
+                        linha.setAttribute('stroke-width', '3');
+                        linha.setAttribute('stroke-linejoin', 'round');
+                        linha.setAttribute('stroke-linecap', 'round');
+                        svg.appendChild(linha);
+                    }
+
+                    dados.forEach(item => {
+                        const ponto = document.createElementNS(svgNS, 'circle');
+                        ponto.setAttribute('cx', posicaoX(item));
+                        ponto.setAttribute('cy', posicaoY(item.valor));
+                        ponto.setAttribute('r', '5');
+                        ponto.setAttribute('fill', '#0d6efd');
+
+                        const dica = document.createElementNS(svgNS, 'title');
+                        dica.textContent = `${item.data}: ${item.valor.toFixed(2)}${unidade ? ' ' + unidade : ''}`;
+                        ponto.appendChild(dica);
+                        svg.appendChild(ponto);
+                    });
+
+                    const primeiroRotulo = document.createElementNS(svgNS, 'text');
+                    primeiroRotulo.setAttribute('x', margem.esquerda);
+                    primeiroRotulo.setAttribute('y', altura - 12);
+                    primeiroRotulo.setAttribute('font-size', '12');
+                    primeiroRotulo.setAttribute('fill', '#6c757d');
+                    primeiroRotulo.textContent = dados[0].data;
+                    svg.appendChild(primeiroRotulo);
+
+                    const ultimoRotulo = document.createElementNS(svgNS, 'text');
+                    ultimoRotulo.setAttribute('x', largura - margem.direita);
+                    ultimoRotulo.setAttribute('y', altura - 12);
+                    ultimoRotulo.setAttribute('text-anchor', 'end');
+                    ultimoRotulo.setAttribute('font-size', '12');
+                    ultimoRotulo.setAttribute('fill', '#6c757d');
+                    ultimoRotulo.textContent = dados[dados.length - 1].data;
+                    svg.appendChild(ultimoRotulo);
+
+                    corpo.appendChild(svg);
+
+                    const nota = document.createElement('p');
+                    nota.className = 'small text-muted mb-0';
+                    nota.textContent = `${dados.length} registro(s) com valor informado. Passe o cursor sobre os pontos para ver data e valor.`;
+                    corpo.appendChild(nota);
+                }
+
+                card.appendChild(corpo);
+                coluna.appendChild(card);
+                containerGraficos.appendChild(coluna);
+            }
+
+            metricasOzivy.forEach(([campo, nome, unidade]) => {
+                criarGraficoEvolucao(campo, nome, unidade);
+            });
+        </script>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h3 class="mb-0">Variação entre aplicações consecutivas</h3>
+            <button
+                type="button"
+                id="botaoAlternarVariacoes"
+                class="btn btn-outline-secondary btn-sm"
+                aria-expanded="true"
+                aria-controls="conteudoVariacoesOzivy"
+                onclick="alternarVariacoesOzivy()"
+            >
+                Ocultar variações
+            </button>
+        </div>
+
+        <style>
+            #conteudoVariacoesOzivy {
+                max-height: 620px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding-right: 6px;
+            }
+        </style>
+
+        <div id="conteudoVariacoesOzivy">
+        {% for campo, nome, unidade in metricas %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>{{ nome }}</strong>
+                {% if unidade %}<span class="text-muted">({{ unidade }})</span>{% endif %}
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Registro atual</th>
+                            <th>Próximo registro</th>
+                            <th>Valor atual</th>
+                            <th>Valor seguinte</th>
+                            <th>Variação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transicao in transicoes %}
+                            {% set item = transicao.variacoes[campo] %}
+                            <tr>
+                                <td>{{ transicao.data_atual or '—' }}</td>
+                                <td>{{ transicao.data_proxima or '—' }}</td>
+                                <td>
+                                    {% if item.atual is not none %}
+                                        {{ '%.2f'|format(item.atual|float) }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.proximo is not none %}
+                                        {{ '%.2f'|format(item.proximo|float) }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.variacao is not none %}
+                                        {{ '%+.2f'|format(item.variacao) }}
+                                        {% if unidade %}{{ unidade }}{% endif %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function alternarVariacoesOzivy() {
+        const conteudo = document.getElementById('conteudoVariacoesOzivy');
+        const botao = document.getElementById('botaoAlternarVariacoes');
+
+        if (!conteudo || !botao) return;
+
+        const vaiOcultar = conteudo.style.display !== 'none';
+        conteudo.style.display = vaiOcultar ? 'none' : '';
+        botao.textContent = vaiOcultar ? 'Mostrar variações' : 'Ocultar variações';
+        botao.setAttribute('aria-expanded', String(!vaiOcultar));
+    }
+</script>
+{% endblock %}
