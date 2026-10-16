@@ -124,8 +124,13 @@ def toggle_pagamento_ajax():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 #-------------------Rota para Dashboard ---------------------
+@app.route("/")
+def inicio():
+    return render_template("inicio.html")
 
-@app.route('/')
+
+
+@app.route('/dashboard')
 def dashboard():
     tempo_atualizacao_segundos = 15
 
@@ -5059,5 +5064,6 @@ def relatorio_pdf_variacao_evolucao_ozivy():
 
 
 if __name__ == '__main__':
+   # inicializar_banco()
     app.secret_key = 'segredo-super-seguro'
     app.run(debug=True)

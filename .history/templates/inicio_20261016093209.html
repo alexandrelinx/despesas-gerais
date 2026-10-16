@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Início - Gestão 360º{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center"
+     style="min-height: calc(100vh - 100px);">
+
+  <button
+    type="button"
+    class="btn p-0 border-0 bg-transparent"
+    data-bs-toggle="modal"
+    data-bs-target="#modalLogo"
+    aria-label="Ampliar logo do Gestão 360º"
+    title="Clique para ampliar"
+  >
+    <img
+      src="{{ url_for('static', filename='imagens/gestão_360Graus.png') }}"
+      alt="Logo do Gestão 360º"
+      class="img-fluid logo-inicio"
+    >
+  </button>
+</div>
+
+<!-- Modal para exibir a logo ampliada -->
+<div class="modal fade" id="modalLogo" tabindex="-1"
+     aria-labelledby="modalLogoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalLogoLabel">Gestão 360º</h5>
+        <button type="button" class="btn-close"
+                data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <div class="modal-body text-center">
+        <img
+          src="{{ url_for('static', filename='imagens/gestão_360Graus.png') }}"
+          alt="Logo ampliada do Gestão 360º"
+          class="img-fluid logo-ampliada"
+        >
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .logo-inicio {
+    max-width: 620px;
+    cursor: zoom-in;
+  }
+
+  .logo-ampliada {
+    max-height: 80vh;
+    width: auto;
+    object-fit: contain;
+  }
+</style>
+{% endblock %}

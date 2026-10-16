@@ -260,61 +260,85 @@
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
     <div class="container-fluid d-flex align-items-center">
       <button id="sidebarToggle" class="btn btn-dark me-3" title="Expandir/Ocultar Sidebar">☰</button>
-      <a class="navbar-brand mb-0 h1" href="#">Lançamento de Despesas</a>
+     <a class="navbar-brand mb-0 h1" href="/">GESTÃO 360º</a>
     </div>
   </nav>
   <div class="sidebar">
     <h5>Menu</h5>
-    <a href="/"><i class="fas fa-tachometer-alt"></i>Dashboard</a>
-    <a href="/dashboard_analytics"><i class="fas fa-chart-bar"></i>Analytics</a>
-    <h6 class="menu-toggle"><i class="fas fa-tools"></i>Parametros</h6>
-    <div class="submenu">
-      <a href="/cadastro/estabelecimento"><i class="fas fa-store"></i>Estabelecimento</a>
-      <a href="/cadastro/endereco"><i class="fas fa-map"></i>Endereço</a>
-      <a href="/cadastro/categoria"><i class="fas fa-th-large"></i>Categorias</a>
-      <a href="/cadastro/local_compra"><i class="fas fa-map-marker-alt"></i>Local da Compra</a>
-      <a href="/cadastro/produto"><i class="fas fa-box"></i>Produto</a>
-      <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i>Comprador</a>
-      <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i>Forma de Pagamento</a>
-      <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i>Bandeira</a>
-      <a href="/cadastro/credito"><i class="fas fa-hand-holding-usd"></i>Crédito Financeiro</a>
-      
-    </div>
-    <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i>Segurança</h6>
-    <div class="submenu">
-      <a href="/cadastro/usuarios"><i class="fas fa-user-plus"></i>Cadastrar Usuário</a>
-      <a href="/usuarios"><i class="fas fa-users"></i>Consultar Usuários</a>
-    </div>
+        
+    
+
     <h6 class="menu-toggle"><i class="fas fa-wallet"></i>Lançamentos de Despesas</h6>
-    <div class="submenu">
-      <a href="/despesas"><i class="fas fa-file-invoice-dollar"></i>Cadastrar Despesas</a>
-      <a href="/consultar_despesas"><i class="fas fa-clipboard-list"></i>Consultar Despesas</a>
-      <a href="/totais-despesas-mensais"><i class="fas fa-chart-line"></i>Totais de Despesas Mensais</a>
-    </div>
+        <div class="submenu">
+
+          <h6 class="menu-toggle"><i class="fas fa-tools"></i>Parametros</h6>
+          
+          <div class="submenu">
+           <a href="/cadastro/estabelecimento"><i class="fas fa-store"></i>Estabelecimento</a>
+            <a href="/cadastro/endereco"><i class="fas fa-map"></i>Endereço</a>
+            <a href="/cadastro/categoria"><i class="fas fa-th-large"></i>Categorias</a>
+            <a href="/cadastro/local_compra"><i class="fas fa-map-marker-alt"></i>Local da Compra</a>
+            <a href="/cadastro/produto"><i class="fas fa-box"></i>Produto</a>
+            <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i>Comprador</a>
+            <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i>Forma de Pagamento</a>
+            <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i>Bandeira</a>
+            <a href="/cadastro/credito"><i class="fas fa-hand-holding-usd"></i>Crédito Financeiro</a>
+           </div>
+         
+          <h6 class="menu-toggle"><i class="fas fa-file-invoice-dollar"></i> Manutenção de Despesas</h6>
+            <div class="submenu">
+              <a href="/despesas"><i class="fas fa-file-invoice-dollar"></i>Cadastrar Despesas</a>
+              <a href="/consultar_despesas"><i class="fas fa-clipboard-list"></i>Consultar Despesas</a>
+              <a href="/totais-despesas-mensais"><i class="fas fa-chart-line"></i>Totais de Despesas Mensais</a>
+            </div>
+        
+          
+         <h6 class="menu-toggle"><i class="fas fa-chart-bar"></i> Analytics</h6>
+             <div class="submenu">
+             <a href="/dashboard_analytics"><i class="fas fa-chart-bar"></i>Analytics</a>
+             <a href="/dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a>  
+            </div> 
+          </div>
+
+
     <h6 class="menu-toggle"><i class="fas fa-gas-pump"></i>Consumo de Combustível</h6>
-    <div class="submenu">
-      <a href="/outros/combustivel"><i class="fas fa-plus"></i> <i class="fas fa-gas-pump"></i> Lançar Abastecimento</a>
-      <a href="/outros/combustivel/consultar"><i class="fas fa-search"></i><i class="fas fa-gas-pump"></i> Consultar
-        Abastecimento</a>
-    </div>
-    <h6 class="menu-toggle"><i class="fas fa-car"></i>Manutenção Veicular</h6>
-    <div class="submenu">
-      <a href="/cadastro/manutencao/novo">
-        <i class="fas fa-tools"></i> Lançar Manutenção
-      </a>
-      <a href="/cadastro/manutencao">
-        <i class="fas fa-search"></i> Consultar Manutenções
-      </a>
-    </div>
-      <h6 class="menu-toggle"><i class="fas fa-weight"></i>Ozivy</h6>
       <div class="submenu">
-         <a href="/cadastro/evolucao_ozivy/dashboard"><i class="fas fa-weight"></i>Evolução Ozivy</a>
-         <a href="/cadastro/evolucao_ozivy/listar"><i class="fas fa-plus"></i>Consultar Evolução Ozivy</a>
+        <a href="/outros/combustivel"><i class="fas fa-plus"></i> <i class="fas fa-gas-pump"></i> Lançar Abastecimento</a>
+        <a href="/outros/combustivel/consultar"><i class="fas fa-search"></i><i class="fas fa-gas-pump"></i> Consultar
+          Abastecimento</a>
       </div>
+
+    <h6 class="menu-toggle"><i class="fas fa-car"></i>Manutenção Veicular</h6>
+      <div class="submenu">
+        <a href="/cadastro/manutencao/novo">
+          <i class="fas fa-tools"></i> Lançar Manutenção
+        </a>
+        <a href="/cadastro/manutencao">
+          <i class="fas fa-search"></i> Consultar Manutenções
+        </a>
+      </div>
+
+    <h6 class="menu-toggle"><i class="fas fa-syringe"></i>Evolução Ozivy</h6>
+      <div class="submenu">
+         <a href="/cadastro/evolucao_ozivy/dashboard"><i class="fas fa-chart-line"></i>Evolução Ozivy</a>
+         <a href="/cadastro/evolucao_ozivy/listar"><i class="fas fa-plus"></i>Manutenção-Bioimpendancia</a>
+      </div>
+
+
+ <h6 class="menu-toggle"><i class="fas fa-cogs"></i>Gestão do Sistema</h6>
+   <div class="submenu">
+      <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i>Segurança</h6>
+         <div class="submenu">
+           <a href="/cadastro/usuarios"><i class="fas fa-user-plus"></i>Cadastrar Usuário</a>
+           <a href="/usuarios"><i class="fas fa-users"></i>Consultar Usuários</a>
+      </div>
+   </div>
+
+
+        <a href="/logout" class="sair"><i class="fas fa-sign-out-alt"></i>Sair</a>
     </div>
-    <a href="/logout" class="sair"><i class="fas fa-sign-out-alt"></i>Sair</a>
-  </div>
-  <div class="content">
+  
+    <div class="content">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     {% for category, message in messages %}
