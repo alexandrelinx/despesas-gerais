@@ -3,6 +3,8 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
+
+  <!-- Cabeçalho -->
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
       <h2 class="mb-1">Dashboard de Evolução Ozivy</h2>
@@ -18,54 +20,47 @@
       <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-outline-secondary">
         Consultar aplicações
       </a>
-    
+      <a href="{{ url_for('relatorio_pdf_variacao_evolucao_ozivy') }}" class="btn btn-outline-danger">
+        <i class="fa-regular fa-file-pdf"></i> Exportar PDF
+      </a>
     </div>
- 
-    <a href="{{ url_for('relatorio_pdf_variacao_evolucao_ozivy') }}" class="btn btn-outline-danger">
-      <i class="fa-regular fa-file-pdf"></i> Exportar PDF
-     </a>
-</div>
+  </div>
 
   {% if registros %}
+
+  <!-- Seletor de métrica e tipo de gráfico -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
       <div class="row g-3 align-items-end">
         <div class="col-lg-5 col-md-7">
-          <label for="seletorMetrica" class="form-label">
-            Métrica para exibir
-          </label>
+          <label for="seletorMetrica" class="form-label">Métrica para exibir</label>
           <select id="seletorMetrica" class="form-select">
             {% for campo, nome, unidade in metricas %}
             <option value="{{ campo }}">
               {{ nome }}{% if unidade %} ({{ unidade }}){% endif %}
             </option>
             {% endfor %}
+            <option value="__variacao_total__">Variação total (todas as métricas)</option>
           </select>
         </div>
 
         <div class="col-lg-7 col-md-5">
           <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-outline-primary" onclick="alterarTipo('bar')">
-              Barras
-            </button>
-            <button type="button" class="btn btn-outline-primary" onclick="alterarTipo('line')">
-              Linha
-            </button>
-            <button type="button" class="btn btn-outline-success" onclick="alterarTipo('pie')">
-              Pizza
-            </button>
-            <button type="button" class="btn btn-outline-success" onclick="alterarTipo('doughnut')">
-              Rosca
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="resetarZoom()">
-              🔍 Redefinir zoom
-            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="alterarTipo('bar')">Barras</button>
+            <button type="button" class="btn btn-outline-primary" onclick="alterarTipo('line')">Linha</button>
+            <button type="button" class="btn btn-outline-success" onclick="alterarTipo('pie')">Pizza</button>
+            <button type="button" class="btn btn-outline-success" onclick="alterarTipo('doughnut')">Rosca</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="resetarZoom()">🔍 Redefinir zoom</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Resumo da métrica selecionada -->
+  <div id="resumoMetrica" class="row g-3 mb-4"></div>
+
+  <!-- Gráfico -->
   <div class="visual-card mb-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
       <div>
@@ -81,6 +76,7 @@
     </div>
   </div>
 
+  <!-- Tabela de registros -->
   <div class="card shadow-sm mb-4">
     <div class="card-header bg-light">
       <strong>Registros cadastrados</strong>
@@ -117,15 +113,14 @@
     </div>
   </div>
 
+  <!-- Variação entre aplicações consecutivas -->
   {% if transicoes %}
   <h4 class="mb-3">Variação entre aplicações consecutivas</h4>
 
   {% for transicao in transicoes %}
   <div class="card shadow-sm mb-3">
     <div class="card-header bg-light">
-      <strong>
-        {{ transicao.data_atual }} → {{ transicao.data_proxima }}
-      </strong>
+      <strong>{{ transicao.data_atual }} → {{ transicao.data_proxima }}</strong>
     </div>
     <div class="table-responsive">
       <table class="table table-sm table-hover mb-0">
@@ -229,6 +224,8 @@
     Chart.defaults.color = '#666';
   }
 
+  // ---------- Datas ----------
+
   function dataDaAplicacao(valor) {
     if (!valor) {
       return null;
@@ -236,24 +233,14 @@
 
     const texto = String(valor).trim();
 
-    // Formato ISO: AAAA-MM-DD
     const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) {
-      return new Date(
-        Number(iso[1]),
-        Number(iso[2]) - 1,
-        Number(iso[3])
-      );
+      return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
     }
 
-    // Formato brasileiro: DD/MM/AAAA
     const br = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
     if (br) {
-      return new Date(
-        Number(br[3]),
-        Number(br[2]) - 1,
-        Number(br[1])
-      );
+      return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
     }
 
     return null;
@@ -284,12 +271,16 @@
     return diferenca || Number(a.id || 0) - Number(b.id || 0);
   });
 
+  // ---------- Elementos e estado ----------
+
   const seletorMetrica = document.getElementById('seletorMetrica');
   const canvas = document.getElementById('graficoEvolucao');
   const contexto = canvas.getContext('2d');
 
   let graficoEvolucao = null;
   let tipoGraficoAtual = 'bar';
+
+  // ---------- Utilitários ----------
 
   function obterMetricaSelecionada() {
     const campo = seletorMetrica.value;
@@ -305,7 +296,199 @@
     return Number.isFinite(numero) ? numero : null;
   }
 
+  function formatarNumero(valor, casas = 2) {
+    return Number(valor).toLocaleString('pt-BR', {
+      minimumFractionDigits: casas,
+      maximumFractionDigits: casas
+    });
+  }
+
+  function serieDaMetrica(campo) {
+    return registrosOrdenados
+      .map(registro => valorNumerico(registro[campo]))
+      .filter(valor => valor !== null)
+      .map(valor => ({ valor }));
+  }
+
+  function variacaoDaSerie(serie) {
+    if (serie.length < 2) {
+      return null;
+    }
+
+    const inicial = serie[0].valor;
+    const final = serie[serie.length - 1].valor;
+    const absoluta = final - inicial;
+    const percentual = inicial !== 0 ? (absoluta / inicial) * 100 : null;
+
+    return { inicial, final, absoluta, percentual };
+  }
+
+  function cardResumo(titulo, valor) {
+    return `
+      <div class="col-6 col-lg">
+        <div class="border rounded p-3 bg-white h-100">
+          <small class="text-muted d-block">${titulo}</small>
+          <strong class="fs-5">${valor}</strong>
+        </div>
+      </div>`;
+  }
+
+  // ---------- Resumo por métrica ----------
+
+  function renderizarResumo(campo, nome, unidade) {
+    const sufixo = unidade ? ` ${unidade}` : '';
+    const registrosComValor = registrosOrdenados.filter(
+      registro => valorNumerico(registro[campo]) !== null
+    );
+    const primeiro = registrosComValor[0];
+    const ultimo = registrosComValor[registrosComValor.length - 1];
+    const variacao = variacaoDaSerie(serieDaMetrica(campo));
+
+    let rotuloVariacao = 'Variação';
+    let rotuloPercentual = 'Variação %';
+    let valorVariacao = '-';
+    let valorPercentual = '-';
+
+    if (variacao) {
+      const caiu = variacao.absoluta < 0;
+      const subiu = variacao.absoluta > 0;
+
+      if (campo === 'peso') {
+        rotuloVariacao = caiu ? 'Peso perdido' : subiu ? 'Peso ganho' : 'Peso sem variação';
+      } else {
+        rotuloVariacao = caiu ? 'Redução' : subiu ? 'Aumento' : 'Sem variação';
+      }
+
+      rotuloPercentual = caiu ? 'Percentual de queda' : subiu ? 'Percentual de aumento' : 'Percentual';
+      valorVariacao = `${formatarNumero(Math.abs(variacao.absoluta))}${sufixo}`;
+
+      if (variacao.percentual !== null) {
+        valorPercentual = `${formatarNumero(Math.abs(variacao.percentual))} %`;
+      }
+    }
+
+    document.getElementById('resumoMetrica').innerHTML = [
+      cardResumo('Período',
+        primeiro && ultimo
+          ? `${formatarData(primeiro.data_registro)} → ${formatarData(ultimo.data_registro)}`
+          : '-'),
+      cardResumo('Primeiro valor',
+        primeiro ? `${formatarNumero(valorNumerico(primeiro[campo]))}${sufixo}` : '-'),
+      cardResumo('Último valor',
+        ultimo ? `${formatarNumero(valorNumerico(ultimo[campo]))}${sufixo}` : '-'),
+      cardResumo(rotuloVariacao, valorVariacao),
+      cardResumo(rotuloPercentual, valorPercentual)
+    ].join('');
+  }
+
+  // ---------- Variação total ----------
+
+  function variacoesTotais() {
+    return metricasOzivy
+      .map(([campo, nome, unidade]) => {
+        const variacao = variacaoDaSerie(serieDaMetrica(campo));
+        return {
+          campo,
+          nome,
+          unidade,
+          percentual: variacao ? variacao.percentual : null
+        };
+      })
+      .filter(item => item.percentual !== null)
+      .sort((a, b) => b.percentual - a.percentual);
+  }
+
+  function renderizarResumoTotal() {
+    const itens = variacoesTotais();
+    const maior = itens[0];
+    const menor = itens[itens.length - 1];
+
+    document.getElementById('resumoMetrica').innerHTML = [
+      cardResumo('Métricas com variação', itens.length),
+      cardResumo('Maior aumento',
+        maior && maior.percentual > 0
+          ? `${maior.nome}: +${formatarNumero(maior.percentual)} %`
+          : '-'),
+      cardResumo('Maior redução',
+        menor && menor.percentual < 0
+          ? `${menor.nome}: ${formatarNumero(menor.percentual)} %`
+          : '-')
+    ].join('');
+  }
+
+  function criarGraficoVariacaoTotal() {
+    const itens = variacoesTotais();
+
+    document.getElementById('tituloGrafico').textContent =
+      'Variação total por métrica (%)';
+
+    if (graficoEvolucao) {
+      graficoEvolucao.destroy();
+    }
+
+    graficoEvolucao = new Chart(contexto, {
+      type: 'bar',
+      data: {
+        labels: itens.map(item => item.nome),
+        datasets: [{
+          label: 'Variação total (%)',
+          data: itens.map(item => item.percentual),
+          backgroundColor: itens.map(item =>
+            item.percentual >= 0 ? '#118DFFB3' : '#D64550B3'
+          ),
+          borderColor: itens.map(item =>
+            item.percentual >= 0 ? '#118DFF' : '#D64550'
+          ),
+          borderWidth: 2,
+          borderRadius: 6,
+          maxBarThickness: 36
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { right: 60 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: contextoTooltip =>
+                ` Variação: ${formatarNumero(contextoTooltip.parsed.x)} %`
+            }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            color: '#555',
+            font: { size: 11, weight: '600' },
+            formatter: valor =>
+              `${valor > 0 ? '+' : ''}${formatarNumero(valor)} %`
+          },
+          zoom: {}
+        },
+        scales: {
+          x: {
+            grid: { color: '#E6E6E6' },
+            ticks: { callback: valor => `${valor} %` }
+          },
+          y: {
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------- Gráfico por métrica ----------
+
   function criarGrafico() {
+    if (seletorMetrica.value === '__variacao_total__') {
+      renderizarResumoTotal();
+      criarGraficoVariacaoTotal();
+      return;
+    }
+
     const metrica = obterMetricaSelecionada();
 
     if (!metrica) {
@@ -313,6 +496,8 @@
     }
 
     const [campo, nome, unidade] = metrica;
+    renderizarResumo(campo, nome, unidade);
+
     const labels = registrosOrdenados.map(registro =>
       formatarData(registro.data_registro)
     );
@@ -343,9 +528,7 @@
             : tipoGraficoAtual === 'bar'
               ? cor + 'B3'
               : 'rgba(17, 141, 255, 0.16)',
-          borderColor: graficoCircular
-            ? '#FFFFFF'
-            : cor,
+          borderColor: graficoCircular ? '#FFFFFF' : cor,
           borderWidth: graficoCircular ? 2 : 2.5,
           borderRadius: tipoGraficoAtual === 'bar' ? 6 : 0,
           maxBarThickness: 48,
@@ -367,16 +550,9 @@
           mode: 'index',
           intersect: false
         },
-
         layout: {
-            padding: {
-            top: 25
-            }
+          padding: { top: 25 }
         },
-
-
-
-
         cutout: tipoGraficoAtual === 'doughnut' ? '58%' : 0,
         plugins: {
           legend: {
@@ -403,10 +579,7 @@
           },
           datalabels: {
             display: true,
-            color: tipoGraficoAtual === 'pie' ||
-                   tipoGraficoAtual === 'doughnut'
-              ? '#FFFFFF'
-              : '#555',
+            color: graficoCircular ? '#FFFFFF' : '#555',
             anchor: tipoGraficoAtual === 'bar' ? 'end' : 'center',
             align: tipoGraficoAtual === 'bar' ? 'end' : 'top',
             font: {
@@ -423,21 +596,15 @@
               mode: 'x'
             },
             zoom: {
-              wheel: {
-                enabled: true
-              },
-              pinch: {
-                enabled: true
-              },
+              wheel: { enabled: true },
+              pinch: { enabled: true },
               mode: 'x'
             }
           }
         },
         scales: graficoCircular ? {} : {
           x: {
-            grid: {
-              display: false
-            },
+            grid: { display: false },
             ticks: {
               padding: 8,
               autoSkip: false
@@ -445,9 +612,7 @@
           },
           y: {
             beginAtZero: false,
-            grid: {
-              color: '#E6E6E6'
-            },
+            grid: { color: '#E6E6E6' },
             ticks: {
               padding: 8,
               callback: function(valor) {
@@ -459,6 +624,8 @@
       }
     });
   }
+
+  // ---------- Controles ----------
 
   function alterarTipo(tipo) {
     tipoGraficoAtual = tipo;

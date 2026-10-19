@@ -56,10 +56,15 @@ app = Flask(__name__)
 #app.jinja_env.filters['real'] = real
 def print(*args, **kwargs):
     pass
+
 init_app(app)
 app.config['SECRET_KEY'] = 'despesas'
 csrf = CSRFProtect(app)
 
+
+@app.context_processor
+def injetar_usuario():
+    return {"usuario_logado": session.get("user_id")}
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -128,6 +133,9 @@ def toggle_pagamento_ajax():
 def inicio():
     return render_template("inicio.html")
 
+@app.template_filter('brl')
+def brl(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 @app.route('/dashboard')
@@ -3295,7 +3303,7 @@ def login():
             session['user_id'] = user['usuario']
             print("Sessão após login:", dict(session))  # Debug: imprime sessão no console
             flash('Login realizado com sucesso!', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('inicio'))
         else:
             flash('Usuário ou senha incorretos.', 'danger')
 
@@ -3319,45 +3327,41 @@ def logout():
 def totais_despesas_mensais():
     conn = get_db_connection()
     resultados = conn.execute("""
-        SELECT 
-            strftime('%m/%Y', P.data_vencimento) AS mes_ano,
-            B.nome AS bandeira,
-            P.pago,
-            SUM(P.valor_parcela) AS total_parcela
+        SELECT
+            substr(P.data_vencimento, 4, 2) || '/' || substr(P.data_vencimento, 7, 4) AS mes_ano,
+            COALESCE(B.nome, 'Não especificado') AS bandeira,
+            COALESCE(P.pago, 0) AS pago,
+            COALESCE(SUM(P.valor_parcela), 0) AS total_parcela
         FROM PARCELAS P
         LEFT JOIN DESPESAS D ON P.despesa_id = D.id
         LEFT JOIN BANDEIRA B ON D.bandeira_id = B.id
-        GROUP BY mes_ano, bandeira, pago
-        ORDER BY mes_ano DESC
+        WHERE P.data_vencimento IS NOT NULL
+        GROUP BY 1, 2, 3
+        ORDER BY substr(P.data_vencimento, 7, 4) DESC, substr(P.data_vencimento, 4, 2) DESC
     """).fetchall()
 
     totais_nao_pagos = {}
     totais_pagos = {}
     bandeiras_set = set()
-    
+
     for row in resultados:
         mes_ano = row['mes_ano']
         bandeira = row['bandeira']
-        pago = row['pago']
-        total = float(row['total_parcela'])
+        pago = int(row['pago'] or 0)
+        total = float(row['total_parcela'] or 0)
         bandeiras_set.add(bandeira)
 
-        if pago == 0 or pago is None:  # não pagos
-            if mes_ano not in totais_nao_pagos:
-                totais_nao_pagos[mes_ano] = {}
-            totais_nao_pagos[mes_ano][bandeira] = total
-        else:  # pagos
-            if mes_ano not in totais_pagos:
-                totais_pagos[mes_ano] = {}
-            totais_pagos[mes_ano][bandeira] = total
+        if pago == 0:
+            totais_nao_pagos.setdefault(mes_ano, {})[bandeira] = total
+        else:
+            totais_pagos.setdefault(mes_ano, {})[bandeira] = total
 
-    # Ordenar os meses no formato MM/YYYY
     meses_ordenados = sorted(
-        [m for m in set(list(totais_nao_pagos.keys()) + list(totais_pagos.keys())) if m is not None],
+        set(totais_nao_pagos) | set(totais_pagos),
         key=lambda x: datetime.strptime(x, "%m/%Y"),
         reverse=True
     )
-    
+
     conn.close()
 
     return render_template(
@@ -3367,6 +3371,7 @@ def totais_despesas_mensais():
         meses=meses_ordenados,
         bandeiras=sorted(bandeiras_set)
     )
+
 
 @app.route('/pagar', methods=['POST'])
 def pagar():

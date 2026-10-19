@@ -39,122 +39,167 @@
   </script>
 
   <style>
-    body {
-      display: flex;
-      min-height: 100vh;
-      overflow-x: hidden;
-      flex-direction: column;
-    }
 
-    nav.navbar.static-top {
-      height: 56px;
-      line-height: 56px;
-      padding: 0 1rem;
-    }
+ html, body {
+  height: 100%;
+}
 
-    .sidebar {
-      width: 260px;
-      height: calc(100vh - 56px);
-      background: #343a40;
-      color: white;
-      padding: 15px;
-      position: fixed;
-      top: 56px;
-      left: 0;
-      z-index: 1000;
-      transition: all 0.3s ease;
-      overflow-y: auto;
-      text-align: left;
-      /* Alinha o texto à esquerda */
-      padding-right: 20px;
-    }
+body {
+  margin: 0;
+  overflow: hidden; /* a página inteira não rola: só o .content rola */
+}
 
-    .sidebar.collapsed {
-      width: 0;
-      padding: 0;
-      overflow: hidden;
-    }
+/* Navbar fixa no topo */
+.navbar-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 1030;
+}
 
-    .sidebar a,
-    .sidebar h5 {
-      margin-top: 15px;
-    }
+:root {
+  --sidebar-w: 320px;
+  --sidebar-w-recolhida: 60px;
+}
 
-    .sidebar h6 {
-      margin-top: 15px;
-      /* espaço maior acima dos títulos */
-      margin-bottom: 5px;
-      /* espaço maior abaixo dos títulos */
-    }
 
-    .sidebar a:first-of-type {
-      margin-bottom: 15px;
-      /* aumenta espaço depois do primeiro link Dashboard */
-    }
 
-    .sidebar a {
-      color: white;
-      display: block;
-      padding: 2px;
-      text-decoration: none;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-align: left;
-    }
 
-    .sidebar a:hover {
-      background: #495057;
-    }
+/* Sidebar fixa abaixo da navbar */
+.sidebar {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  padding: 15px 20px 15px 15px;
+  background: #343a40;
+  color: #fff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.3s ease;
+  z-index: 1020;
+}
 
-    /* Espaçamento entre ícones e texto */
-    .sidebar a i,
-    .sidebar h6 i {
-      margin-right: 8px;
-    }
+/* Modo recolhido: só os ícones */
+.sidebar.collapsed {
+  width: 60px;
+  padding: 15px 0;
+}
 
-    .content {
-      margin-left: 260px;
-      padding: 0px 20px 20px;
-      flex: 1;
-      transition: margin-left 0.3s;
-      position: relative;
-      margin-top: 36px;
-    }
+.sidebar h5,
+.sidebar h6,
+.sidebar a {
+  margin-top: 15px;
+}
 
-    .content.expanded {
-      margin-left: 0 !important;
-    }
+.sidebar h6 {
+  margin-bottom: 5px;
+  cursor: pointer;
+}
 
-    .submenu {
-      display: none;
-      margin-left: 15px;
-    }
+.sidebar a {
+  color: #fff;
+  display: block;
+  padding: 2px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-    .submenu a {
-      padding-right: 20px;
-      padding-left: 0;
-    }
+.sidebar a:hover {
+  background: #495057;
+}
 
-    @media (max-width: 992px) {
-      .sidebar {
-        position: fixed;
-        left: -260px;
-        width: 260px;
-        top: 56px;
-        height: calc(100vh - 56px);
-        transition: left 0.3s ease;
-      }
+.sidebar a.active {
+  background-color: #0d6efd;
+  font-weight: bold;
+}
 
-      .sidebar.active {
-        left: 0;
-      }
+.sidebar i {
+  margin-right: 8px;
+  width: 1.25em;
+  text-align: center;
+}
 
-      .content {
-        margin-left: 0 !important;
-        margin-top: 56px;
-      }
-    }
+.submenu {
+  display: none;
+  margin-left: 15px;
+}
+
+.submenu a {
+  padding-right: 20px;
+  padding-left: 0;
+}
+
+/* Área de conteúdo: só ela rola */
+.content {
+  position: fixed;
+  top: 56px;
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  padding: 20px;
+  transition: left 0.3s ease;
+}
+
+.content.expanded {
+  left: var(--sidebar-w-recolhida);
+}
+
+/* Modo recolhido: esconde textos, títulos e submenus */
+.sidebar.collapsed .txt,
+.sidebar.collapsed h5,
+.sidebar.collapsed .submenu {
+  display: none !important;
+}
+
+.sidebar.collapsed a,
+.sidebar.collapsed h6 {
+  text-align: center;
+}
+
+.sidebar.collapsed i {
+  margin-right: 0;
+  font-size: 1.2rem;
+}
+
+/* Botão ☰ */
+#sidebarToggle {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+#sidebarToggle:hover {
+  color: #0d6efd;
+  cursor: pointer;
+}
+
+/* Mobile: sidebar some e aparece por cima */
+@media (max-width: 992px) {
+  .sidebar {
+    left: -var(--sidebar-w);
+    width: var(--sidebar-w);
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  .content,
+  .content.expanded {
+    left: 0;
+  }
+}
+
+
 
     .sidebar a.active {
       background-color: #0d6efd;
@@ -163,17 +208,17 @@
     }
 
     /* Botão toggle fixo no topo, à esquerda */
-    #sidebarToggle {
+  /*  #sidebarToggle {
       position: fixed;
       top: 6px;
-      left: 250px;
+      left: var(--sidebar-w);
       z-index: 1100;
       /* acima da sidebar */
       border: none;
       background: transparent;
       color: white;
       font-size: 1.5rem;
-    }
+    } */
 
     #sidebarToggle:hover {
       color: #0d6efd;
@@ -225,10 +270,11 @@
       max-height: 400px;
     }
 
-    .modal-custom-width {
+   .modal-custom-width {
       max-width: 400px;
       /* largura que você quiser */
-    }
+    } 
+
 
     .table-responsive {
       overflow-x: auto;
@@ -251,188 +297,284 @@
    table td.status-varias-pendentes {
      background-color: #ffc403 !important;  /* laranja claro */
    }
+.user-menu {
+  width: 280px;
+  border: 0;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.user-menu-topo {
+  background: #f7ec1f;   /* cor de fundo do cabeçalho: altere aqui */
+  padding: 24px 16px 20px;
+}
+
+.user-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid #e0d80f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: #2f86c6;        /* cor do ícone */
+  margin-bottom: 14px;
+}
+
+.user-menu-nome {
+  font-size: 1.05rem;
+  color: #222;
+  font-weight: 500;
+}
+
+.user-menu-rodape {
+  background: #f8f9fa;
+  padding: 10px 12px;
+  border-top: 1px solid #e5e5e5;
+}
+
+
+.alert-sm {
+  max-width: 220px;   /* largura da mensagem: ajuste aqui */
+  width: fit-content; /* ocupa só o espaço do texto, até o limite acima */
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.alert-sm .btn-close {
+  padding: 0.4rem;
+  font-size: 0.6rem;
+}
+
+content .alert-sm {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+
+.mensagens-flash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* centraliza horizontalmente */
+  margin-top: 12px;
+}
+
+.mensagens-flash .alert-sm {
+  width: 420px;          /* largura da mensagem: ajuste aqui */
+  max-width: 100%;
+  margin: 0 0 8px 0;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.mensagens-flash .alert-sm .btn-close {
+  padding: 0.4rem;
+  font-size: 0.6rem;
+}
 
   
   </style>
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
-    <div class="container-fluid d-flex align-items-center">
-      <button id="sidebarToggle" class="btn btn-dark me-3" title="Expandir/Ocultar Sidebar">☰</button>
-     <a class="navbar-brand mb-0 h1" href="/">GESTÃO 360º</a>
+  <nav class="navbar navbar-dark bg-dark navbar-top">
+  <div class="container-fluid d-flex align-items-center flex-nowrap">
+    <button id="sidebarToggle" class="btn btn-dark me-3" title="Expandir/Ocultar Menu">☰</button>
+
+    <div class="nav-brand-group">
+        <img src="{{ url_for('static', filename='imagens/logo-sistema.png') }}" alt="Logo" height="36" class="me-2">
+      <a class="navbar-brand mb-0 h1" href="/">GESTÃO 360º</a>
     </div>
+
+    <div class="dropdown ms-auto">
+      <button class="btn btn-dark dropdown-toggle d-flex align-items-center gap-2"
+              type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-user-circle fs-5"></i>
+        <span>{{ usuario_logado or 'Não identificado' }}</span>
+      </button>
+
+      <div class="dropdown-menu dropdown-menu-end p-0 user-menu">
+        <div class="user-menu-topo text-center">
+          <div class="user-avatar mx-auto">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="user-menu-nome">{{ usuario_logado or 'Não identificado' }}</div>
+        </div>
+
+        <div class="user-menu-rodape text-end">
+          <a href="/logout" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-sign-out-alt"></i> Sair
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+
+
   </nav>
+
   <div class="sidebar">
     <h5>Menu</h5>
-        
-    
 
-    <h6 class="menu-toggle"><i class="fas fa-wallet"></i>Lançamentos de Despesas</h6>
-        <div class="submenu">
+    <h6 class="menu-toggle"><i class="fas fa-wallet"></i><span class="txt">Lançamentos de Despesas</span></h6>
+    <div class="submenu">
 
-          <h6 class="menu-toggle"><i class="fas fa-tools"></i>Parametros</h6>
-          
-          <div class="submenu">
-           <a href="/cadastro/estabelecimento"><i class="fas fa-store"></i>Estabelecimento</a>
-            <a href="/cadastro/endereco"><i class="fas fa-map"></i>Endereço</a>
-            <a href="/cadastro/categoria"><i class="fas fa-th-large"></i>Categorias</a>
-            <a href="/cadastro/local_compra"><i class="fas fa-map-marker-alt"></i>Local da Compra</a>
-            <a href="/cadastro/produto"><i class="fas fa-box"></i>Produto</a>
-            <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i>Comprador</a>
-            <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i>Forma de Pagamento</a>
-            <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i>Bandeira</a>
-            <a href="/cadastro/credito"><i class="fas fa-hand-holding-usd"></i>Crédito Financeiro</a>
-           </div>
-         
-          <h6 class="menu-toggle"><i class="fas fa-file-invoice-dollar"></i> Manutenção de Despesas</h6>
-            <div class="submenu">
-              <a href="/despesas"><i class="fas fa-file-invoice-dollar"></i>Cadastrar Despesas</a>
-              <a href="/consultar_despesas"><i class="fas fa-clipboard-list"></i>Consultar Despesas</a>
-              <a href="/totais-despesas-mensais"><i class="fas fa-chart-line"></i>Totais de Despesas Mensais</a>
-            </div>
-        
-          
-         <h6 class="menu-toggle"><i class="fas fa-chart-bar"></i> Analytics</h6>
-             <div class="submenu">
-             <a href="/dashboard_analytics"><i class="fas fa-chart-bar"></i>Analytics</a>
-             <a href="/dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a>  
-            </div> 
-          </div>
-
-
-    <h6 class="menu-toggle"><i class="fas fa-gas-pump"></i>Consumo de Combustível</h6>
+      <h6 class="menu-toggle"><i class="fas fa-tools"></i><span class="txt">Parametros</span></h6>
       <div class="submenu">
-        <a href="/outros/combustivel"><i class="fas fa-plus"></i> <i class="fas fa-gas-pump"></i> Lançar Abastecimento</a>
-        <a href="/outros/combustivel/consultar"><i class="fas fa-search"></i><i class="fas fa-gas-pump"></i> Consultar
-          Abastecimento</a>
+        <a href="/cadastro/estabelecimento"><i class="fas fa-store"></i><span class="txt">Estabelecimento</span></a>
+        <a href="/cadastro/endereco"><i class="fas fa-map"></i><span class="txt">Endereço</span></a>
+        <a href="/cadastro/categoria"><i class="fas fa-th-large"></i><span class="txt">Categorias</span></a>
+        <a href="/cadastro/local_compra"><i class="fas fa-map-marker-alt"></i><span class="txt">Local da Compra</span></a>
+        <a href="/cadastro/produto"><i class="fas fa-box"></i><span class="txt">Produto</span></a>
+        <a href="/cadastro/comprador"><i class="fas fa-user-tag"></i><span class="txt">Comprador</span></a>
+        <a href="/cadastro/forma_pagamento"><i class="fas fa-money-check-alt"></i><span class="txt">Forma de Pagamento</span></a>
+        <a href="/cadastro/bandeira"><i class="fas fa-flag-checkered"></i><span class="txt">Bandeira</span></a>
+        <a href="/cadastro/credito"><i class="fas fa-hand-holding-usd"></i><span class="txt">Crédito Financeiro</span></a>
       </div>
 
-    <h6 class="menu-toggle"><i class="fas fa-car"></i>Manutenção Veicular</h6>
+      <h6 class="menu-toggle"><i class="fas fa-file-invoice-dollar"></i><span class="txt">Manutenção de Despesas</span></h6>
       <div class="submenu">
-        <a href="/cadastro/manutencao/novo">
-          <i class="fas fa-tools"></i> Lançar Manutenção
-        </a>
-        <a href="/cadastro/manutencao">
-          <i class="fas fa-search"></i> Consultar Manutenções
-        </a>
+        <a href="/despesas"><i class="fas fa-file-invoice-dollar"></i><span class="txt">Cadastrar Despesas</span></a>
+        <a href="/consultar_despesas"><i class="fas fa-clipboard-list"></i><span class="txt">Consultar Despesas</span></a>
+      <!-- <a href="/totais-despesas-mensais"><i class="fas fa-chart-line"></i><span class="txt">Totais de Despesas Mensais</span></a>-->
       </div>
 
-    <h6 class="menu-toggle"><i class="fas fa-syringe"></i>Evolução Ozivy</h6>
+      <h6 class="menu-toggle"><i class="fas fa-chart-bar"></i><span class="txt">Analytics</span></h6>
       <div class="submenu">
-         <a href="/cadastro/evolucao_ozivy/dashboard"><i class="fas fa-chart-line"></i>Evolução Ozivy</a>
-         <a href="/cadastro/evolucao_ozivy/listar"><i class="fas fa-plus"></i>Manutenção-Bioimpendancia</a>
+        <a href="/dashboard_analytics"><i class="fas fa-chart-bar"></i><span class="txt">Analytics</span></a>
+        <a href="/dashboard"><i class="fas fa-tachometer-alt"></i><span class="txt">Dashboard</span></a>
       </div>
-
-
- <h6 class="menu-toggle"><i class="fas fa-cogs"></i>Gestão do Sistema</h6>
-   <div class="submenu">
-      <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i>Segurança</h6>
-         <div class="submenu">
-           <a href="/cadastro/usuarios"><i class="fas fa-user-plus"></i>Cadastrar Usuário</a>
-           <a href="/usuarios"><i class="fas fa-users"></i>Consultar Usuários</a>
-      </div>
-   </div>
-
-
-        <a href="/logout" class="sair"><i class="fas fa-sign-out-alt"></i>Sair</a>
     </div>
-  
-    <div class="content">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+
+    <h6 class="menu-toggle"><i class="fas fa-gas-pump"></i><span class="txt">Consumo de Combustível</span></h6>
+    <div class="submenu">
+      <a href="/outros/combustivel"><i class="fas fa-plus"></i><i class="fas fa-gas-pump"></i><span class="txt">Lançar Abastecimento</span></a>
+      <a href="/outros/combustivel/consultar"><i class="fas fa-search"></i><i class="fas fa-gas-pump"></i><span class="txt">Consultar Abastecimento</span></a>
     </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-    {% block content %}{% endblock %}
+
+    <h6 class="menu-toggle"><i class="fas fa-car"></i><span class="txt">Manutenção Veicular</span></h6>
+    <div class="submenu">
+      <a href="/cadastro/manutencao/novo"><i class="fas fa-tools"></i><span class="txt">Lançar Manutenção</span></a>
+      <a href="/cadastro/manutencao"><i class="fas fa-search"></i><span class="txt">Consultar Manutenções</span></a>
+    </div>
+
+    <h6 class="menu-toggle"><i class="fas fa-syringe"></i><span class="txt">Evolução Ozivy</span></h6>
+    <div class="submenu">
+      <a href="/cadastro/evolucao_ozivy/dashboard"><i class="fas fa-chart-line"></i><span class="txt">Evolução Ozivy</span></a>
+      <a href="/cadastro/evolucao_ozivy/listar"><i class="fas fa-plus"></i><span class="txt">Manutenção-Bioimpendancia</span></a>
+    </div>
+
+    <h6 class="menu-toggle"><i class="fas fa-cogs"></i><span class="txt">Gestão do Sistema</span></h6>
+    <div class="submenu">
+      <h6 class="menu-toggle"><i class="fas fa-shield-alt"></i><span class="txt">Segurança</span></h6>
+      <div class="submenu">
+        <a href="/cadastro/usuarios"><i class="fas fa-user-plus"></i><span class="txt">Cadastrar Usuário</span></a>
+        <a href="/usuarios"><i class="fas fa-users"></i><span class="txt">Consultar Usuários</span></a>
+      </div>
+    </div>
+
+    <a href="/logout" class="sair"><i class="fas fa-sign-out-alt"></i><span class="txt">Sair</span></a>
   </div>
+
+
+<div class="content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mensagens-flash">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-sm alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  // Fecha os alertas automaticamente após 3 segundos
+  setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(el => {
+      bootstrap.Alert.getOrCreateInstance(el).close();
+    });
+  }, 3000);
+</script>
  
  <script>
-    // Toggle submenu
-    document.querySelectorAll('.menu-toggle').forEach(item => {
-      item.addEventListener('click', function () {
-        let submenu = this.nextElementSibling;
-        submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
-      });
-    });
+  /*  // Toggle submenu    */
+ const sidebar = document.querySelector('.sidebar');
+  const content = document.querySelector('.content');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const isMobile = () => window.innerWidth <= 992;
 
-    const sidebar = document.querySelector('.sidebar');
-    const content = document.querySelector('.content');
-    const toggleBtn = document.getElementById('sidebarToggle');
+  function setColapsado(valor) {
+    sidebar.classList.toggle('collapsed', valor);
+    content.classList.toggle('expanded', valor);
+    localStorage.setItem('sidebarCollapsed', valor);
+  }
 
-    // Aplica estado salvo no localStorage (desktop)
-    function aplicarEstadoSidebar() {
-      const estado = localStorage.getItem('sidebarCollapsed');
-      if (estado === 'true') {
-        sidebar.classList.add('collapsed');
-        content.classList.add('expanded');
-      } else {
-        sidebar.classList.remove('collapsed');
-        content.classList.remove('expanded');
-      }
+  function aplicarEstado() {
+    if (isMobile()) {
+      sidebar.classList.remove('collapsed');
+      content.classList.remove('expanded');
+    } else {
+      const c = localStorage.getItem('sidebarCollapsed') === 'true';
+      sidebar.classList.toggle('collapsed', c);
+      content.classList.toggle('expanded', c);
     }
+  }
+  aplicarEstado();
 
-    // Só aplica estado salvo se for desktop
-    if (window.innerWidth > 992) {
-      aplicarEstadoSidebar();
+  // Abrir/fechar submenus (se estiver recolhida, expande antes)
+  document.querySelectorAll('.menu-toggle').forEach(item => {
+    item.addEventListener('click', function () {
+      if (!isMobile() && sidebar.classList.contains('collapsed')) {
+        setColapsado(false);
+      }
+      const submenu = this.nextElementSibling;
+      submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
+    });
+  });
+
+  // Botão ☰: recolhe/expande no desktop, mostra/esconde no mobile
+  toggleBtn.addEventListener('click', () => {
+    if (isMobile()) {
+      sidebar.classList.toggle('active');
+    } else {
+      setColapsado(!sidebar.classList.contains('collapsed'));
     }
+  });
 
-    // Função para fechar sidebar mobile (remover classe active)
-    function fecharSidebarMobile() {
-      sidebar.classList.remove('active');
-    }
-
-    // Toggle sidebar no clique do botão
-    toggleBtn.addEventListener('click', () => {
-      const isMobile = window.innerWidth <= 992;
-
-      if (isMobile) {
-        // No mobile toggle a classe 'active' que faz sidebar aparecer/desaparecer
-        sidebar.classList.toggle('active');
-      } else {
-        // No desktop toggle a classe collapsed e ajusta o content, e salva estado
-        sidebar.classList.toggle('collapsed');
-        content.classList.toggle('expanded');
-        const estaColapsado = sidebar.classList.contains('collapsed');
-        localStorage.setItem('sidebarCollapsed', estaColapsado);
-      }
+  // Mobile: fecha a sidebar ao clicar em link ou no conteúdo
+  sidebar.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      if (isMobile()) sidebar.classList.remove('active');
     });
+  });
 
-    // Fecha sidebar mobile ao clicar em algum link dentro dela (melhora UX)
-    sidebar.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        if (window.innerWidth <= 992) {
-          fecharSidebarMobile();
-        }
-      });
-    });
+  content.addEventListener('click', () => {
+    if (isMobile()) sidebar.classList.remove('active');
+  });
 
-    // Fecha sidebar mobile ao clicar fora dela (no content)
-    content.addEventListener('click', () => {
-      if (window.innerWidth <= 992 && sidebar.classList.contains('active')) {
-        fecharSidebarMobile();
-      }
-    });
+  window.addEventListener('resize', () => {
+    sidebar.classList.remove('active');
+    aplicarEstado();
+  });
 
-    // Opcional: Fecha sidebar mobile ao redimensionar a janela
-    window.addEventListener('resize', () => {
-      if (window.innerWidth > 992) {
-        // Se passou para desktop, remove a classe active (mobile)
-        sidebar.classList.remove('active');
-        aplicarEstadoSidebar();
-      } else {
-        // Se for mobile, remove collapsed e expanded para resetar estilos
-        sidebar.classList.remove('collapsed');
-        content.classList.remove('expanded');
-      }
-    });
+
 
     // Código das células valor-mes (deixe como está)
     document.querySelectorAll('.valor-mes').forEach(td => {
@@ -836,6 +978,7 @@ document.addEventListener("DOMContentLoaded", function () {
       </div>
     </div>
   </div>
+   {% block scripts %}{% endblock %}
 </body>
 
 </html>
