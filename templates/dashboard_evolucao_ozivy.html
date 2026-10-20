@@ -13,15 +13,114 @@
       </p>
     </div>
 
-    <div class="d-flex gap-2 flex-wrap">
-      <a href="{{ url_for('nova_evolucao_ozivy') }}" class="btn btn-success">
+    <div class="d-flex gap-2 flex-wrap align-items-end ">
+      <a href="{{ url_for('nova_evolucao_ozivy') }}" class="btn btn-success btn-acao-dashboard">
         <i class="fa-solid fa-plus"></i> Nova aplicação
       </a>
-      <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-outline-secondary">
-        Consultar aplicações
-      </a>
-      <a href="{{ url_for('relatorio_pdf_variacao_evolucao_ozivy') }}" class="btn btn-outline-danger">
-        <i class="fa-regular fa-file-pdf"></i> Exportar PDF
+    <a href="{{ url_for('listar_evolucoes_ozivy') }}" class="btn btn-outline-secondary btn-acao-dashboard">
+  Consultar aplicações
+    </a>
+
+<style>
+   .btn-altura-menor {
+    height: 42px;
+    width: auto;
+    padding: 0 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    line-height: 1.5;
+    box-sizing: border-box;
+  }
+  .btn-acao-dashboard {
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+
+
+
+</style>
+<form
+  action="{{ url_for('relatorio_pdf_variacao_evolucao_ozivy') }}"
+  method="get"
+  class="d-flex align-items-end gap-2 flex-wrap"
+>
+  <div>
+    <label for="data_inicio_relatorio" class="form-label mb-1">De</label>
+    <input
+      type="date"
+      id="data_inicio_relatorio"
+      name="data_inicio"
+      class="form-control"
+      required
+    >
+  </div>
+
+  <div>
+    <label for="data_fim_relatorio" class="form-label mb-1">Até</label>
+    <input
+      type="date"
+      id="data_fim_relatorio"
+      name="data_fim"
+      class="form-control"
+      required
+    >
+  </div>
+
+  <button type="submit" class="btn btn-outline-danger">
+    <i class="fa-regular fa-file-pdf"></i> Exportar PDF
+  </button>
+</form>
+
+<!-- Coloque este script no template, fora do bloco de script existente do gráfico -->
+<script>
+  (() => {
+    const datas = {{ registros|map(attribute='data_registro')|list|tojson }};
+    const campoInicio = document.getElementById('data_inicio_relatorio');
+    const campoFim = document.getElementById('data_fim_relatorio');
+
+    function paraDataInput(valor) {
+      if (!valor) return null;
+
+      const texto = String(valor).trim();
+      const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+      const brasileira = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (brasileira) {
+        return `${brasileira[3]}-${brasileira[2]}-${brasileira[1]}`;
+      }
+
+      return null;
+    }
+
+    const datasOrdenadas = datas
+      .map(paraDataInput)
+      .filter(Boolean)
+      .sort();
+
+    const agora = new Date();
+    const hoje = [
+      agora.getFullYear(),
+      String(agora.getMonth() + 1).padStart(2, '0'),
+      String(agora.getDate()).padStart(2, '0')
+    ].join('-');
+
+    if (campoInicio && !campoInicio.value && datasOrdenadas.length) {
+      campoInicio.value = datasOrdenadas[0];
+    }
+
+    if (campoFim && !campoFim.value) {
+      campoFim.value = hoje;
+    }
+  })();
+</script>
+
       </a>
     </div>
   </div>

@@ -14,7 +14,7 @@ import calendar
 import csv
 import sqlite3
 import locale
-from datetime import datetime
+from datetime import date, datetime
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from io import BytesIO
@@ -34,15 +34,26 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # ----------------------------
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4, landscape
-from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak)
-from datetime import datetime, timedelta
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    PageBreak,
+    Image as RLImage,
+    KeepTogether,
+)
+
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import mm
 
-
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+import matplotlib.dates as mdates
 
 
 # ----------------------------
@@ -4829,8 +4840,8 @@ def dashboard_evolucao_ozivy():
 
 
 
-@app.route('/cadastro/evolucao_ozivy/relatorio/pdf')
-def relatorio_pdf_variacao_evolucao_ozivy():
+#@app.route('/cadastro/evolucao_ozivy/relatorio/pdf')
+#def relatorio_pdf_variacao_evolucao_ozivy():
     metricas = [
         ('peso', 'Peso', 'kg'),
         ('altura', 'Altura', 'm'),
@@ -5052,12 +5063,1002 @@ def relatorio_pdf_variacao_evolucao_ozivy():
 # No dashboard_evolucao_ozivy.html, adicione um botão que aponte para:
 # url_for('relatorio_pdf_variacao_evolucao_ozivy')
 
+#@app.route('/cadastro/evolucao_ozivy/relatorio/pdf')
+#def relatorio_pdf_variacao_evolucao_ozivy():
+    metricas = [
+        ('peso', 'Peso', 'kg'),
+        ('altura', 'Altura', 'm'),
+        ('imc', 'IMC', ''),
+        ('gordura_corporal', 'Gordura corporal', '%'),
+        ('gordura_visceral', 'Gordura visceral', ''),
+        ('idade_corporal', 'Idade corporal', 'anos'),
+        ('musculo_esqueletico', 'Músculo esquelético', '%'),
+        ('metabolismo_basal', 'Metabolismo basal', 'kcal'),
+        ('pressao_arterial_sistolica', 'Pressão arterial sistólica', 'mmHg'),
+        ('pressao_arterial_diastolica', 'Pressão arterial diastólica', 'mmHg'),
+        ('frequencia_cardiaca', 'Frequência cardíaca', 'bpm'),
+        ('glicemia', 'Glicemia', 'mg/dL'),
+    ]
+
+    inicio_param = request.args.get('data_inicio', '').strip()
+    fim_param = request.args.get('data_fim', '').strip()
+
+    def converter_data(valor):
+        if not valor:
+            return None
+
+        valor = str(valor).strip()
+
+        for formato in (
+            '%Y-%m-%d',
+            '%d/%m/%Y',
+            '%Y-%m-%d %H:%M:%S',
+            '%d/%m/%Y %H:%M',
+        ):
+            try:
+                return datetime.strptime(valor, formato)
+            except ValueError:
+                continue
+
+        try:
+            return datetime.fromisoformat(valor)
+        except ValueError:
+            return None
+
+    def formatar_data(valor):
+        data = converter_data(valor)
+        return data.strftime('%d/%m/%Y') if data else str(valor or '—')
+
+    def chave_cronologica(registro):
+        data = converter_data(registro.get('data_registro'))
+        return (
+            data is None,
+            data or datetime.max,
+            registro.get('id', 0),
+        )
+
+    def formatar_valor(valor):
+        if valor is None:
+            return '—'
+        try:
+            return f'{float(valor):.2f}'
+        except (TypeError, ValueError):
+            return str(valor)
+
+    conn = get_db_connection()
+    try:
+        linhas = conn.execute(
+            """
+            SELECT *
+            FROM Evolucao_Ozivy
+            """
+        ).fetchall()
+        registros = [dict(linha) for linha in linhas]
+    except sqlite3.Error as erro:
+        flash(f'Erro ao gerar relatório de evolução Ozivy: {erro}', 'danger')
+        return redirect(url_for('dashboard_evolucao_ozivy'))
+    finally:
+        conn.close()
+
+    registros.sort(key=chave_cronologica)
+
+    datas_validas = [
+        converter_data(registro.get('data_registro'))
+        for registro in registros
+        if converter_data(registro.get('data_registro')) is not None
+    ]
+    hoje = datetime.now().date()
+    primeiro_registro = min(datas_validas).date() if datas_validas else hoje
+
+    try:
+        data_inicio = (
+            datetime.strptime(inicio_param, '%Y-%m-%d')
+            if inicio_param else datetime.combine(primeiro_registro, datetime.min.time())
+        )
+        data_fim = (
+            datetime.strptime(fim_param, '%Y-%m-%d')
+            if fim_param else datetime.combine(hoje, datetime.min.time())
+        )
+    except ValueError:
+        flash('Informe as datas do relatório em um formato válido.', 'danger')
+        return redirect(url_for('dashboard_evolucao_ozivy'))
+
+    if data_inicio.date() > data_fim.date():
+        flash('A data inicial não pode ser posterior à data final.', 'danger')
+        return redirect(url_for('dashboard_evolucao_ozivy'))
+
+    # Filtra os registros do intervalo para calcular o resumo acumulado e os gráficos.
+    registros_periodo = []
+    for registro in registros:
+        data_registro = converter_data(registro.get('data_registro'))
+        if data_registro is None:
+            continue
+
+        data_apenas = data_registro.date()
+        if data_inicio.date() <= data_apenas <= data_fim.date():
+            registros_periodo.append(registro)
+
+    buffer = io.BytesIO()
+    documento = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=12 * mm,
+        leftMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+        title='Variação entre aplicações — Evolução Ozivy',
+    )
+
+    estilos = getSampleStyleSheet()
+    estilo_titulo = ParagraphStyle(
+        'TituloOzivy',
+        parent=estilos['Title'],
+        alignment=TA_CENTER,
+        fontSize=16,
+        leading=20,
+        textColor=colors.HexColor('#17365D'),
+        spaceAfter=6,
+    )
+    estilo_subtitulo = ParagraphStyle(
+        'SubtituloOzivy',
+        parent=estilos['Normal'],
+        alignment=TA_CENTER,
+        fontSize=9,
+        textColor=colors.HexColor('#555555'),
+        spaceAfter=12,
+    )
+
+    elementos = [
+        Paragraph('Relatório de Evolução Ozivy', estilo_titulo),
+        Paragraph(
+            'Resumo acumulado das métricas e variação entre aplicações',
+            estilo_subtitulo,
+        ),
+    ]
+
+    largura_util = landscape(A4)[0] - 24 * mm
+
+    elementos.append(Paragraph(
+        'Resumo acumulado no período',
+        estilos['Heading2'],
+    ))
+    elementos.append(Paragraph(
+        f'Período considerado: {data_inicio.strftime("%d/%m/%Y")} a '
+        f'{data_fim.strftime("%d/%m/%Y")}. Para cada métrica, a variação '
+        'é calculada pela diferença entre o último e o primeiro valor válido '
+        'registrado no intervalo.',
+        estilos['Normal'],
+    ))
+    elementos.append(Spacer(1, 4 * mm))
+
+    if not registros_periodo:
+        elementos.append(Paragraph(
+            'Não há registros com datas válidas dentro do período informado.',
+            estilos['Normal'],
+        ))
+    else:
+        dados_resumo = [[
+            'Métrica',
+            'Primeiro valor',
+            'Último valor',
+            'Variação acumulada',
+            'Variação (%)',
+        ]]
+
+        for campo, nome, unidade in metricas:
+            registros_com_valor = []
+
+            for registro in registros_periodo:
+                valor = registro.get(campo)
+                if valor is None:
+                    continue
+                try:
+                    valor_numerico = float(valor)
+                except (TypeError, ValueError):
+                    continue
+
+                registros_com_valor.append((registro, valor_numerico))
+
+            nome_metrica = f'{nome} ({unidade})' if unidade else nome
+
+            if len(registros_com_valor) < 2:
+                dados_resumo.append([
+                    nome_metrica,
+                    formatar_valor(
+                        registros_com_valor[0][1]
+                        if registros_com_valor else None
+                    ),
+                    '—',
+                    '—',
+                    '—',
+                ])
+                continue
+
+            primeiro_valor = registros_com_valor[0][1]
+            ultimo_valor = registros_com_valor[-1][1]
+            variacao = ultimo_valor - primeiro_valor
+            percentual = (
+                (variacao / primeiro_valor) * 100
+                if primeiro_valor != 0 else None
+            )
+
+            texto_variacao = f'{variacao:+.2f}'
+            if unidade:
+                texto_variacao += f' {unidade}'
+
+            dados_resumo.append([
+                nome_metrica,
+                formatar_valor(primeiro_valor),
+                formatar_valor(ultimo_valor),
+                texto_variacao,
+                f'{percentual:+.2f}%' if percentual is not None else '—',
+            ])
+
+        tabela_resumo = Table(
+            dados_resumo,
+            colWidths=[
+                largura_util * 0.28,
+                largura_util * 0.17,
+                largura_util * 0.17,
+                largura_util * 0.21,
+                largura_util * 0.17,
+            ],
+            repeatRows=1,
+            hAlign='LEFT',
+        )
+
+        tabela_resumo.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17365D')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('LEADING', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#C8D1DC')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [
+                colors.white,
+                colors.HexColor('#F2F5F9'),
+            ]),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+
+        elementos.append(tabela_resumo)
+
+    if registros_periodo:
+        from reportlab.graphics.charts.lineplots import LinePlot
+        from reportlab.graphics.shapes import Drawing, String
+
+        elementos.append(PageBreak())
+        elementos.append(Paragraph(
+            'Gráficos de evolução no período',
+            estilos['Heading2'],
+        ))
+        elementos.append(Paragraph(
+            f'Período: {data_inicio.strftime("%d/%m/%Y")} a '
+            f'{data_fim.strftime("%d/%m/%Y")}. Cada gráfico usa apenas '
+            'os registros compreendidos neste intervalo.',
+            estilos['Normal'],
+        ))
+        elementos.append(Spacer(1, 4 * mm))
+
+        for campo, nome, unidade in metricas:
+            pontos = []
+
+            for registro in registros_periodo:
+                data_registro = converter_data(registro.get('data_registro'))
+                valor = registro.get(campo)
+
+                if data_registro is None or valor is None:
+                    continue
+
+                try:
+                    pontos.append((data_registro.toordinal(), float(valor)))
+                except (TypeError, ValueError):
+                    continue
+
+            if len(pontos) < 2:
+                continue
+
+            pontos.sort(key=lambda ponto: ponto[0])
+            desenho = Drawing(largura_util, 205)
+            grafico = LinePlot()
+            grafico.x = 55
+            grafico.y = 35
+            grafico.width = largura_util - 75
+            grafico.height = 145
+            grafico.data = [pontos]
+            grafico.lines[0].strokeColor = colors.HexColor('#118DFF')
+            grafico.lines[0].strokeWidth = 2
+            grafico.xValueAxis.valueMin = min(ponto[0] for ponto in pontos)
+            grafico.xValueAxis.valueMax = max(ponto[0] for ponto in pontos)
+            if grafico.xValueAxis.valueMin == grafico.xValueAxis.valueMax:
+                grafico.xValueAxis.valueMin -= 1
+                grafico.xValueAxis.valueMax += 1
+            grafico.xValueAxis.labelTextFormat = (
+                lambda valor: datetime.fromordinal(
+                    int(round(valor))
+                ).strftime('%d/%m')
+            )
+            grafico.xValueAxis.labels.fontSize = 7
+            grafico.yValueAxis.labelTextFormat = '%.2f'
+            grafico.yValueAxis.labels.fontSize = 7
+
+            titulo_grafico = f'{nome} ({unidade})' if unidade else nome
+            desenho.add(String(
+                5, 190, titulo_grafico,
+                fontName='Helvetica-Bold',
+                fontSize=10,
+                fillColor=colors.HexColor('#17365D'),
+            ))
+            desenho.add(grafico)
+            elementos.append(desenho)
+            elementos.append(Spacer(1, 3 * mm))
+
+    elementos.append(Spacer(1, 5 * mm))
+    elementos.append(Paragraph(
+        'Variação negativa do peso indica perda de peso; variação positiva '
+        'indica ganho. Para as demais métricas, o sinal indica redução ou '
+        'aumento. O percentual é calculado em relação ao primeiro valor.',
+        estilos['Italic'],
+    ))
+
+    if len(registros) < 2:
+        elementos.append(Spacer(1, 5 * mm))
+        elementos.append(Paragraph(
+            'São necessários pelo menos dois registros para calcular a '
+            'variação entre aplicações.',
+            estilos['Normal'],
+        ))
+    else:
+        periodos = list(zip(registros, registros[1:]))
+
+        for indice, (atual, proximo) in enumerate(periodos):
+            elementos.append(PageBreak())
+
+            intervalo = (
+                f"{formatar_data(atual.get('data_registro'))} → "
+                f"{formatar_data(proximo.get('data_registro'))}"
+            )
+
+            elementos.append(Paragraph(
+                f'Variação entre aplicações: {intervalo}',
+                estilos['Heading3'],
+            ))
+
+            dados_tabela = [[
+                'Métrica',
+                'Valor atual',
+                'Valor seguinte',
+                'Variação',
+            ]]
+
+            for campo, nome, unidade in metricas:
+                valor_atual = atual.get(campo)
+                valor_proximo = proximo.get(campo)
+
+                if valor_atual is not None and valor_proximo is not None:
+                    try:
+                        diferenca = float(valor_proximo) - float(valor_atual)
+                        variacao = f'{diferenca:+.2f}'
+                        if unidade:
+                            variacao += f' {unidade}'
+                    except (TypeError, ValueError):
+                        variacao = '—'
+                else:
+                    variacao = '—'
+
+                nome_metrica = f'{nome} ({unidade})' if unidade else nome
+                dados_tabela.append([
+                    nome_metrica,
+                    formatar_valor(valor_atual),
+                    formatar_valor(valor_proximo),
+                    variacao,
+                ])
+
+            tabela = Table(
+                dados_tabela,
+                colWidths=[
+                    largura_util * 0.40,
+                    largura_util * 0.20,
+                    largura_util * 0.20,
+                    largura_util * 0.20,
+                ],
+                repeatRows=1,
+                hAlign='LEFT',
+            )
+
+            tabela.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17365D')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('LEADING', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#C8D1DC')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [
+                    colors.white,
+                    colors.HexColor('#F2F5F9'),
+                ]),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+
+            elementos.append(tabela)
+
+    documento.build(elementos)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='relatorio_variacao_evolucao_ozivy.pdf',
+    )
+
+def converter_data_ozivy(valor):
+    if not valor:
+        return None
+
+    valor = str(valor).strip()
+
+    for formato in (
+        '%Y-%m-%d',
+        '%d/%m/%Y',
+        '%Y-%m-%d %H:%M:%S',
+        '%d/%m/%Y %H:%M',
+    ):
+        try:
+            return datetime.strptime(valor, formato)
+        except ValueError:
+            continue
+
+    try:
+        return datetime.fromisoformat(valor)
+    except ValueError:
+        return None
 
 
+def formatar_numero_ozivy(valor):
+    texto = f'{float(valor):,.2f}'
+    return texto.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def gerar_grafico_ozivy(registros, campo, nome, unidade):
+    pontos = []
+
+    for registro in registros:
+        data_registro = converter_data_ozivy(
+            registro.get('data_registro')
+        )
+        valor = registro.get(campo)
+
+        if data_registro is None or valor is None:
+            continue
+
+        try:
+            pontos.append((data_registro, float(valor)))
+        except (TypeError, ValueError):
+            continue
+
+    pontos.sort(key=lambda ponto: ponto[0])
+
+    figura = Figure(figsize=(10.5, 2.35), dpi=160)
+    eixo = figura.subplots()
+
+    titulo = f'{nome} ({unidade})' if unidade else nome
+    eixo.set_title(
+        titulo,
+        loc='left',
+        fontsize=11,
+        fontweight='bold',
+        color='#17365D',
+    )
+
+    if not pontos:
+        eixo.text(
+            0.5,
+            0.5,
+            'Sem valores registrados para esta métrica no período.',
+            ha='center',
+            va='center',
+            transform=eixo.transAxes,
+            color='#666666',
+        )
+        eixo.set_axis_off()
+    else:
+        datas = [ponto[0] for ponto in pontos]
+        valores = [ponto[1] for ponto in pontos]
+
+        eixo.plot(
+            datas,
+            valores,
+            color='#118DFF',
+            linewidth=2,
+            marker='o',
+            markersize=4,
+        )
+
+        for data_ponto, valor_ponto in zip(datas, valores):
+            eixo.annotate(
+                f'{valor_ponto:.2f}'.replace('.', ','),
+                (data_ponto, valor_ponto),
+                textcoords='offset points',
+                xytext=(0, 7),
+                ha='center',
+                fontsize=7,
+                color='#333333',
+            )
+
+        eixo.xaxis.set_major_formatter(
+            mdates.DateFormatter('%d/%m/%Y')
+        )
+        figura.autofmt_xdate(rotation=0, ha='center')
+
+        eixo.grid(axis='y', color='#E6E6E6', linewidth=0.7)
+        eixo.spines['top'].set_visible(False)
+        eixo.spines['right'].set_visible(False)
+        eixo.tick_params(axis='both', labelsize=7)
+
+        if unidade:
+            eixo.set_ylabel(unidade, fontsize=8)
+
+        eixo.margins(y=0.20)
+
+    figura.tight_layout()
+
+    imagem = io.BytesIO()
+    FigureCanvasAgg(figura).print_png(imagem)
+    imagem.seek(0)
+
+    return imagem
 
 
+@app.route('/cadastro/evolucao_ozivy/relatorio/pdf')
+def relatorio_pdf_variacao_evolucao_ozivy():
+    metricas = [
+        ('peso', 'Peso', 'kg'),
+        ('altura', 'Altura', 'm'),
+        ('imc', 'IMC', ''),
+        ('gordura_corporal', 'Gordura corporal', '%'),
+        ('gordura_visceral', 'Gordura visceral', ''),
+        ('idade_corporal', 'Idade corporal', 'anos'),
+        ('musculo_esqueletico', 'Músculo esquelético', '%'),
+        ('metabolismo_basal', 'Metabolismo basal', 'kcal'),
+        ('pressao_arterial_sistolica', 'Pressão arterial sistólica', 'mmHg'),
+        ('pressao_arterial_diastolica', 'Pressão arterial diastólica', 'mmHg'),
+        ('frequencia_cardiaca', 'Frequência cardíaca', 'bpm'),
+        ('glicemia', 'Glicemia', 'mg/dL'),
+    ]
 
+    conn = get_db_connection()
+    try:
+        linhas = conn.execute(
+            """
+            SELECT *
+            FROM Evolucao_Ozivy
+            """
+        ).fetchall()
+        todos_registros = [dict(linha) for linha in linhas]
+    except sqlite3.Error as erro:
+        flash(
+            f'Erro ao gerar relatório de evolução Ozivy: {erro}',
+            'danger',
+        )
+        return redirect(url_for('dashboard_evolucao_ozivy'))
+    finally:
+        conn.close()
 
+    datas_validas = [
+        converter_data_ozivy(registro.get('data_registro'))
+        for registro in todos_registros
+    ]
+    datas_validas = [
+        data_registro
+        for data_registro in datas_validas
+        if data_registro is not None
+    ]
+
+    inicio_padrao = (
+        min(datas_validas).date()
+        if datas_validas
+        else date.today()
+    )
+    fim_padrao = date.today()
+
+    try:
+        inicio = date.fromisoformat(
+            request.args.get('data_inicio', '')
+        )
+    except (ValueError, TypeError):
+        inicio = inicio_padrao
+
+    try:
+        fim = date.fromisoformat(
+            request.args.get('data_fim', '')
+        )
+    except (ValueError, TypeError):
+        fim = fim_padrao
+
+    if inicio > fim:
+        flash(
+            'A data inicial não pode ser posterior à data final.',
+            'warning',
+        )
+        return redirect(url_for('dashboard_evolucao_ozivy'))
+
+    registros = []
+
+    for registro in todos_registros:
+        data_registro = converter_data_ozivy(
+            registro.get('data_registro')
+        )
+
+        if (
+            data_registro is not None
+            and inicio <= data_registro.date() <= fim
+        ):
+            registros.append(registro)
+
+    registros.sort(
+        key=lambda registro: (
+            converter_data_ozivy(
+                registro.get('data_registro')
+            ) or datetime.max,
+            registro.get('id', 0),
+        )
+    )
+
+    def formatar_data_pdf(valor):
+        data_registro = converter_data_ozivy(valor)
+        return (
+            data_registro.strftime('%d/%m/%Y')
+            if data_registro
+            else '—'
+        )
+
+    def formatar_valor_pdf(valor):
+        if valor is None:
+            return '—'
+
+        try:
+            return formatar_numero_ozivy(valor)
+        except (TypeError, ValueError):
+            return str(valor)
+
+    estilos = getSampleStyleSheet()
+
+    estilo_titulo = ParagraphStyle(
+        'TituloOzivyPDF',
+        parent=estilos['Title'],
+        alignment=1,
+        fontSize=16,
+        leading=20,
+        textColor=colors.HexColor('#17365D'),
+        spaceAfter=6,
+    )
+
+    estilo_subtitulo = ParagraphStyle(
+        'SubtituloOzivyPDF',
+        parent=estilos['Normal'],
+        alignment=1,
+        fontSize=9,
+        textColor=colors.HexColor('#555555'),
+        spaceAfter=12,
+    )
+
+    elementos = [
+        Paragraph('Relatório de Evolução Ozivy', estilo_titulo),
+        Paragraph(
+            f'Período: {inicio.strftime("%d/%m/%Y")} a '
+            f'{fim.strftime("%d/%m/%Y")}',
+            estilo_subtitulo,
+        ),
+    ]
+
+    # Resumo: primeiro e último valor disponível de cada métrica.
+    dados_resumo = [[
+        'Métrica',
+        'Primeiro valor',
+        'Último valor',
+        'Variação',
+        'Variação percentual',
+    ]]
+
+    for campo, nome, unidade in metricas:
+        registros_com_valor = []
+
+        for registro in registros:
+            valor = registro.get(campo)
+
+            if valor is None:
+                continue
+
+            try:
+                registros_com_valor.append(
+                    (registro, float(valor))
+                )
+            except (TypeError, ValueError):
+                continue
+
+        nome_metrica = (
+            f'{nome} ({unidade})'
+            if unidade
+            else nome
+        )
+
+        if registros_com_valor:
+            primeiro_registro, primeiro_valor = registros_com_valor[0]
+            ultimo_registro, ultimo_valor = registros_com_valor[-1]
+            diferenca = ultimo_valor - primeiro_valor
+
+            primeiro_texto = formatar_valor_pdf(primeiro_valor)
+            ultimo_texto = formatar_valor_pdf(ultimo_valor)
+
+            if campo == 'peso':
+                if diferenca < 0:
+                    variacao_texto = (
+                        f'{formatar_numero_ozivy(abs(diferenca))} kg perdido'
+                    )
+                    percentual_texto = '—'
+
+                    if primeiro_valor != 0:
+                        percentual = abs(
+                            diferenca / primeiro_valor * 100
+                        )
+                        percentual_texto = (
+                            f'{formatar_numero_ozivy(percentual)}% de queda'
+                        )
+                elif diferenca > 0:
+                    variacao_texto = (
+                        f'{formatar_numero_ozivy(diferenca)} kg ganho'
+                    )
+                    percentual_texto = '—'
+
+                    if primeiro_valor != 0:
+                        percentual = abs(
+                            diferenca / primeiro_valor * 100
+                        )
+                        percentual_texto = (
+                            f'{formatar_numero_ozivy(percentual)}% '
+                            'de aumento'
+                        )
+                else:
+                    variacao_texto = 'Sem variação'
+                    percentual_texto = '0,00%'
+            else:
+                sufixo = f' {unidade}' if unidade else ''
+                variacao_texto = (
+                    f'{diferenca:+.2f}{sufixo}'.replace('.', ',')
+                )
+
+                if primeiro_valor != 0:
+                    percentual = diferenca / primeiro_valor * 100
+                    percentual_texto = (
+                        f'{percentual:+.2f}%'.replace('.', ',')
+                    )
+                else:
+                    percentual_texto = '—'
+        else:
+            primeiro_texto = '—'
+            ultimo_texto = '—'
+            variacao_texto = '—'
+            percentual_texto = '—'
+
+        dados_resumo.append([
+            nome_metrica,
+            primeiro_texto,
+            ultimo_texto,
+            variacao_texto,
+            percentual_texto,
+        ])
+
+    largura_util = landscape(A4)[0] - 24 * mm
+
+    tabela_resumo = Table(
+        dados_resumo,
+        colWidths=[
+            largura_util * 0.31,
+            largura_util * 0.17,
+            largura_util * 0.17,
+            largura_util * 0.19,
+            largura_util * 0.16,
+        ],
+        repeatRows=1,
+    )
+
+    tabela_resumo.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17365D')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#C8D1DC')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [
+            colors.white,
+            colors.HexColor('#F2F5F9'),
+        ]),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+
+    elementos.extend([
+        Paragraph(
+            'Resumo das métricas no período',
+            estilos['Heading2'],
+        ),
+        tabela_resumo,
+        PageBreak(),
+        Paragraph(
+            'Gráficos de evolução no período',
+            estilos['Heading2'],
+        ),
+        Paragraph(
+            f'Período: {inicio.strftime("%d/%m/%Y")} a '
+            f'{fim.strftime("%d/%m/%Y")}. '
+            'Os gráficos utilizam somente registros compreendidos '
+            'neste intervalo.',
+            estilos['Normal'],
+        ),
+        Spacer(1, 5 * mm),
+    ])
+
+    largura_grafico = landscape(A4)[0] - 24 * mm
+    altura_grafico = 52 * mm
+
+    for campo, nome, unidade in metricas:
+        imagem = gerar_grafico_ozivy(
+            registros,
+            campo,
+            nome,
+            unidade,
+        )
+
+        # Inclui cada gráfico no PDF, com seus marcadores e valores.
+        elementos.append(KeepTogether([
+            RLImage(
+                imagem,
+                width=largura_grafico,
+                height=altura_grafico,
+            ),
+            Spacer(1, 3 * mm),
+        ]))
+
+    # Variação entre aplicações consecutivas no período selecionado.
+    elementos.append(PageBreak())
+    elementos.append(Paragraph(
+        'Variação entre aplicações consecutivas',
+        estilos['Heading2'],
+    ))
+    elementos.append(Spacer(1, 3 * mm))
+
+    if len(registros) < 2:
+        elementos.append(Paragraph(
+            'São necessários pelo menos dois registros no período '
+            'selecionado para calcular as variações entre aplicações.',
+            estilos['Normal'],
+        ))
+    else:
+        larguras_colunas = [
+            largura_util * 0.40,
+            largura_util * 0.20,
+            largura_util * 0.20,
+            largura_util * 0.20,
+        ]
+
+        for atual, proximo in zip(registros, registros[1:]):
+            data_atual = formatar_data_pdf(
+                atual.get('data_registro')
+            )
+            data_proxima = formatar_data_pdf(
+                proximo.get('data_registro')
+            )
+
+            dados_variacao = [[
+                'Métrica',
+                'Valor atual',
+                'Valor seguinte',
+                'Variação',
+            ]]
+
+            for campo, nome, unidade in metricas:
+                valor_atual = atual.get(campo)
+                valor_proximo = proximo.get(campo)
+
+                if valor_atual is not None and valor_proximo is not None:
+                    try:
+                        numero_atual = float(valor_atual)
+                        numero_proximo = float(valor_proximo)
+                        diferenca = numero_proximo - numero_atual
+
+                        variacao_texto = (
+                            f'{diferenca:+.2f}'.replace('.', ',')
+                        )
+                        if unidade:
+                            variacao_texto += f' {unidade}'
+
+                        atual_texto = formatar_valor_pdf(numero_atual)
+                        proximo_texto = formatar_valor_pdf(numero_proximo)
+                    except (TypeError, ValueError):
+                        atual_texto = formatar_valor_pdf(valor_atual)
+                        proximo_texto = formatar_valor_pdf(valor_proximo)
+                        variacao_texto = '—'
+                else:
+                    atual_texto = formatar_valor_pdf(valor_atual)
+                    proximo_texto = formatar_valor_pdf(valor_proximo)
+                    variacao_texto = '—'
+
+                nome_metrica = (
+                    f'{nome} ({unidade})'
+                    if unidade
+                    else nome
+                )
+
+                dados_variacao.append([
+                    nome_metrica,
+                    atual_texto,
+                    proximo_texto,
+                    variacao_texto,
+                ])
+
+            tabela_variacao = Table(
+                dados_variacao,
+                colWidths=larguras_colunas,
+                repeatRows=1,
+                hAlign='LEFT',
+            )
+
+            tabela_variacao.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17365D')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#C8D1DC')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [
+                    colors.white,
+                    colors.HexColor('#F2F5F9'),
+                ]),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+
+            elementos.append(KeepTogether([
+                Paragraph(
+                    f'{data_atual} → {data_proxima}',
+                    estilos['Heading3'],
+                ),
+                tabela_variacao,
+                Spacer(1, 4 * mm),
+            ]))
+
+    # Monta e retorna o arquivo PDF — não remova este trecho.
+    buffer = io.BytesIO()
+    documento = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=12 * mm,
+        leftMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+        title='Relatório de Evolução Ozivy',
+    )
+
+    documento.build(elementos)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='relatorio_variacao_evolucao_ozivy.pdf',
+    )
 
 
 
